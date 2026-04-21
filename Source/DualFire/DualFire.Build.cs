@@ -10,7 +10,7 @@ public class DualFire : ModuleRules
 	
 		PublicDependencyModuleNames.AddRange(new string[] { "Core", "CoreUObject", "Engine", "InputCore", "EnhancedInput", "DataRegistry" });
 
-		PrivateDependencyModuleNames.AddRange(new string[] { "CommonUI", "CommonInput", "CommonGame" });
+		PrivateDependencyModuleNames.AddRange(new string[] { "CommonUI", "CommonInput" });
 
 		// Uncomment if you are using Slate UI
 		// PrivateDependencyModuleNames.AddRange(new string[] { "Slate", "SlateCore" });
