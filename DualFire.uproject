@@ -25,6 +25,17 @@
 		{
 			"Name": "DataRegistry",
 			"Enabled": true
+		},
+		{
+			"Name": "Paper2D",
+			"Enabled": true
+		},
+		{
+			"Name": "UnrealMCP",
+			"Enabled": true,
+			"TargetAllowList": [
+				"Editor"
+			]
 		}
 	]
 }

@@ -7,8 +7,10 @@ public class DualFire : ModuleRules
 	public DualFire(ReadOnlyTargetRules Target) : base(Target)
 	{
 		PCHUsage = PCHUsageMode.UseExplicitOrSharedPCHs;
-	
-		PublicDependencyModuleNames.AddRange(new string[] { "Core", "CoreUObject", "Engine", "InputCore", "EnhancedInput", "DataRegistry" });
+
+		PrivateIncludePaths.AddRange(new string[] { "DualFire", "DualFire/Player", "DualFire/Core" });
+
+		PublicDependencyModuleNames.AddRange(new string[] { "Core", "CoreUObject", "Engine", "InputCore", "EnhancedInput", "DataRegistry", "Paper2D" });
 
 		PrivateDependencyModuleNames.AddRange(new string[] { "CommonUI", "CommonInput" });
 
