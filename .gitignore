@@ -1,3 +1,8 @@
+# Plugins — 소스/uplugin만 커밋, 빌드 산출물 제외
+Plugins/*/Binaries/
+Plugins/*/Intermediate/
+Plugins/*/*.bak
+
 # Unreal Engine
 Binaries/
 Build/
