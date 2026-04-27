@@ -12,9 +12,9 @@ UDualFireMovementComponent::UDualFireMovementComponent()
 {
     PrimaryComponentTick.bCanEverTick = true;
 
-    // 중력/물리 없음. Y 축 방향 평면(XZ)으로 이동 제한
+    // 중력/물리 없음. Z 축 방향 평면(XY)으로 이동 제한
     bConstrainToPlane = true;
-    SetPlaneConstraintAxisSetting(EPlaneConstraintAxisSetting::Y);
+    SetPlaneConstraintAxisSetting(EPlaneConstraintAxisSetting::Z);
 }
 
 void UDualFireMovementComponent::BeginPlay()
@@ -49,13 +49,12 @@ void UDualFireMovementComponent::TickComponent(
         InputVector = FVector::ZeroVector;
     }
 
-    // XZ 평면만 사용, Y 입력 버림
-    const FVector TargetVelocity =
-        FVector(InputVector.X, 0.f, InputVector.Z) * MoveSpeed * SpeedMultiplier;
+    // XY 평면 정규화 후 속도 적용 (대각선 포함 모든 방향 동일 속도 보장)
+    const FVector InputDir = FVector(InputVector.X, InputVector.Y, 0.f).GetSafeNormal();
+    const FVector TargetVelocity = InputDir * MoveSpeed * SpeedMultiplier;
 
-    // 가속도 기반 선형 보간 (입력 없을 때도 자연스럽게 감속)
-    Velocity = FMath::VInterpConstantTo(Velocity, TargetVelocity, DeltaTime, Acceleration);
-    Velocity.Y = 0.f; // bConstrainToPlane 이중 보장
+    Velocity = TargetVelocity;
+    Velocity.Z = 0.f; // bConstrainToPlane 이중 보장
 
     FVector Delta = Velocity * DeltaTime;
 
@@ -72,7 +71,7 @@ void UDualFireMovementComponent::TickComponent(
     const FVector ClampedDesired = ClampToScreenBounds(DesiredLocation);
 
     Delta = ClampedDesired - PrevLocation;
-    Delta.Y = 0.f;
+    Delta.Z = 0.f;
 
     // 충돌 포함 이동. bSweep=true → 충돌 감지
     FHitResult Hit(1.f);
@@ -130,11 +129,11 @@ FVector UDualFireMovementComponent::ClampToScreenBounds(const FVector& InLocatio
         return InLocation;
     }
 
-    // FBox2D.X = 월드 X(좌우), FBox2D.Y = 월드 Z(상하)
+    // FBox2D.X = 월드 X(앞뒤), FBox2D.Y = 월드 Y(좌우)
     const FBox2D Bounds = Camera->GetPlayableBounds();
     return FVector(
         FMath::Clamp(InLocation.X, Bounds.Min.X, Bounds.Max.X),
-        InLocation.Y,
-        FMath::Clamp(InLocation.Z, Bounds.Min.Y, Bounds.Max.Y)
+        FMath::Clamp(InLocation.Y, Bounds.Min.Y, Bounds.Max.Y),
+        InLocation.Z
     );
 }

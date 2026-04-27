@@ -19,11 +19,11 @@ AStageCameraActor::AStageCameraActor()
     SetRootComponent(SceneRoot);
 
     // ── CameraComp ─────────────────────────────────────────────────────────────
-    // -Y 위치에서 +Y 방향(XZ 게임 평면)을 바라보는 직교 카메라. Yaw=90 → 전방 +Y
+    // +Z 위치에서 -Z 방향(XY 게임 평면)을 내려다보는 직교 카메라. Pitch=-90 → 수직 하향
     CameraComp = CreateDefaultSubobject<UCameraComponent>(TEXT("CameraComp"));
     CameraComp->SetupAttachment(SceneRoot);
-    CameraComp->SetRelativeLocation(FVector(0.f, -1500.f, 0.f));
-    CameraComp->SetRelativeRotation(FRotator(-90.f, 180.f, 180.f));
+    CameraComp->SetRelativeLocation(FVector(0.f, 0.f, 1500.f));
+    CameraComp->SetRelativeRotation(FRotator(-90.f, 0.f, 0.f));
     CameraComp->ProjectionMode = ECameraProjectionMode::Orthographic;
     CameraComp->OrthoWidth = OrthoWidth;
 }
@@ -71,15 +71,15 @@ FBox2D AStageCameraActor::GetPlayableBounds() const
         }
     }
 
-    // OrthoWidth  → 월드 X 축 범위 (좌우)
-    // OrthoHeight = OrthoWidth / AspectRatio → 월드 Z 축 범위 (상하)
+    // OrthoWidth  → 월드 Y 축 범위 (좌우, 화면 수평)
+    // OrthoHeight = OrthoWidth / AspectRatio → 월드 X 축 범위 (앞뒤, 화면 수직)
     const float HalfW = OrthoWidth * 0.5f;
     const float HalfH = (OrthoWidth / AspectRatio) * 0.5f;
     const FVector Loc = GetActorLocation();
 
-    // FBox2D.Y = 월드 Z (상하 축)
+    // FBox2D.X = 월드 X(앞뒤), FBox2D.Y = 월드 Y(좌우)
     return FBox2D(
-        FVector2D(Loc.X - HalfW + PlayableInset.X, Loc.Z - HalfH + PlayableInset.Y),
-        FVector2D(Loc.X + HalfW - PlayableInset.X, Loc.Z + HalfH - PlayableInset.Y)
+        FVector2D(Loc.X - HalfH + PlayableInset.Y, Loc.Y - HalfW + PlayableInset.X),
+        FVector2D(Loc.X + HalfH - PlayableInset.Y, Loc.Y + HalfW - PlayableInset.X)
     );
 }

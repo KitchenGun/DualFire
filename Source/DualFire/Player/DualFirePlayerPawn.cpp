@@ -4,10 +4,11 @@
 
 #include "DualFireMovementComponent.h"
 #include "Core/DualFireCollisionChannels.h"
+#include "Weapon/WeaponComponent.h"
 
 #include "Components/SceneComponent.h"
 #include "Components/SphereComponent.h"
-#include "PaperFlipbookComponent.h"
+#include "Components/SkeletalMeshComponent.h"
 
 #include "EnhancedInputComponent.h"
 #include "EnhancedInputSubsystems.h"
@@ -27,11 +28,10 @@ ADualFirePlayerPawn::ADualFirePlayerPawn()
     SceneRoot = CreateDefaultSubobject<USceneComponent>(TEXT("SceneRoot"));
     SetRootComponent(SceneRoot);
 
-    // ── ShipFlipbook (비주얼 전담) ────────────────────────────────────────────
-    ShipFlipbook = CreateDefaultSubobject<UPaperFlipbookComponent>(TEXT("ShipFlipbook"));
-    ShipFlipbook->SetupAttachment(SceneRoot);
-    ShipFlipbook->SetCollisionEnabled(ECollisionEnabled::NoCollision); // 충돌은 HitboxComp 전담
-    ShipFlipbook->SetCastShadow(false);
+    // ── Mesh (비주얼 전담) ────────────────────────────────────────────────
+    Mesh = CreateDefaultSubobject<USkeletalMeshComponent>(TEXT("Mesh"));
+    Mesh->SetupAttachment(SceneRoot);
+    Mesh->SetCollisionEnabled(ECollisionEnabled::NoCollision); // 충돌은 HitboxComp 전담
 
     // ── HitboxComp (피격 감지 전담) ───────────────────────────────────────────
     // Profile="PlayerPawn": ObjectType=PlayerHitbox, EnemyBullet=Overlap, 나머지 Ignore
@@ -42,10 +42,12 @@ ADualFirePlayerPawn::ADualFirePlayerPawn()
     // OnComponentBeginOverlap 바인딩은 BeginPlay에서 (CDO 단계에서 AddDynamic 불가)
 
     // ── MovementComp ─────────────────────────────────────────────────────────
-    // UpdatedComponent를 SceneRoot로 설정해 XZ 평면 이동 대상을 루트로 지정
+    // UpdatedComponent를 SceneRoot로 설정해 XY 평면 이동 대상을 루트로 지정
     MovementComp = CreateDefaultSubobject<UDualFireMovementComponent>(TEXT("MovementComp"));
     MovementComp->UpdatedComponent = SceneRoot;
 
+    // ── WeaponComp ────────────────────────────────────────────────────────────
+    WeaponComp = CreateDefaultSubobject<UWeaponComponent>(TEXT("WeaponComp"));
 }
 
 // ── APawn 오버라이드 ──────────────────────────────────────────────────────────
@@ -85,6 +87,25 @@ void ADualFirePlayerPawn::SetupPlayerInputComponent(UInputComponent* PlayerInput
         UE_LOG(LogTemp, Warning,
             TEXT("ADualFirePlayerPawn: IA_Move 에셋이 할당되지 않았습니다."));
     }
+
+    // 발사 입력 — Triggered: 키를 누르는 동안 연사 (쿨다운으로 발사 간격 제어)
+    if (UInputAction* GroundIA = IA_FireGround.LoadSynchronous())
+    {
+        EIC->BindAction(GroundIA, ETriggerEvent::Triggered,
+            this, &ADualFirePlayerPawn::OnFireGroundInput);
+    }
+
+    if (UInputAction* AirIA = IA_FireAir.LoadSynchronous())
+    {
+        EIC->BindAction(AirIA, ETriggerEvent::Triggered,
+            this, &ADualFirePlayerPawn::OnFireAirInput);
+    }
+
+    if (UInputAction* UniversalIA = IA_FireUniversal.LoadSynchronous())
+    {
+        EIC->BindAction(UniversalIA, ETriggerEvent::Triggered,
+            this, &ADualFirePlayerPawn::OnFireUniversalInput);
+    }
 }
 
 UPawnMovementComponent* ADualFirePlayerPawn::GetMovementComponent() const
@@ -96,13 +117,37 @@ UPawnMovementComponent* ADualFirePlayerPawn::GetMovementComponent() const
 
 void ADualFirePlayerPawn::OnMoveInput(const FInputActionValue& Value)
 {
-    // IA_Move ValueType = Axis2D (Vector2D): X=좌우, Y=상하
+    // IA_Move Axis2D: X=좌우 입력 → 월드 Y축, Y=앞뒤 입력 → 월드 X축
     const FVector2D Axis = Value.Get<FVector2D>();
 
-    // AddMovementInput → MovementComp::ConsumeInputVector()로 전달
-    // ForwardVector(+X) = 화면 좌우, UpVector(+Z) = 화면 상하
-    AddMovementInput(FVector::ForwardVector, Axis.X);
-    AddMovementInput(FVector::UpVector,      Axis.Y);
+    AddMovementInput(FVector::RightVector,   Axis.X);
+    AddMovementInput(FVector::ForwardVector, Axis.Y);
+}
+
+// ── 발사 핸들러 ───────────────────────────────────────────────────────────────
+
+void ADualFirePlayerPawn::OnFireGroundInput(const FInputActionValue& Value)
+{
+    if (IsValid(WeaponComp))
+    {
+        WeaponComp->FireGround();
+    }
+}
+
+void ADualFirePlayerPawn::OnFireAirInput(const FInputActionValue& Value)
+{
+    if (IsValid(WeaponComp))
+    {
+        WeaponComp->FireAir();
+    }
+}
+
+void ADualFirePlayerPawn::OnFireUniversalInput(const FInputActionValue& Value)
+{
+    if (IsValid(WeaponComp))
+    {
+        WeaponComp->FireUniversal();
+    }
 }
 
 // ── 히트박스 오버랩 ───────────────────────────────────────────────────────────

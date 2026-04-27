@@ -8,7 +8,7 @@
 
 /**
  * 2D 스크롤 슈팅용 플레이어 이동 컴포넌트.
- * 이동 평면: XZ (X=좌우, Z=상하), Y 고정.
+ * 이동 평면: XY (X=앞뒤, Y=좌우), Z 고정.
  * Enhanced Input → AddMovementInput → ConsumeInputVector 경로로 입력 수신.
  * 가속도 기반 선형 보간(VInterpConstantTo), 뷰포트 UV 마진 화면 경계 클램핑.
  */
@@ -26,7 +26,7 @@ public:
 
     // 최고 이동 속도 (units/s)
     UPROPERTY(EditAnywhere, BlueprintReadWrite, Category="Movement")
-    float MoveSpeed = 900.f;
+    float MoveSpeed = 300.f;
 
     // 가속도 (units/s²). VInterpConstantTo의 초당 속도 변화량
     UPROPERTY(EditAnywhere, BlueprintReadWrite, Category="Movement")

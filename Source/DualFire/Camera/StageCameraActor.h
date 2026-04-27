@@ -14,7 +14,7 @@ class UCameraComponent;
  * 스테이지 전용 직교 카메라 액터.
  * GameMode가 BeginPlay에서 스폰 후 SetViewTarget으로 지정.
  * ScrollSpeed > 0 이면 Tick마다 +X 방향으로 자동 이동.
- * GetPlayableBounds()로 이동 가능 영역(XZ 평면) FBox2D 제공.
+ * GetPlayableBounds()로 이동 가능 영역(XY 평면) FBox2D 제공.
  */
 UCLASS(BlueprintType, Blueprintable)
 class DUALFIRE_API AStageCameraActor : public AActor
@@ -64,8 +64,8 @@ public:
     void SetPaused(bool bInPaused);
 
     /**
-     * 현재 카메라 프러스텀에서 XZ 이동 가능 영역 반환.
-     * FBox2D.X = 월드 X(좌우), FBox2D.Y = 월드 Z(상하).
+     * 현재 카메라 프러스텀에서 XY 이동 가능 영역 반환.
+     * FBox2D.X = 월드 X(앞뒤), FBox2D.Y = 월드 Y(좌우).
      * OrthoWidth + 뷰포트 종횡비(없으면 16:9 폴백) + PlayableInset 적용.
      */
     UFUNCTION(BlueprintPure, Category="Scroll")
