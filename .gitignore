@@ -3,6 +3,11 @@ Plugins/*/Binaries/
 Plugins/*/Intermediate/
 Plugins/*/*.bak
 
+# Local UnrealMCP integration
+/Plugins/UnrealMCP/
+/.mcp.json
+/.claude/
+
 # Unreal Engine
 Binaries/
 Build/
