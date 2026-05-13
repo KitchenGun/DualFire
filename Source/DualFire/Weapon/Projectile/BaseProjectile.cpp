@@ -91,9 +91,9 @@ bool ABaseProjectile::CheckAttributeMatch(AActor* OtherActor) const
 		return true;
 	}
 
-	const EWeaponAttribute EnemyAttr =
+	const EDualFireAttribute EnemyAttr =
 		IEnemyAttributeInterface::Execute_GetEnemyAttribute(OtherActor);
 
 	// 탄환 속성 배열 중 하나라도 적 속성과 일치하면 피격
-	return Attributes.Contains(EnemyAttr);
+	return AttributeArray.Contains(EnemyAttr);
 }

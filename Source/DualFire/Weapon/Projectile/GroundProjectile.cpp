@@ -4,5 +4,5 @@
 
 AGroundProjectile::AGroundProjectile()
 {
-	Attributes.Add(EWeaponAttribute::Ground);
+	AttributeArray.Add(EDualFireAttribute::Ground);
 }

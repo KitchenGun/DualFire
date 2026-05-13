@@ -4,7 +4,7 @@
 
 #include "CoreMinimal.h"
 #include "GameFramework/Actor.h"
-#include "Weapon/DualFireWeaponTypes.h"
+#include "Core/DualFireTypes.h"
 #include "BaseProjectile.generated.h"
 
 class USphereComponent;
@@ -12,7 +12,7 @@ class UProjectileMovementComponent;
 
 /**
  * 플레이어 탄환 베이스 클래스.
- * 서브클래스에서 Attributes 배열을 설정해 대지/대공/범용 탄환을 구현.
+ * 서브클래스에서 AttributeArray 배열을 설정해 대지/대공/범용 탄환을 구현.
  * 적과 Overlap 시 속성 비교 → 일치하면 데미지, 불일치하면 관통 진행.
  */
 UCLASS(Abstract, BlueprintType, Blueprintable)
@@ -36,7 +36,7 @@ public:
 	// ── 무장 속성 (서브클래스 생성자에서 설정) ───────────────────────────────
 
 	UPROPERTY(EditDefaultsOnly, BlueprintReadOnly, Category="Weapon")
-	TArray<EWeaponAttribute> Attributes;
+	TArray<EDualFireAttribute> AttributeArray;
 
 	UPROPERTY(EditDefaultsOnly, BlueprintReadWrite, Category="Weapon",
 		meta=(ClampMin="0.0"))

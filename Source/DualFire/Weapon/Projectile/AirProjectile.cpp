@@ -4,5 +4,5 @@
 
 AAirProjectile::AAirProjectile()
 {
-	Attributes.Add(EWeaponAttribute::Air);
+	AttributeArray.Add(EDualFireAttribute::Air);
 }

@@ -5,7 +5,7 @@
 #include "CoreMinimal.h"
 #include "GameFramework/Actor.h"
 #include "Enemy/EnemyAttributeInterface.h"
-#include "Weapon/DualFireWeaponTypes.h"
+#include "Core/DualFireTypes.h"
 #include "TestTarget.generated.h"
 
 class USphereComponent;
@@ -32,7 +32,7 @@ public:
 
 	/** 이 표적의 속성. 인스턴스별로 에디터에서 설정 (Ground/Air) */
 	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category="Weapon")
-	EWeaponAttribute Attribute = EWeaponAttribute::Ground;
+	EDualFireAttribute Attribute = EDualFireAttribute::Ground;
 
 	/** 격파에 필요한 누적 피해량. 0 이하가 되면 Destroy */
 	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category="Weapon",
@@ -40,7 +40,7 @@ public:
 	float HitPoints = 10.f;
 
 	// ── IEnemyAttributeInterface ───────────────────────────────────────────────
-	virtual EWeaponAttribute GetEnemyAttribute_Implementation() const override
+	virtual EDualFireAttribute GetEnemyAttribute_Implementation() const override
 	{
 		return Attribute;
 	}

@@ -4,6 +4,6 @@
 
 AUniversalProjectile::AUniversalProjectile()
 {
-	Attributes.Add(EWeaponAttribute::Ground);
-	Attributes.Add(EWeaponAttribute::Air);
+	AttributeArray.Add(EDualFireAttribute::Ground);
+	AttributeArray.Add(EDualFireAttribute::Air);
 }
