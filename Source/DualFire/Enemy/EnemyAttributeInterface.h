@@ -23,10 +23,19 @@ class UEnemyAttributeInterface : public UInterface
 class DUALFIRE_API IEnemyAttributeInterface
 {
 	GENERATED_BODY()
-
 public:
-	/** 이 적의 속성 (Ground 또는 Air) */
+	/** Preferred enemy attribute contract. Mixed enemies return both Ground and Air. */
 	UFUNCTION(BlueprintNativeEvent, BlueprintCallable, Category="Weapon")
+	FEnemyAttribute GetEnemyAttributes() const;
+	virtual FEnemyAttribute GetEnemyAttributes_Implementation() const
+	{
+		return FEnemyAttribute::FromAttribute(GetEnemyAttribute_Implementation());
+	}
+	/** Legacy single-attribute contract kept for existing Blueprint assets. Use GetEnemyAttributes instead. */
+	UFUNCTION(BlueprintNativeEvent, BlueprintCallable, Category="Weapon", meta=(DeprecatedFunction, DeprecationMessage="Use GetEnemyAttributes instead."))
 	EDualFireAttribute GetEnemyAttribute() const;
-	virtual EDualFireAttribute GetEnemyAttribute_Implementation() const = 0;
+	virtual EDualFireAttribute GetEnemyAttribute_Implementation() const
+	{
+		return EDualFireAttribute::None;
+	}
 };

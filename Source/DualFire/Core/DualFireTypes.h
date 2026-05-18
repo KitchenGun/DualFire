@@ -112,4 +112,50 @@ struct DUALFIRE_API FEnemyAttribute
 
 	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Attribute")
 	bool bAir = false;
+
+	bool HasGround() const { return bGround; }
+	bool HasAir() const { return bAir; }
+	bool IsMixed() const { return bGround && bAir; }
+	bool IsNone() const { return !bGround && !bAir; }
+	bool Matches(EDualFireAttribute Attribute) const
+	{
+		switch (Attribute)
+		{
+		case EDualFireAttribute::Ground:
+			return bGround;
+		case EDualFireAttribute::Air:
+			return bAir;
+		default:
+			return false;
+		}
+	}
+	bool MatchesAny(const TArray<EDualFireAttribute>& Attributes) const
+	{
+		for (const EDualFireAttribute Attribute : Attributes)
+		{
+			if (Matches(Attribute))
+			{
+				return true;
+			}
+		}
+		return false;
+	}
+	static FEnemyAttribute FromAttribute(EDualFireAttribute Attribute)
+	{
+		FEnemyAttribute Result;
+		Result.bGround = Attribute == EDualFireAttribute::Ground;
+		Result.bAir = Attribute == EDualFireAttribute::Air;
+		return Result;
+	}
+	static FEnemyAttribute FromAttributes(const TArray<EDualFireAttribute>& Attributes)
+	{
+		FEnemyAttribute Result;
+		Result.bGround = Attributes.Contains(EDualFireAttribute::Ground);
+		Result.bAir = Attributes.Contains(EDualFireAttribute::Air);
+		return Result;
+	}
+	static bool IsMatch(const TArray<EDualFireAttribute>& ProjectileAttributes, const FEnemyAttribute& EnemyAttribute)
+	{
+		return EnemyAttribute.MatchesAny(ProjectileAttributes);
+	}
 };

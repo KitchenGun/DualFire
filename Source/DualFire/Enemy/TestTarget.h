@@ -40,6 +40,10 @@ public:
 	float HitPoints = 10.f;
 
 	// ── IEnemyAttributeInterface ───────────────────────────────────────────────
+	virtual FEnemyAttribute GetEnemyAttributes_Implementation() const override
+	{
+		return FEnemyAttribute::FromAttribute(Attribute);
+	}
 	virtual EDualFireAttribute GetEnemyAttribute_Implementation() const override
 	{
 		return Attribute;

@@ -10,6 +10,19 @@
 class USphereComponent;
 class UProjectileMovementComponent;
 
+USTRUCT(BlueprintType)
+struct DUALFIRE_API FProjectileRuntimeConfig
+{
+	GENERATED_BODY()
+	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category="Weapon")
+	TArray<EDualFireAttribute> AttributeArray;
+	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category="Weapon", meta=(ClampMin="0.0"))
+	float Damage = 10.f;
+	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category="Weapon")
+	EHitBehavior HitBehavior = EHitBehavior::Destroy;
+	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category="Weapon", meta=(ClampMin="0"))
+	int32 PenetrationLimit = 0;
+};
 /**
  * 플레이어 탄환 베이스 클래스.
  * 서브클래스에서 AttributeArray 배열을 설정해 대지/대공/범용 탄환을 구현.
@@ -35,7 +48,7 @@ public:
 
 	// ── 무장 속성 (서브클래스 생성자에서 설정) ───────────────────────────────
 
-	UPROPERTY(EditDefaultsOnly, BlueprintReadOnly, Category="Weapon")
+	UPROPERTY(EditDefaultsOnly, BlueprintReadWrite, Category="Weapon")
 	TArray<EDualFireAttribute> AttributeArray;
 
 	UPROPERTY(EditDefaultsOnly, BlueprintReadWrite, Category="Weapon",
@@ -50,6 +63,12 @@ public:
 		meta=(ClampMin="1.0"))
 	float ProjectileSpeed = 1200.f;
 
+	UPROPERTY(EditDefaultsOnly, BlueprintReadWrite, Category="Weapon")
+	EHitBehavior HitBehavior = EHitBehavior::Destroy;
+	UPROPERTY(EditDefaultsOnly, BlueprintReadWrite, Category="Weapon", meta=(ClampMin="0"))
+	int32 PenetrationLimit = 0;
+	UFUNCTION(BlueprintCallable, Category="Weapon")
+	void ApplyRuntimeConfig(const FProjectileRuntimeConfig& RuntimeConfig);
 protected:
 	// ── BP 확장 포인트 ────────────────────────────────────────────────────────
 
@@ -76,4 +95,6 @@ private:
 
 	/** 관통 탄환이 같은 적에게 반복 피격되지 않도록 캐싱 */
 	TSet<TWeakObjectPtr<AActor>> AlreadyHitActors;
+
+	int32 PenetrationCount = 0;
 };

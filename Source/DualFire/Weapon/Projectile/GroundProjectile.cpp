@@ -4,5 +4,7 @@
 
 AGroundProjectile::AGroundProjectile()
 {
-	AttributeArray.Add(EDualFireAttribute::Ground);
+	FProjectileRuntimeConfig RuntimeConfig;
+	RuntimeConfig.AttributeArray.Add(EDualFireAttribute::Ground);
+	ApplyRuntimeConfig(RuntimeConfig);
 }

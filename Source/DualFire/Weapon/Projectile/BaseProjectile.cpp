@@ -42,6 +42,19 @@ void ABaseProjectile::BeginPlay()
 	CollisionComp->OnComponentBeginOverlap.AddDynamic(this, &ABaseProjectile::OnProjectileOverlapBegin);
 }
 
+void ABaseProjectile::ApplyRuntimeConfig(const FProjectileRuntimeConfig& RuntimeConfig)
+{
+	AttributeArray = RuntimeConfig.AttributeArray;
+	Damage = FMath::Max(0.f, RuntimeConfig.Damage);
+	HitBehavior = RuntimeConfig.HitBehavior;
+	PenetrationLimit = FMath::Max(0, RuntimeConfig.PenetrationLimit);
+	if (ProjectileMovement)
+	{
+		ProjectileMovement->InitialSpeed = ProjectileSpeed;
+		ProjectileMovement->MaxSpeed = ProjectileSpeed;
+		ProjectileMovement->Velocity = FVector(ProjectileSpeed, 0.f, 0.f);
+	}
+}
 void ABaseProjectile::OnProjectileOverlapBegin(
 	UPrimitiveComponent* OverlappedComp,
 	AActor*              OtherActor,
@@ -72,7 +85,22 @@ void ABaseProjectile::OnProjectileOverlapBegin(
 	{
 		UGameplayStatics::ApplyDamage(OtherActor, Damage, GetInstigatorController(), this, nullptr);
 		OnAttributeMatched(OtherActor, OtherComp);
-		Destroy();
+		switch (HitBehavior)
+		{
+		case EHitBehavior::Penetrate:
+			break;
+		case EHitBehavior::LimitedPenetrate:
+			++PenetrationCount;
+			if (PenetrationLimit <= 0 || PenetrationCount >= PenetrationLimit)
+			{
+				Destroy();
+			}
+			break;
+		case EHitBehavior::Destroy:
+		default:
+			Destroy();
+			break;
+		}
 	}
 	else
 	{
@@ -85,15 +113,16 @@ void ABaseProjectile::OnProjectileOverlapBegin(
 
 bool ABaseProjectile::CheckAttributeMatch(AActor* OtherActor) const
 {
-	// 인터페이스 미구현 적 → 보수적으로 일치 처리 (피격 가능)
+	// Enemies without the interface remain hittable for prototype compatibility.
 	if (!OtherActor || !OtherActor->Implements<UEnemyAttributeInterface>())
 	{
 		return true;
 	}
-
-	const EDualFireAttribute EnemyAttr =
-		IEnemyAttributeInterface::Execute_GetEnemyAttribute(OtherActor);
-
-	// 탄환 속성 배열 중 하나라도 적 속성과 일치하면 피격
-	return AttributeArray.Contains(EnemyAttr);
+	FEnemyAttribute EnemyAttributes = IEnemyAttributeInterface::Execute_GetEnemyAttributes(OtherActor);
+	if (EnemyAttributes.IsNone())
+	{
+		// Temporary bridge for Blueprint assets that still implement only the legacy enum function.
+		EnemyAttributes = FEnemyAttribute::FromAttribute(IEnemyAttributeInterface::Execute_GetEnemyAttribute(OtherActor));
+	}
+	return FEnemyAttribute::IsMatch(AttributeArray, EnemyAttributes);
 }

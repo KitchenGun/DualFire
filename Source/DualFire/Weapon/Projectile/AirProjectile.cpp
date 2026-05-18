@@ -4,5 +4,7 @@
 
 AAirProjectile::AAirProjectile()
 {
-	AttributeArray.Add(EDualFireAttribute::Air);
+	FProjectileRuntimeConfig RuntimeConfig;
+	RuntimeConfig.AttributeArray.Add(EDualFireAttribute::Air);
+	ApplyRuntimeConfig(RuntimeConfig);
 }
