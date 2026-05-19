@@ -1,93 +1,333 @@
 // Copyright DualFire. All Rights Reserved.
 
 #include "Weapon/WeaponComponent.h"
-#include "Weapon/Projectile/BaseProjectile.h"
+
+#include "Core/LoadoutDataLibrary.h"
 #include "DualFire.h"
+#include "Engine/DataTable.h"
+#include "Engine/World.h"
+#include "TimerManager.h"
+#include "UObject/ConstructorHelpers.h"
+
+namespace
+{
+	const FName TestShipID(TEXT("TEST_SHIP"));
+	const FName TestSuperWeaponID(TEXT("TEST_SUPER"));
+	const FName TestShieldID(TEXT("TEST_SHIELD"));
+	const FName TestGroundWeaponID(TEXT("TEST_AG"));
+	const FName TestAirWeaponID(TEXT("TEST_AA"));
+	const FName TestUniversalWeaponID(TEXT("TEST_AM"));
+
+	float FireRateFromCooldown(float Cooldown)
+	{
+		return 1.0f / FMath::Max(0.001f, Cooldown);
+	}
+}
 
 UWeaponComponent::UWeaponComponent()
 {
 	PrimaryComponentTick.bCanEverTick = false;
+
+	PrimaryWeaponSlot.Reset(ELoadoutSlot::PrimaryWeapon);
+	SpecialWeapon1Slot.Reset(ELoadoutSlot::SpecialWeapon1);
+	SpecialWeapon2Slot.Reset(ELoadoutSlot::SpecialWeapon2);
+
+	static ConstructorHelpers::FObjectFinder<UDataTable> WeaponDataTableFinder(
+		TEXT("/Game/Data/Loadout/DT_LoadoutWeapons.DT_LoadoutWeapons"));
+	if (WeaponDataTableFinder.Succeeded())
+	{
+		WeaponDataTable = WeaponDataTableFinder.Object;
+	}
+
+	DefaultLoadout.ShipID = TestShipID;
+	DefaultLoadout.PrimaryWeaponID = TestGroundWeaponID;
+	DefaultLoadout.SpecialWeapon1ID = TestAirWeaponID;
+	DefaultLoadout.SpecialWeapon2ID = TestUniversalWeaponID;
+	DefaultLoadout.SuperWeaponID = TestSuperWeaponID;
+	DefaultLoadout.ShieldID = TestShieldID;
 }
 
-// ── 공개 발사 메서드 ─────────────────────────────────────────────────────────
+void UWeaponComponent::BeginPlay()
+{
+	Super::BeginPlay();
+
+	ApplyLoadout(DefaultLoadout);
+}
+
+bool UWeaponComponent::ApplyLoadout(const FLoadout& Loadout)
+{
+	FLoadout LoadoutToApply = Loadout;
+	if (LoadoutToApply.PrimaryWeaponID.IsNone())
+	{
+		LoadoutToApply.PrimaryWeaponID = TestGroundWeaponID;
+	}
+	if (LoadoutToApply.SpecialWeapon1ID.IsNone())
+	{
+		LoadoutToApply.SpecialWeapon1ID = TestAirWeaponID;
+	}
+	if (LoadoutToApply.SpecialWeapon2ID.IsNone())
+	{
+		LoadoutToApply.SpecialWeapon2ID = TestUniversalWeaponID;
+	}
+
+	ActiveLoadout = LoadoutToApply;
+
+	const bool bPrimaryEquipped = EquipWeaponSlot(
+		ELoadoutSlot::PrimaryWeapon,
+		LoadoutToApply.PrimaryWeaponID,
+		GroundProjectileClass);
+
+	const bool bSpecial1Equipped = EquipWeaponSlot(
+		ELoadoutSlot::SpecialWeapon1,
+		LoadoutToApply.SpecialWeapon1ID,
+		AirProjectileClass);
+
+	const bool bSpecial2Equipped = EquipWeaponSlot(
+		ELoadoutSlot::SpecialWeapon2,
+		LoadoutToApply.SpecialWeapon2ID,
+		UniversalProjectileClass);
+
+	return bPrimaryEquipped && bSpecial1Equipped && bSpecial2Equipped;
+}
 
 void UWeaponComponent::FireGround()
 {
-	FireSlot(GroundProjectileClass, GroundCooldownHandle, bGroundCooldown, GroundFireCooldown);
+	FireLoadoutSlot(ELoadoutSlot::PrimaryWeapon);
 }
 
 void UWeaponComponent::FireAir()
 {
-	FireSlot(AirProjectileClass, AirCooldownHandle, bAirCooldown, AirFireCooldown);
+	FireLoadoutSlot(ELoadoutSlot::SpecialWeapon1);
 }
 
 void UWeaponComponent::FireUniversal()
 {
-	FireSlot(UniversalProjectileClass, UniversalCooldownHandle, bUniversalCooldown, UniversalFireCooldown);
+	FireLoadoutSlot(ELoadoutSlot::SpecialWeapon2);
 }
 
-// ── 공통 발사 로직 ───────────────────────────────────────────────────────────
-
-void UWeaponComponent::FireSlot(
-	TSubclassOf<ABaseProjectile> ProjectileClass,
-	FTimerHandle&                CooldownHandle,
-	bool&                        bCooldownActive,
-	float                        Cooldown)
+bool UWeaponComponent::CanFireGround() const
 {
-	if (bCooldownActive)
+	return CanFireLoadoutSlot(ELoadoutSlot::PrimaryWeapon);
+}
+
+bool UWeaponComponent::CanFireAir() const
+{
+	return CanFireLoadoutSlot(ELoadoutSlot::SpecialWeapon1);
+}
+
+bool UWeaponComponent::CanFireUniversal() const
+{
+	return CanFireLoadoutSlot(ELoadoutSlot::SpecialWeapon2);
+}
+
+void UWeaponComponent::FireLoadoutSlot(ELoadoutSlot Slot)
+{
+	FWeaponSlotState* SlotState = GetWeaponSlotState(Slot);
+	if (!SlotState || SlotState->bCooldownActive)
 	{
 		return;
 	}
 
-	if (!IsValid(ProjectileClass))
+	if (!IsValid(SlotState->ProjectileClass))
 	{
-		UE_LOG(LogDualFire, Warning, TEXT("[WeaponComp] ProjectileClass가 설정되지 않아 발사 불가"));
+		UE_LOG(LogDualFire, Warning, TEXT("[WeaponComp] No projectile class for weapon %s"), *SlotState->WeaponID.ToString());
 		return;
 	}
 
 	AActor* Owner = GetOwner();
-	if (!IsValid(Owner))
+	UWorld* World = GetWorld();
+	if (!IsValid(Owner) || !IsValid(World))
 	{
 		return;
 	}
 
-	const FVector  SpawnLocation = Owner->GetActorLocation() + MuzzleOffset;
+	const FVector SpawnLocation = Owner->GetActorLocation() + MuzzleOffset + SlotState->WeaponData.MuzzleOffset;
 	const FRotator SpawnRotation = FRotator::ZeroRotator;
 
 	FActorSpawnParameters SpawnParams;
-	SpawnParams.Instigator             = Cast<APawn>(Owner);
-	SpawnParams.Owner                  = Owner;
-	SpawnParams.SpawnCollisionHandlingOverride =
-		ESpawnActorCollisionHandlingMethod::AlwaysSpawn;
+	SpawnParams.Instigator = Cast<APawn>(Owner);
+	SpawnParams.Owner = Owner;
+	SpawnParams.SpawnCollisionHandlingOverride = ESpawnActorCollisionHandlingMethod::AlwaysSpawn;
 
-	ABaseProjectile* Projectile = GetWorld()->SpawnActor<ABaseProjectile>(
-		ProjectileClass, SpawnLocation, SpawnRotation, SpawnParams);
+	ABaseProjectile* Projectile = World->SpawnActor<ABaseProjectile>(
+		SlotState->ProjectileClass,
+		SpawnLocation,
+		SpawnRotation,
+		SpawnParams);
 
-	if (IsValid(Projectile))
+	if (!IsValid(Projectile))
 	{
-		UE_LOG(LogDualFire, Verbose, TEXT("[WeaponComp] 발사 — %s"), *ProjectileClass->GetName());
+		return;
 	}
 
-	bCooldownActive = true;
+	Projectile->ApplyRuntimeConfig(ULoadoutDataLibrary::MakeProjectileRuntimeConfig(SlotState->WeaponData));
 
-	// 람다 대신 명시적 콜백 사용 (UObject 안전)
-	if (&CooldownHandle == &GroundCooldownHandle)
+	SlotState->bCooldownActive = true;
+
+	FTimerDelegate CooldownDelegate;
+	CooldownDelegate.BindUObject(this, &UWeaponComponent::OnLoadoutSlotCooldownExpired, Slot);
+
+	World->GetTimerManager().SetTimer(
+		SlotState->CooldownHandle,
+		CooldownDelegate,
+		GetCooldownFromFireRate(SlotState->WeaponData.FireRate),
+		false);
+
+	UE_LOG(LogDualFire, Verbose, TEXT("[WeaponComp] Fired %s"), *SlotState->WeaponID.ToString());
+}
+
+bool UWeaponComponent::CanFireLoadoutSlot(ELoadoutSlot Slot) const
+{
+	const FWeaponSlotState* SlotState = GetWeaponSlotState(Slot);
+	return SlotState && !SlotState->bCooldownActive && IsValid(SlotState->ProjectileClass);
+}
+
+FWeaponSlotState* UWeaponComponent::GetWeaponSlotState(ELoadoutSlot Slot)
+{
+	switch (Slot)
 	{
-		GetWorld()->GetTimerManager().SetTimer(
-			CooldownHandle, this, &UWeaponComponent::OnGroundCooldownExpired, Cooldown, false);
-	}
-	else if (&CooldownHandle == &AirCooldownHandle)
-	{
-		GetWorld()->GetTimerManager().SetTimer(
-			CooldownHandle, this, &UWeaponComponent::OnAirCooldownExpired, Cooldown, false);
-	}
-	else
-	{
-		GetWorld()->GetTimerManager().SetTimer(
-			CooldownHandle, this, &UWeaponComponent::OnUniversalCooldownExpired, Cooldown, false);
+	case ELoadoutSlot::PrimaryWeapon:
+		return &PrimaryWeaponSlot;
+	case ELoadoutSlot::SpecialWeapon1:
+		return &SpecialWeapon1Slot;
+	case ELoadoutSlot::SpecialWeapon2:
+		return &SpecialWeapon2Slot;
+	default:
+		return nullptr;
 	}
 }
 
-void UWeaponComponent::OnGroundCooldownExpired()    { bGroundCooldown    = false; }
-void UWeaponComponent::OnAirCooldownExpired()       { bAirCooldown       = false; }
-void UWeaponComponent::OnUniversalCooldownExpired() { bUniversalCooldown = false; }
+const FWeaponSlotState* UWeaponComponent::GetWeaponSlotState(ELoadoutSlot Slot) const
+{
+	switch (Slot)
+	{
+	case ELoadoutSlot::PrimaryWeapon:
+		return &PrimaryWeaponSlot;
+	case ELoadoutSlot::SpecialWeapon1:
+		return &SpecialWeapon1Slot;
+	case ELoadoutSlot::SpecialWeapon2:
+		return &SpecialWeapon2Slot;
+	default:
+		return nullptr;
+	}
+}
+
+bool UWeaponComponent::EquipWeaponSlot(ELoadoutSlot Slot, FName WeaponID, TSubclassOf<ABaseProjectile> LegacyProjectileClass)
+{
+	FWeaponSlotState* SlotState = GetWeaponSlotState(Slot);
+	if (!SlotState)
+	{
+		return false;
+	}
+
+	SlotState->Reset(Slot);
+
+	FWeaponRow WeaponRow;
+	if (!ResolveWeaponRow(WeaponID, WeaponRow))
+	{
+		UE_LOG(LogDualFire, Warning, TEXT("[WeaponComp] Weapon row not found: %s"), *WeaponID.ToString());
+		return false;
+	}
+
+	if (!ULoadoutDataLibrary::IsWeaponCategoryCompatible(Slot, WeaponRow.Category))
+	{
+		UE_LOG(LogDualFire, Warning, TEXT("[WeaponComp] Weapon category mismatch: %s"), *WeaponID.ToString());
+		return false;
+	}
+
+	const TSubclassOf<ABaseProjectile> ResolvedProjectileClass = ResolveProjectileClass(WeaponRow, LegacyProjectileClass);
+	if (!IsValid(ResolvedProjectileClass))
+	{
+		UE_LOG(LogDualFire, Warning, TEXT("[WeaponComp] Projectile class not found: %s"), *WeaponID.ToString());
+		return false;
+	}
+
+	SlotState->WeaponID = WeaponID;
+	SlotState->WeaponData = WeaponRow;
+	SlotState->ProjectileClass = ResolvedProjectileClass;
+	return true;
+}
+
+bool UWeaponComponent::ResolveWeaponRow(FName WeaponID, FWeaponRow& OutWeaponRow) const
+{
+	if (ULoadoutDataLibrary::FindWeaponRow(WeaponDataTable, WeaponID, OutWeaponRow))
+	{
+		return true;
+	}
+
+	return BuildDefaultTestWeaponRow(WeaponID, OutWeaponRow);
+}
+
+bool UWeaponComponent::BuildDefaultTestWeaponRow(FName WeaponID, FWeaponRow& OutWeaponRow) const
+{
+	OutWeaponRow = FWeaponRow();
+	OutWeaponRow.WeaponID = WeaponID;
+	OutWeaponRow.BaseDamage = 10;
+	OutWeaponRow.ProjectileSpeed = 1200.0f;
+	OutWeaponRow.HitBehavior = EHitBehavior::Destroy;
+	OutWeaponRow.PenetrationLimit = 0;
+	OutWeaponRow.UnlockID = TEXT("DEFAULT");
+
+	if (WeaponID == TestGroundWeaponID)
+	{
+		OutWeaponRow.DisplayName = FText::FromString(TEXT("Test AG Weapon"));
+		OutWeaponRow.Category = EWeaponCategory::Primary;
+		OutWeaponRow.AttributeArray = { EDualFireAttribute::Ground };
+		OutWeaponRow.FireRate = FireRateFromCooldown(GroundFireCooldown);
+		OutWeaponRow.CategoryTag = TEXT("Ground");
+		return true;
+	}
+
+	if (WeaponID == TestAirWeaponID)
+	{
+		OutWeaponRow.DisplayName = FText::FromString(TEXT("Test AA Weapon"));
+		OutWeaponRow.Category = EWeaponCategory::Special;
+		OutWeaponRow.AttributeArray = { EDualFireAttribute::Air };
+		OutWeaponRow.FireRate = FireRateFromCooldown(AirFireCooldown);
+		OutWeaponRow.CategoryTag = TEXT("Air");
+		return true;
+	}
+
+	if (WeaponID == TestUniversalWeaponID)
+	{
+		OutWeaponRow.DisplayName = FText::FromString(TEXT("Test AM Weapon"));
+		OutWeaponRow.Category = EWeaponCategory::Special;
+		OutWeaponRow.AttributeArray = { EDualFireAttribute::Ground, EDualFireAttribute::Air };
+		OutWeaponRow.FireRate = FireRateFromCooldown(UniversalFireCooldown);
+		OutWeaponRow.CategoryTag = TEXT("Universal");
+		return true;
+	}
+
+	return false;
+}
+
+TSubclassOf<ABaseProjectile> UWeaponComponent::ResolveProjectileClass(
+	const FWeaponRow& WeaponRow,
+	TSubclassOf<ABaseProjectile> LegacyProjectileClass) const
+{
+	if (!WeaponRow.ProjectileClass.IsNull())
+	{
+		if (UClass* LoadedClass = WeaponRow.ProjectileClass.LoadSynchronous())
+		{
+			if (LoadedClass->IsChildOf(ABaseProjectile::StaticClass()))
+			{
+				return LoadedClass;
+			}
+		}
+	}
+
+	return LegacyProjectileClass;
+}
+
+float UWeaponComponent::GetCooldownFromFireRate(float FireRate) const
+{
+	return 1.0f / FMath::Max(0.001f, FireRate);
+}
+
+void UWeaponComponent::OnLoadoutSlotCooldownExpired(ELoadoutSlot Slot)
+{
+	if (FWeaponSlotState* SlotState = GetWeaponSlotState(Slot))
+	{
+		SlotState->bCooldownActive = false;
+	}
+}

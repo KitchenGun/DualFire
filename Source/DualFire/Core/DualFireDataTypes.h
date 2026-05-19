@@ -8,6 +8,13 @@
 #include "DualFireDataTypes.generated.h"
 
 class UStaticMesh;
+class UTexture2D;
+class ABaseProjectile;
+
+namespace DualFireLoadout
+{
+	constexpr int32 MaxPresetCount = 50;
+}
 
 USTRUCT(BlueprintType)
 struct DUALFIRE_API FWeaponRow : public FTableRowBase
@@ -21,7 +28,13 @@ struct DUALFIRE_API FWeaponRow : public FTableRowBase
 	FText DisplayName;
 
 	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Weapon")
+	FText Description;
+
+	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Weapon")
 	EWeaponCategory Category = EWeaponCategory::Primary;
+
+	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Weapon")
+	TSoftClassPtr<ABaseProjectile> ProjectileClass;
 
 	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Weapon")
 	TArray<EDualFireAttribute> AttributeArray;
@@ -52,6 +65,15 @@ struct DUALFIRE_API FWeaponRow : public FTableRowBase
 
 	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Weapon")
 	FLinearColor ProjectileColor = FLinearColor::White;
+
+	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Weapon")
+	TSoftObjectPtr<UTexture2D> Icon;
+
+	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Weapon")
+	FName CategoryTag = NAME_None;
+
+	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Weapon")
+	FName UnlockID = NAME_None;
 };
 
 USTRUCT(BlueprintType)
@@ -104,6 +126,9 @@ struct DUALFIRE_API FShieldRow : public FTableRowBase
 	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Shield")
 	FText DisplayName;
 
+	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Shield")
+	FText Description;
+
 	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Shield", meta = (ClampMin = "0"))
 	int32 MaxShield = 0;
 
@@ -112,6 +137,78 @@ struct DUALFIRE_API FShieldRow : public FTableRowBase
 
 	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Shield", meta = (ClampMin = "0.0"))
 	float BreakInvincibilitySec = 0.0f;
+
+	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Shield")
+	TSoftObjectPtr<UTexture2D> Icon;
+
+	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Shield")
+	FName CategoryTag = NAME_None;
+
+	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Shield")
+	FName UnlockID = NAME_None;
+};
+
+USTRUCT(BlueprintType)
+struct DUALFIRE_API FSuperWeaponEffect
+{
+	GENERATED_BODY()
+
+	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "SuperWeapon")
+	ESuperWeaponEffectType EffectType = ESuperWeaponEffectType::None;
+
+	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "SuperWeapon")
+	TArray<EDualFireAttribute> AttributeArray;
+
+	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "SuperWeapon")
+	float Value = 0.0f;
+
+	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "SuperWeapon", meta = (ClampMin = "0.0"))
+	float Range = 0.0f;
+
+	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "SuperWeapon", meta = (ClampMin = "0.0"))
+	float Duration = 0.0f;
+};
+
+USTRUCT(BlueprintType)
+struct DUALFIRE_API FSuperWeaponRow : public FTableRowBase
+{
+	GENERATED_BODY()
+
+	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "SuperWeapon")
+	FName SuperWeaponID = NAME_None;
+
+	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "SuperWeapon")
+	FText DisplayName;
+
+	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "SuperWeapon")
+	FText Description;
+
+	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "SuperWeapon")
+	TArray<FSuperWeaponEffect> Effects;
+
+	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "SuperWeapon", meta = (ClampMin = "0"))
+	int32 ActivationCost = 0;
+
+	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "SuperWeapon", meta = (ClampMin = "1"))
+	int32 MaxStock = 1;
+
+	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "SuperWeapon", meta = (ClampMin = "0.0"))
+	float ChargeSpeedMultiplier = 1.0f;
+
+	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "SuperWeapon")
+	bool bAllowMovementDuringUse = true;
+
+	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "SuperWeapon")
+	bool bAllowAttackDuringUse = false;
+
+	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "SuperWeapon")
+	TSoftObjectPtr<UTexture2D> Icon;
+
+	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "SuperWeapon")
+	FName CategoryTag = NAME_None;
+
+	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "SuperWeapon")
+	FName UnlockID = NAME_None;
 };
 
 USTRUCT(BlueprintType)
@@ -125,6 +222,9 @@ struct DUALFIRE_API FShipRow : public FTableRowBase
 	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Ship")
 	FText DisplayName;
 
+	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Ship")
+	FText Description;
+
 	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Ship", meta = (ClampMin = "1"))
 	int32 MaxHealth = 1;
 
@@ -133,6 +233,12 @@ struct DUALFIRE_API FShipRow : public FTableRowBase
 
 	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Ship", meta = (ClampMin = "0.0"))
 	float HitboxRadius = 30.0f;
+
+	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Ship")
+	TSoftObjectPtr<UTexture2D> Icon;
+
+	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Ship")
+	FName UnlockID = NAME_None;
 };
 
 USTRUCT(BlueprintType)
@@ -220,5 +326,44 @@ struct DUALFIRE_API FLoadout
 			&& !SpecialWeapon2ID.IsNone()
 			&& !SuperWeaponID.IsNone()
 			&& !ShieldID.IsNone();
+	}
+
+	FName GetEquipmentID(ELoadoutSlot Slot) const
+	{
+		switch (Slot)
+		{
+		case ELoadoutSlot::PrimaryWeapon:
+			return PrimaryWeaponID;
+		case ELoadoutSlot::SpecialWeapon1:
+			return SpecialWeapon1ID;
+		case ELoadoutSlot::SpecialWeapon2:
+			return SpecialWeapon2ID;
+		case ELoadoutSlot::SuperWeapon:
+			return SuperWeaponID;
+		case ELoadoutSlot::Shield:
+			return ShieldID;
+		default:
+			return NAME_None;
+		}
+	}
+};
+
+USTRUCT(BlueprintType)
+struct DUALFIRE_API FLoadoutPreset
+{
+	GENERATED_BODY()
+
+	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Loadout")
+	FName PresetID = NAME_None;
+
+	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Loadout")
+	FText PresetName;
+
+	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Loadout")
+	FLoadout Loadout;
+
+	bool IsComplete() const
+	{
+		return !PresetID.IsNone() && Loadout.IsComplete();
 	}
 };

@@ -18,6 +18,8 @@ struct DUALFIRE_API FProjectileRuntimeConfig
 	TArray<EDualFireAttribute> AttributeArray;
 	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category="Weapon", meta=(ClampMin="0.0"))
 	float Damage = 10.f;
+	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category="Weapon", meta=(ClampMin="1.0"))
+	float ProjectileSpeed = 1200.f;
 	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category="Weapon")
 	EHitBehavior HitBehavior = EHitBehavior::Destroy;
 	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category="Weapon", meta=(ClampMin="0"))

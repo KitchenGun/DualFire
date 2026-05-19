@@ -46,6 +46,7 @@ void ABaseProjectile::ApplyRuntimeConfig(const FProjectileRuntimeConfig& Runtime
 {
 	AttributeArray = RuntimeConfig.AttributeArray;
 	Damage = FMath::Max(0.f, RuntimeConfig.Damage);
+	ProjectileSpeed = FMath::Max(1.f, RuntimeConfig.ProjectileSpeed);
 	HitBehavior = RuntimeConfig.HitBehavior;
 	PenetrationLimit = FMath::Max(0, RuntimeConfig.PenetrationLimit);
 	if (ProjectileMovement)

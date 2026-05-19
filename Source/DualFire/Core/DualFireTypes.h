@@ -30,6 +30,16 @@ enum class EWeaponCategory : uint8
 };
 
 UENUM(BlueprintType)
+enum class ELoadoutSlot : uint8
+{
+	PrimaryWeapon  UMETA(DisplayName = "Primary Weapon"),
+	SpecialWeapon1 UMETA(DisplayName = "Special Weapon 1"),
+	SpecialWeapon2 UMETA(DisplayName = "Special Weapon 2"),
+	SuperWeapon    UMETA(DisplayName = "Super Weapon"),
+	Shield         UMETA(DisplayName = "Shield"),
+};
+
+UENUM(BlueprintType)
 enum class EFireMode : uint8
 {
 	Auto       UMETA(DisplayName = "Auto"),
@@ -42,6 +52,17 @@ enum class EHitBehavior : uint8
 	Destroy          UMETA(DisplayName = "Destroy"),
 	Penetrate        UMETA(DisplayName = "Penetrate"),
 	LimitedPenetrate UMETA(DisplayName = "Limited Penetrate"),
+};
+
+UENUM(BlueprintType)
+enum class ESuperWeaponEffectType : uint8
+{
+	None         UMETA(DisplayName = "None"),
+	Damage       UMETA(DisplayName = "Damage"),
+	Recovery     UMETA(DisplayName = "Recovery"),
+	Invincibility UMETA(DisplayName = "Invincibility"),
+	Movement     UMETA(DisplayName = "Movement"),
+	Attack       UMETA(DisplayName = "Attack"),
 };
 
 /** Prototype screen-space spawn anchors. These are logical in-screen entry points, not exact screen bounds. */

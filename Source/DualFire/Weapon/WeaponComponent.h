@@ -4,14 +4,32 @@
 
 #include "CoreMinimal.h"
 #include "Components/ActorComponent.h"
+#include "Core/DualFireDataTypes.h"
 #include "Weapon/Projectile/BaseProjectile.h"
 #include "WeaponComponent.generated.h"
 
-/**
- * 플레이어 무장 컴포넌트.
- * 대지(Ground) / 대공(Air) / 범용(Universal) 3개 슬롯을 독립적으로 관리.
- * 각 슬롯은 별도의 쿨다운을 가지므로 한 슬롯이 쿨다운 중에도 다른 슬롯 발사 가능.
- */
+class UDataTable;
+
+struct FWeaponSlotState
+{
+	ELoadoutSlot Slot = ELoadoutSlot::PrimaryWeapon;
+	FName WeaponID = NAME_None;
+	FWeaponRow WeaponData;
+	TSubclassOf<ABaseProjectile> ProjectileClass;
+	FTimerHandle CooldownHandle;
+	bool bCooldownActive = false;
+
+	void Reset(ELoadoutSlot InSlot)
+	{
+		Slot = InSlot;
+		WeaponID = NAME_None;
+		WeaponData = FWeaponRow();
+		ProjectileClass = nullptr;
+		CooldownHandle.Invalidate();
+		bCooldownActive = false;
+	}
+};
+
 UCLASS(ClassGroup=Weapon, meta=(BlueprintSpawnableComponent))
 class DUALFIRE_API UWeaponComponent : public UActorComponent
 {
@@ -20,36 +38,43 @@ class DUALFIRE_API UWeaponComponent : public UActorComponent
 public:
 	UWeaponComponent();
 
-	// ── 슬롯별 투사체 클래스 (BP_PlayerPawn에서 할당) ──────────────────────────
+	virtual void BeginPlay() override;
 
-	UPROPERTY(EditDefaultsOnly, BlueprintReadOnly, Category="Weapon|Ground")
+	UPROPERTY(EditDefaultsOnly, BlueprintReadOnly, Category="Weapon|Data")
+	TObjectPtr<UDataTable> WeaponDataTable;
+
+	UPROPERTY(EditDefaultsOnly, BlueprintReadWrite, Category="Weapon|Loadout")
+	FLoadout DefaultLoadout;
+
+	UPROPERTY(VisibleInstanceOnly, BlueprintReadOnly, Category="Weapon|Loadout")
+	FLoadout ActiveLoadout;
+
+	UPROPERTY(EditDefaultsOnly, BlueprintReadOnly, Category="Weapon|Legacy")
 	TSubclassOf<ABaseProjectile> GroundProjectileClass;
 
-	UPROPERTY(EditDefaultsOnly, BlueprintReadOnly, Category="Weapon|Air")
+	UPROPERTY(EditDefaultsOnly, BlueprintReadOnly, Category="Weapon|Legacy")
 	TSubclassOf<ABaseProjectile> AirProjectileClass;
 
-	UPROPERTY(EditDefaultsOnly, BlueprintReadOnly, Category="Weapon|Universal")
+	UPROPERTY(EditDefaultsOnly, BlueprintReadOnly, Category="Weapon|Legacy")
 	TSubclassOf<ABaseProjectile> UniversalProjectileClass;
 
-	// ── 슬롯별 발사 쿨다운 (초) ────────────────────────────────────────────────
-
-	UPROPERTY(EditDefaultsOnly, BlueprintReadWrite, Category="Weapon|Ground",
-		meta=(ClampMin="0.05"))
+	UPROPERTY(EditDefaultsOnly, BlueprintReadWrite, Category="Weapon|Legacy", meta=(ClampMin="0.05"))
 	float GroundFireCooldown = 0.25f;
 
-	UPROPERTY(EditDefaultsOnly, BlueprintReadWrite, Category="Weapon|Air",
-		meta=(ClampMin="0.05"))
+	UPROPERTY(EditDefaultsOnly, BlueprintReadWrite, Category="Weapon|Legacy", meta=(ClampMin="0.05"))
 	float AirFireCooldown = 0.25f;
 
-	UPROPERTY(EditDefaultsOnly, BlueprintReadWrite, Category="Weapon|Universal",
-		meta=(ClampMin="0.05"))
+	UPROPERTY(EditDefaultsOnly, BlueprintReadWrite, Category="Weapon|Legacy", meta=(ClampMin="0.05"))
 	float UniversalFireCooldown = 0.15f;
 
-	/** 발사구 오프셋. Owner 위치 기준 +X 방향으로 탄환이 스폰되는 위치 */
 	UPROPERTY(EditDefaultsOnly, BlueprintReadWrite, Category="Weapon")
 	FVector MuzzleOffset = FVector(50.f, 0.f, 0.f);
 
-	// ── 발사 메서드 ────────────────────────────────────────────────────────────
+	UFUNCTION(BlueprintCallable, Category="Weapon|Loadout")
+	bool ApplyLoadout(const FLoadout& Loadout);
+
+	UFUNCTION(BlueprintCallable, Category="Weapon|Loadout")
+	void FireLoadoutSlot(ELoadoutSlot Slot);
 
 	UFUNCTION(BlueprintCallable, Category="Weapon")
 	void FireGround();
@@ -60,34 +85,30 @@ public:
 	UFUNCTION(BlueprintCallable, Category="Weapon")
 	void FireUniversal();
 
-	// ── 쿨다운 쿼리 ────────────────────────────────────────────────────────────
+	UFUNCTION(BlueprintPure, Category="Weapon|Loadout")
+	bool CanFireLoadoutSlot(ELoadoutSlot Slot) const;
 
 	UFUNCTION(BlueprintPure, Category="Weapon")
-	bool CanFireGround() const { return !bGroundCooldown && IsValid(GroundProjectileClass); }
+	bool CanFireGround() const;
 
 	UFUNCTION(BlueprintPure, Category="Weapon")
-	bool CanFireAir() const { return !bAirCooldown && IsValid(AirProjectileClass); }
+	bool CanFireAir() const;
 
 	UFUNCTION(BlueprintPure, Category="Weapon")
-	bool CanFireUniversal() const { return !bUniversalCooldown && IsValid(UniversalProjectileClass); }
+	bool CanFireUniversal() const;
 
 private:
-	bool bGroundCooldown    = false;
-	bool bAirCooldown       = false;
-	bool bUniversalCooldown = false;
+	FWeaponSlotState PrimaryWeaponSlot;
+	FWeaponSlotState SpecialWeapon1Slot;
+	FWeaponSlotState SpecialWeapon2Slot;
 
-	FTimerHandle GroundCooldownHandle;
-	FTimerHandle AirCooldownHandle;
-	FTimerHandle UniversalCooldownHandle;
+	FWeaponSlotState* GetWeaponSlotState(ELoadoutSlot Slot);
+	const FWeaponSlotState* GetWeaponSlotState(ELoadoutSlot Slot) const;
 
-	/** 공통 발사 로직. 슬롯별 ProjectileClass/쿨다운 상태/쿨다운 시간을 받아 처리 */
-	void FireSlot(
-		TSubclassOf<ABaseProjectile> ProjectileClass,
-		FTimerHandle&                CooldownHandle,
-		bool&                        bCooldownActive,
-		float                        Cooldown);
-
-	void OnGroundCooldownExpired();
-	void OnAirCooldownExpired();
-	void OnUniversalCooldownExpired();
+	bool EquipWeaponSlot(ELoadoutSlot Slot, FName WeaponID, TSubclassOf<ABaseProjectile> LegacyProjectileClass);
+	bool ResolveWeaponRow(FName WeaponID, FWeaponRow& OutWeaponRow) const;
+	bool BuildDefaultTestWeaponRow(FName WeaponID, FWeaponRow& OutWeaponRow) const;
+	TSubclassOf<ABaseProjectile> ResolveProjectileClass(const FWeaponRow& WeaponRow, TSubclassOf<ABaseProjectile> LegacyProjectileClass) const;
+	float GetCooldownFromFireRate(float FireRate) const;
+	void OnLoadoutSlotCooldownExpired(ELoadoutSlot Slot);
 };
