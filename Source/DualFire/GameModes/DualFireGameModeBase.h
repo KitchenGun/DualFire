@@ -9,6 +9,7 @@
 // Forward declarations — 헤더 인클루드 최소화
 class AStageCameraActor;
 class ADualFirePlayerPawn;
+class AStageController;
 
 /**
  * DualFire 기본 게임모드.
@@ -40,8 +41,30 @@ public:
     UFUNCTION(BlueprintPure, Category="Camera")
     AStageCameraActor* GetStageCamera() const { return StageCamera; }
 
+    // ── 미션 시작 ───────────────────────────────────────────────────────────────
+
+    /** 스폰할 StageController 클래스. BP_StageController 등을 할당 */
+    UPROPERTY(EditDefaultsOnly, BlueprintReadOnly, Category="Mission")
+    TSubclassOf<AStageController> StageControllerClass;
+
+    /**
+     * 미션을 시작한다.
+     *   1. LoadoutManager에서 ActiveLoadout을 읽어 PlayerPawn에 주입
+     *   2. StageControllerClass를 스폰해 웨이브/타임라인 시작
+     * BeginPlay 이후 외부(UI 등)에서 호출하거나, BeginPlay 마지막에서 자동 호출 가능.
+     */
+    UFUNCTION(BlueprintCallable, Category="Mission")
+    void StartMission();
+
+    UFUNCTION(BlueprintPure, Category="Mission")
+    AStageController* GetStageController() const { return ActiveStageController; }
+
 private:
-    // BeginPlay에서 스폰 후 캐싱
+    // BeginPlay에서 스폰 후 캐싱한 스테이지 카메라
     UPROPERTY()
     TObjectPtr<AStageCameraActor> StageCamera;
+
+    // StartMission에서 스폰한 현재 스테이지 컨트롤러
+    UPROPERTY()
+    TObjectPtr<AStageController> ActiveStageController;
 };

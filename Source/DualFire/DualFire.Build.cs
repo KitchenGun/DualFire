@@ -8,7 +8,7 @@ public class DualFire : ModuleRules
 	{
 		PCHUsage = PCHUsageMode.UseExplicitOrSharedPCHs;
 
-		PrivateIncludePaths.AddRange(new string[] { "DualFire", "DualFire/Player", "DualFire/Core", "DualFire/Weapon", "DualFire/Weapon/Projectile", "DualFire/Enemy" });
+		PrivateIncludePaths.AddRange(new string[] { "DualFire", "DualFire/Player", "DualFire/Core", "DualFire/Weapon", "DualFire/Weapon/Projectile", "DualFire/Enemy", "DualFire/Health", "DualFire/Stage", "DualFire/Loadout", "DualFire/GameModes", "DualFire/Camera" });
 
 		PublicDependencyModuleNames.AddRange(new string[] { "Core", "CoreUObject", "Engine", "InputCore", "EnhancedInput", "DataRegistry" });
 

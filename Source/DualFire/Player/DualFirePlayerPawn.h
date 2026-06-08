@@ -4,6 +4,8 @@
 
 #include "CoreMinimal.h"
 #include "GameFramework/Pawn.h"
+#include "Health/HealthComponent.h"
+#include "Weapon/WeaponComponent.h"
 #include "DualFirePlayerPawn.generated.h"
 
 // Forward declarations — 헤더 인클루드 최소화
@@ -11,7 +13,6 @@ class USceneComponent;
 class USkeletalMeshComponent;
 class USphereComponent;
 class UDualFireMovementComponent;
-class UWeaponComponent;
 class UInputMappingContext;
 class UInputAction;
 struct FInputActionValue;
@@ -55,6 +56,11 @@ class DUALFIRE_API ADualFirePlayerPawn : public APawn
         meta=(AllowPrivateAccess="true"))
     TObjectPtr<UWeaponComponent> WeaponComp;
 
+    // HP / Shield / 무적 관리. 적과 공유 가능한 범용 컴포넌트
+    UPROPERTY(VisibleAnywhere, BlueprintReadOnly, Category="Components",
+        meta=(AllowPrivateAccess="true"))
+    TObjectPtr<UHealthComponent> HealthComp;
+
 public:
     ADualFirePlayerPawn();
 
@@ -95,6 +101,14 @@ public:
 
     // ── 이동 제어 위임 ───────────────────────────────────────────────────────
 
+    // ── 컴포넌트 접근자 (LoadoutManager 등 외부 시스템에서 사용) ────────────────
+
+    UFUNCTION(BlueprintPure, Category="Components")
+    UWeaponComponent* GetWeaponComp() const { return WeaponComp; }
+
+    UFUNCTION(BlueprintPure, Category="Components")
+    UHealthComponent* GetHealthComp() const { return HealthComp; }
+
     /** 슈퍼웨폰 발동 등에서 이동 속도 배율 변경. MovementComp에 위임 */
     UFUNCTION(BlueprintCallable, Category="Movement")
     void SetSpeedMultiplier(float InMultiplier);
@@ -102,6 +116,20 @@ public:
     /** 스턴/연출 중 이동 잠금. MovementComp에 위임 */
     UFUNCTION(BlueprintCallable, Category="Movement")
     void SetMovementLocked(bool bLocked);
+
+    // ── 디버그 콘솔 명령 (Exec — 에디터 PIE 콘솔에서 호출) ───────────────────
+
+    /** ex) DF_Damage 3  →  HealthComp에 데미지 3 즉시 적용 */
+    UFUNCTION(Exec)
+    void DF_Damage(int32 Amount);
+
+    /** ex) DF_HealHP  →  HP 만회 */
+    UFUNCTION(Exec)
+    void DF_HealHP();
+
+    /** ex) DF_HealShield  →  Shield 만회 */
+    UFUNCTION(Exec)
+    void DF_HealShield();
 
 protected:
     // ── Enhanced Input 핸들러 ────────────────────────────────────────────────

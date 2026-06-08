@@ -4,7 +4,7 @@
 
 #include "DualFireMovementComponent.h"
 #include "Core/DualFireCollisionChannels.h"
-#include "Weapon/WeaponComponent.h"
+#include "DualFire.h"
 
 #include "Components/SceneComponent.h"
 #include "Components/SphereComponent.h"
@@ -48,6 +48,9 @@ ADualFirePlayerPawn::ADualFirePlayerPawn()
 
     // ── WeaponComp ────────────────────────────────────────────────────────────
     WeaponComp = CreateDefaultSubobject<UWeaponComponent>(TEXT("WeaponComp"));
+
+    // ── HealthComp ────────────────────────────────────────────────────────────
+    HealthComp = CreateDefaultSubobject<UHealthComponent>(TEXT("HealthComp"));
 }
 
 // ── APawn 오버라이드 ──────────────────────────────────────────────────────────
@@ -167,12 +170,10 @@ void ADualFirePlayerPawn::OnHitboxOverlapBegin(
         return;
     }
 
-    // HP/잔기 시스템 미구현 단계 — 피격 감지 확인용 로그
-    // TODO: 추후 TakeHit() 또는 GameMode의 OnPlayerHit() 호출로 교체
-    UE_LOG(LogTemp, Warning,
-        TEXT("ADualFirePlayerPawn [%s]: EnemyBullet 피격 감지 — OtherActor=%s"),
-        *GetName(),
-        IsValid(OtherActor) ? *OtherActor->GetName() : TEXT("None"));
+    if (IsValid(HealthComp))
+    {
+        HealthComp->ApplyDamage(1);
+    }
 }
 
 // ── 이동 제어 위임 ────────────────────────────────────────────────────────────
@@ -190,6 +191,35 @@ void ADualFirePlayerPawn::SetMovementLocked(bool bLocked)
     if (IsValid(MovementComp))
     {
         MovementComp->SetMovementLocked(bLocked);
+    }
+}
+
+// ── 디버그 콘솔 명령 ─────────────────────────────────────────────────────────
+
+void ADualFirePlayerPawn::DF_Damage(int32 Amount)
+{
+    if (IsValid(HealthComp))
+    {
+        UE_LOG(LogDualFire, Log, TEXT("[Debug] DF_Damage %d 호출"), Amount);
+        HealthComp->ApplyDamage(Amount);
+    }
+}
+
+void ADualFirePlayerPawn::DF_HealHP()
+{
+    if (IsValid(HealthComp))
+    {
+        HealthComp->FullHealHealth();
+        UE_LOG(LogDualFire, Log, TEXT("[Debug] DF_HealHP — HP 만회"));
+    }
+}
+
+void ADualFirePlayerPawn::DF_HealShield()
+{
+    if (IsValid(HealthComp))
+    {
+        HealthComp->FullHealShield();
+        UE_LOG(LogDualFire, Log, TEXT("[Debug] DF_HealShield — Shield 만회"));
     }
 }
 

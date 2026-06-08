@@ -21,6 +21,10 @@ ABaseProjectile::ABaseProjectile()
 	ProjectileMovement->bRotationFollowsVelocity = false;
 	ProjectileMovement->bShouldBounce = false;
 	ProjectileMovement->ProjectileGravityScale = 0.f;
+
+	// 기본값: 플레이어 탄 설정 — ApplyRuntimeConfig로 덮어씌울 수 있음
+	TargetChannel = DualFireChannel::EnemyBody;
+	bUseAttributeMatching = true;
 }
 
 void ABaseProjectile::BeginPlay()
@@ -33,9 +37,9 @@ void ABaseProjectile::BeginPlay()
 		CollisionComp->IgnoreActorWhenMoving(InstigatorPawn, true);
 	}
 
-	ProjectileMovement->InitialSpeed    = ProjectileSpeed;
-	ProjectileMovement->MaxSpeed        = ProjectileSpeed;
-	ProjectileMovement->Velocity        = FVector(ProjectileSpeed, 0.f, 0.f);
+	ProjectileMovement->InitialSpeed = ProjectileSpeed;
+	ProjectileMovement->MaxSpeed     = ProjectileSpeed;
+	ProjectileMovement->Velocity     = GetActorForwardVector() * ProjectileSpeed;
 
 	SetLifeSpan(LifeSpan);
 
@@ -49,11 +53,29 @@ void ABaseProjectile::ApplyRuntimeConfig(const FProjectileRuntimeConfig& Runtime
 	ProjectileSpeed = FMath::Max(1.f, RuntimeConfig.ProjectileSpeed);
 	HitBehavior = RuntimeConfig.HitBehavior;
 	PenetrationLimit = FMath::Max(0, RuntimeConfig.PenetrationLimit);
+	bUseAttributeMatching = RuntimeConfig.bUseAttributeMatching;
+
+	// ECC_MAX = 미설정 → 기존 TargetChannel 유지 (플레이어 탄 기본값 보존)
+	if (RuntimeConfig.TargetChannel != ECC_MAX)
+	{
+		TargetChannel = RuntimeConfig.TargetChannel;
+	}
+
+	// 콜리전 프로파일 교체 (NAME_None = 미설정 → 기존 프로파일 유지)
+	if (!RuntimeConfig.CollisionProfileName.IsNone() && IsValid(CollisionComp))
+	{
+		CollisionComp->SetCollisionProfileName(RuntimeConfig.CollisionProfileName);
+	}
+
 	if (ProjectileMovement)
 	{
 		ProjectileMovement->InitialSpeed = ProjectileSpeed;
-		ProjectileMovement->MaxSpeed = ProjectileSpeed;
-		ProjectileMovement->Velocity = FVector(ProjectileSpeed, 0.f, 0.f);
+		ProjectileMovement->MaxSpeed     = ProjectileSpeed;
+
+		const FVector Dir = RuntimeConfig.VelocityDirection.IsNearlyZero()
+			? GetActorForwardVector()
+			: RuntimeConfig.VelocityDirection.GetSafeNormal();
+		ProjectileMovement->Velocity = Dir * ProjectileSpeed;
 	}
 }
 void ABaseProjectile::OnProjectileOverlapBegin(
@@ -69,8 +91,8 @@ void ABaseProjectile::OnProjectileOverlapBegin(
 		return;
 	}
 
-	// EnemyBody 채널인지 이중 보험 확인
-	if (OtherComp->GetCollisionObjectType() != DualFireChannel::EnemyBody)
+	// 대상 채널이 아니면 무시 (플레이어 탄: EnemyBody, 적 탄: PlayerHitbox)
+	if (OtherComp->GetCollisionObjectType() != TargetChannel)
 	{
 		return;
 	}
@@ -114,6 +136,12 @@ void ABaseProjectile::OnProjectileOverlapBegin(
 
 bool ABaseProjectile::CheckAttributeMatch(AActor* OtherActor) const
 {
+	// 속성 매칭 비활성화(적 탄 등) → 무조건 히트
+	if (!bUseAttributeMatching)
+	{
+		return true;
+	}
+
 	// Enemies without the interface remain hittable for prototype compatibility.
 	if (!OtherActor || !OtherActor->Implements<UEnemyAttributeInterface>())
 	{
