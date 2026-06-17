@@ -16,11 +16,15 @@ void UHealthComponent::BeginPlay()
 
 	CurrentHealth = MaxHealth;
 	CurrentShield = bUseShield ? MaxShield : 0;
+	CurrentLives = MaxLives;
 	ShieldRegenAccumulator = 0.0f;
 
-	if (bBindToActorDamage)
+	if (AActor* Owner = GetOwner())
 	{
-		if (AActor* Owner = GetOwner())
+		// 리스폰 복귀 지점 = 시작 위치 (외부에서 SetRespawnLocation으로 변경 가능)
+		RespawnLocation = Owner->GetActorLocation();
+
+		if (bBindToActorDamage)
 		{
 			Owner->OnTakeAnyDamage.AddDynamic(this, &UHealthComponent::OnActorTakeAnyDamage);
 		}
@@ -94,9 +98,51 @@ void UHealthComponent::ApplyDamage(int32 Damage)
 
 	if (CurrentHealth <= 0)
 	{
-		// TODO: 사망 처리 (OnDeath 델리게이트 / 잔기 / 리스폰) — 다음 청크
-		UE_LOG(LogDualFire, Warning, TEXT("[Health] HP 0 도달 — 사망 처리 미구현 (%s)"), *GetOwner()->GetName());
+		HandleDeath();
 	}
+}
+
+void UHealthComponent::HandleDeath()
+{
+	AActor* Owner = GetOwner();
+	const FString OwnerName = IsValid(Owner) ? Owner->GetName() : TEXT("Unknown");
+
+	// 잔기가 남아있으면 부활, 없으면 최종 사망
+	if (bUseLives && CurrentLives > 0)
+	{
+		CurrentLives -= 1;
+		OnLivesChanged.Broadcast(CurrentLives);
+
+		UE_LOG(LogDualFire, Log, TEXT("[Health] %s 사망 → 리스폰 (잔기 %d 남음)"), *OwnerName, CurrentLives);
+		Respawn();
+		return;
+	}
+
+	UE_LOG(LogDualFire, Warning, TEXT("[Health] %s 최종 사망 (잔기 소진)"), *OwnerName);
+	OnDeath.Broadcast();
+}
+
+void UHealthComponent::Respawn()
+{
+	// HP / Shield 풀충전 (사양 §5.3.7)
+	CurrentHealth = MaxHealth;
+	CurrentShield = bUseShield ? MaxShield : 0;
+	ShieldRegenAccumulator = 0.0f;
+
+	OnHealthChanged.Broadcast(CurrentHealth, MaxHealth);
+	OnShieldChanged.Broadcast(CurrentShield, MaxShield);
+
+	// 리스폰 무적
+	StartInvincibility(RespawnInvincibilityDuration);
+
+	// 시작 위치로 복귀
+	if (AActor* Owner = GetOwner())
+	{
+		Owner->SetActorLocation(RespawnLocation);
+	}
+
+	OnRespawn.Broadcast();
+	RefreshTickEnabled();
 }
 
 void UHealthComponent::Heal(int32 Amount)
@@ -158,10 +204,12 @@ void UHealthComponent::InitFromData(int32 InMaxHealth, int32 InMaxShield, float 
 
 	CurrentHealth = MaxHealth;
 	CurrentShield = bUseShield ? MaxShield : 0;
+	CurrentLives = MaxLives;
 	ShieldRegenAccumulator = 0.0f;
 
 	OnHealthChanged.Broadcast(CurrentHealth, MaxHealth);
 	OnShieldChanged.Broadcast(CurrentShield, MaxShield);
+	OnLivesChanged.Broadcast(CurrentLives);
 
 	RefreshTickEnabled();
 }

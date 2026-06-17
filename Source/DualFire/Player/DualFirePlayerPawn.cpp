@@ -4,7 +4,10 @@
 
 #include "DualFireMovementComponent.h"
 #include "Core/DualFireCollisionChannels.h"
+#include "GameModes/DualFireGameModeBase.h"
 #include "DualFire.h"
+
+#include "Kismet/GameplayStatics.h"
 
 #include "Components/SceneComponent.h"
 #include "Components/SphereComponent.h"
@@ -51,6 +54,7 @@ ADualFirePlayerPawn::ADualFirePlayerPawn()
 
     // ── HealthComp ────────────────────────────────────────────────────────────
     HealthComp = CreateDefaultSubobject<UHealthComponent>(TEXT("HealthComp"));
+    HealthComp->bUseLives = true;   // 플레이어는 잔기/리스폰 사용
 }
 
 // ── APawn 오버라이드 ──────────────────────────────────────────────────────────
@@ -62,6 +66,12 @@ void ADualFirePlayerPawn::BeginPlay()
     // 동적 델리게이트 바인딩 — BeginPlay에서만 가능 (UFUNCTION 리플렉션 필요)
     HitboxComp->OnComponentBeginOverlap.AddDynamic(
         this, &ADualFirePlayerPawn::OnHitboxOverlapBegin);
+
+    // 최종 사망(잔기 소진) → 미션 실패 연결
+    if (IsValid(HealthComp))
+    {
+        HealthComp->OnDeath.AddDynamic(this, &ADualFirePlayerPawn::OnPlayerFinalDeath);
+    }
 
     SetupInputMappingContext();
 }
@@ -220,6 +230,31 @@ void ADualFirePlayerPawn::DF_HealShield()
     {
         HealthComp->FullHealShield();
         UE_LOG(LogDualFire, Log, TEXT("[Debug] DF_HealShield — Shield 만회"));
+    }
+}
+
+void ADualFirePlayerPawn::DF_Kill()
+{
+    if (IsValid(HealthComp))
+    {
+        UE_LOG(LogDualFire, Log, TEXT("[Debug] DF_Kill — 즉사 데미지"));
+        // 무적/보호막을 무시하고 HP를 직접 0으로: 무적 해제 + 보호막 제거 후 대형 데미지
+        HealthComp->bIsInvincible = false;
+        HealthComp->CurrentShield = 0;
+        HealthComp->ApplyDamage(9999);
+    }
+}
+
+// ── 사망 처리 ────────────────────────────────────────────────────────────────
+
+void ADualFirePlayerPawn::OnPlayerFinalDeath()
+{
+    UE_LOG(LogDualFire, Warning, TEXT("[Player] 최종 사망 → 미션 실패 요청"));
+
+    if (ADualFireGameModeBase* GameMode =
+        Cast<ADualFireGameModeBase>(UGameplayStatics::GetGameMode(this)))
+    {
+        GameMode->OnMissionFail();
     }
 }
 

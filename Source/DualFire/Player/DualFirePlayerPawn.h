@@ -131,6 +131,10 @@ public:
     UFUNCTION(Exec)
     void DF_HealShield();
 
+    /** ex) DF_Kill  →  HP를 한 번에 0으로 (잔기/리스폰/사망 흐름 검증용) */
+    UFUNCTION(Exec)
+    void DF_Kill();
+
 protected:
     // ── Enhanced Input 핸들러 ────────────────────────────────────────────────
 
@@ -160,6 +164,15 @@ protected:
         int32                OtherBodyIndex,
         bool                 bFromSweep,
         const FHitResult&    SweepResult);
+
+    // ── 사망 처리 ────────────────────────────────────────────────────────────
+
+    /**
+     * HealthComp.OnDeath(잔기 소진 최종 사망) 콜백.
+     * GameMode->OnMissionFail()로 연결. UFUNCTION 필수 (델리게이트 바인딩).
+     */
+    UFUNCTION()
+    void OnPlayerFinalDeath();
 
 private:
     /** IMC를 로드해 LocalPlayer Subsystem에 등록. BeginPlay에서 1회 호출 */

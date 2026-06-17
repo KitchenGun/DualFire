@@ -70,7 +70,7 @@ public:
 	}
 
 private:
-	/** HealthComp.OnHealthChanged 콜백. HP 0 도달 시 Destroy (OnDeath는 다음 청크) */
+	/** HealthComp.OnDeath 콜백. 적은 잔기 없이 즉시 격파 → Destroy */
 	UFUNCTION()
-	void OnHealthChangedHandler(int32 CurrentHealth, int32 MaxHealth);
+	void OnEnemyDeath();
 };

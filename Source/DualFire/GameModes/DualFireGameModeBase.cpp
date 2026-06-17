@@ -102,3 +102,45 @@ void ADualFireGameModeBase::StartMission()
 
     UE_LOG(LogDualFire, Log, TEXT("[GameMode] StartMission 완료"));
 }
+
+// ── 미션 종료 ───────────────────────────────────────────────────────────────────
+
+void ADualFireGameModeBase::OnMissionFail()
+{
+    EndMission(EMissionResult::Failed);
+}
+
+void ADualFireGameModeBase::OnMissionClear()
+{
+    EndMission(EMissionResult::Cleared);
+}
+
+void ADualFireGameModeBase::EndMission(EMissionResult Result)
+{
+    // 중복 종료 방지 (잔기 0 사망과 엘리트 타임아웃이 동시에 들어오는 경우 등)
+    if (MissionResult != EMissionResult::None)
+    {
+        return;
+    }
+    MissionResult = Result;
+
+    const TCHAR* ResultText = (Result == EMissionResult::Cleared) ? TEXT("CLEARED") : TEXT("FAILED");
+
+    // §9.4 검증 리포트 (간이판 — 콘솔 로그)
+    UE_LOG(LogDualFire, Warning, TEXT("========================="));
+    UE_LOG(LogDualFire, Warning, TEXT(" Mission Result : %s"), ResultText);
+    UE_LOG(LogDualFire, Warning, TEXT("========================="));
+
+    // 입력 잠금 — 종료 후 플레이어 조작 차단
+    if (APlayerController* PC = GetWorld()->GetFirstPlayerController())
+    {
+        PC->SetIgnoreMoveInput(true);
+        PC->SetIgnoreLookInput(true);
+        if (APawn* PlayerPawn = PC->GetPawn())
+        {
+            PlayerPawn->DisableInput(PC);
+        }
+    }
+
+    OnMissionEnded.Broadcast(Result);
+}

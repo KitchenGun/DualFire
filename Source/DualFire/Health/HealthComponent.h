@@ -20,6 +20,19 @@ DECLARE_DYNAMIC_MULTICAST_DELEGATE(FOnShieldBroken);
 /** 무적 상태 전환 시 브로드캐스트. bActive=true → 무적 시작, false → 해제 */
 DECLARE_DYNAMIC_MULTICAST_DELEGATE_OneParam(FOnInvincibilityChanged, bool, bActive);
 
+/** 잔기(잔여 기체) 수 변화 시 브로드캐스트. HUD 잔기 표시 갱신용 */
+DECLARE_DYNAMIC_MULTICAST_DELEGATE_OneParam(FOnLivesChanged, int32, CurrentLives);
+
+/** 리스폰(잔기 차감 후 부활) 시 브로드캐스트. 리스폰 이펙트/연출용 */
+DECLARE_DYNAMIC_MULTICAST_DELEGATE(FOnRespawn);
+
+/**
+ * 최종 사망(잔기 소진 후 HP 0) 시 1회 브로드캐스트.
+ * 플레이어 → GameMode.OnMissionFail() 연결, 적 → Destroy() 연결.
+ * 이 컴포넌트는 구독자(GameMode 등)를 직접 알지 못한다 (의존성 역전).
+ */
+DECLARE_DYNAMIC_MULTICAST_DELEGATE(FOnDeath);
+
 /**
  * HP / Shield / 무적(피격 후 / 보호막 파괴 후) / Shield 자동 재생을 관리하는 컴포넌트.
  *
@@ -89,6 +102,10 @@ public:
 	UPROPERTY(EditDefaultsOnly, BlueprintReadOnly, Category="Health|Invincibility", meta=(ClampMin="0.0"))
 	float HitInvincibilityDuration = 2.5f;
 
+	/** 리스폰(부활) 직후 부여되는 무적 시간(초). 사양 §5.3.6 기본 3.0초 */
+	UPROPERTY(EditDefaultsOnly, BlueprintReadOnly, Category="Health|Invincibility", meta=(ClampMin="0.0"))
+	float RespawnInvincibilityDuration = 3.0f;
+
 	/** 현재 무적 여부. 런타임 전용 — 피격/보호막 파괴 시 true */
 	UPROPERTY(VisibleInstanceOnly, BlueprintReadOnly, Category="Health|Invincibility")
 	bool bIsInvincible = false;
@@ -96,6 +113,20 @@ public:
 	/** 무적 잔여 시간(초). Tick마다 감소하며 0이 되면 무적 해제. 런타임 전용 */
 	UPROPERTY(VisibleInstanceOnly, BlueprintReadOnly, Category="Health|Invincibility")
 	float InvincibilityRemaining = 0.0f;
+
+	// ── 잔기(잔여 기체) / 리스폰 ────────────────────────────────────────────────
+
+	/** true: 사망 시 잔기가 남아있으면 리스폰. 플레이어 true, 적 false */
+	UPROPERTY(EditDefaultsOnly, BlueprintReadOnly, Category="Health|Lives")
+	bool bUseLives = false;
+
+	/** 최대 잔기(예비 기체) 수. 사양 §5.3.2 기본 1 */
+	UPROPERTY(EditDefaultsOnly, BlueprintReadOnly, Category="Health|Lives", meta=(ClampMin="0"))
+	int32 MaxLives = 1;
+
+	/** 현재 남은 잔기 수. 0에서 사망하면 최종 사망(OnDeath). 런타임 전용 */
+	UPROPERTY(VisibleInstanceOnly, BlueprintReadOnly, Category="Health|Lives")
+	int32 CurrentLives = 1;
 
 	// ── 델리게이트 (HUD·이펙트 구독용) ──────────────────────────────────────
 
@@ -114,6 +145,18 @@ public:
 	/** 무적 시작/해제 시 발생. 무적 중 메시 점멸 연출용 */
 	UPROPERTY(BlueprintAssignable, Category="Health|Events")
 	FOnInvincibilityChanged OnInvincibilityChanged;
+
+	/** 잔기 수 변동 시 발생. HUD 잔기 표시 갱신용 */
+	UPROPERTY(BlueprintAssignable, Category="Health|Events")
+	FOnLivesChanged OnLivesChanged;
+
+	/** 리스폰 시 발생. 부활 연출/위치 이동 후 알림용 */
+	UPROPERTY(BlueprintAssignable, Category="Health|Events")
+	FOnRespawn OnRespawn;
+
+	/** 최종 사망(잔기 소진) 시 발생. 플레이어→미션 실패, 적→파괴 연결 지점 */
+	UPROPERTY(BlueprintAssignable, Category="Health|Events")
+	FOnDeath OnDeath;
 
 	// ── 공개 API ──────────────────────────────────────────────────────────────
 
@@ -146,10 +189,14 @@ public:
 
 	/**
 	 * 외부 데이터(DataTable 등)에서 스탯을 주입하는 초기화 함수.
-	 * 현재는 시그니처만 확보 — 호출처는 LoadoutManager 청크에서 연결 예정.
+	 * LoadoutManager가 ShipRow/ShieldRow 기반으로 호출. HP/Shield/잔기 모두 리셋.
 	 */
 	UFUNCTION(BlueprintCallable, Category="Health")
 	void InitFromData(int32 InMaxHealth, int32 InMaxShield, float InRegenInterval, float InBreakInvincSec);
+
+	/** 리스폰 복귀 지점을 외부에서 갱신 (기본은 BeginPlay 시작 위치) */
+	UFUNCTION(BlueprintCallable, Category="Health|Lives")
+	void SetRespawnLocation(const FVector& InLocation) { RespawnLocation = InLocation; }
 
 	// ── BlueprintPure 게터 (HUD용) ────────────────────────────────────────────
 
@@ -159,9 +206,21 @@ public:
 	UFUNCTION(BlueprintPure, Category="Health")
 	float GetShieldPercent() const;
 
+	UFUNCTION(BlueprintPure, Category="Health|Lives")
+	int32 GetCurrentLives() const { return CurrentLives; }
+
 private:
 	/** Shield 재생 누적 타이머(초). ShieldRegenInterval 도달 시 1칸 회복 후 차감 */
 	float ShieldRegenAccumulator = 0.0f;
+
+	/** 리스폰 복귀 좌표. BeginPlay에서 Owner의 시작 위치로 캐싱 */
+	FVector RespawnLocation = FVector::ZeroVector;
+
+	/** HP 0 도달 시 호출. 잔기 있으면 Respawn, 없으면 OnDeath 브로드캐스트 */
+	void HandleDeath();
+
+	/** 부활 처리 — HP/Shield 풀충전, 리스폰 무적, 시작 위치 복귀 (사양 §5.3.7) */
+	void Respawn();
 
 	/** OnTakeAnyDamage 콜백 (bBindToActorDamage=true 일 때만 바인딩) */
 	UFUNCTION()

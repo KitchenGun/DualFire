@@ -4,12 +4,16 @@
 
 #include "CoreMinimal.h"
 #include "GameFramework/GameModeBase.h"
+#include "Core/DualFireTypes.h"
 #include "DualFireGameModeBase.generated.h"
 
 // Forward declarations — 헤더 인클루드 최소화
 class AStageCameraActor;
 class ADualFirePlayerPawn;
 class AStageController;
+
+/** 미션 종료 시 브로드캐스트. 결과(Cleared/Failed)를 HUD·연출에 전달 */
+DECLARE_DYNAMIC_MULTICAST_DELEGATE_OneParam(FOnMissionEnded, EMissionResult, Result);
 
 /**
  * DualFire 기본 게임모드.
@@ -59,6 +63,30 @@ public:
     UFUNCTION(BlueprintPure, Category="Mission")
     AStageController* GetStageController() const { return ActiveStageController; }
 
+    // ── 미션 종료 ───────────────────────────────────────────────────────────────
+
+    /**
+     * 미션 실패 처리. 잔기 소진 사망(§5.3.7) 또는 엘리트 제한 시간 초과(§5.5.4) 시 호출.
+     * 검증 리포트 로그 출력 + 입력 잠금. 이미 종료된 경우 무시.
+     */
+    UFUNCTION(BlueprintCallable, Category="Mission")
+    void OnMissionFail();
+
+    /**
+     * 미션 클리어 처리. 엘리트 격파(§5.5.4) 시 호출.
+     * 검증 리포트 로그 출력. 이미 종료된 경우 무시.
+     */
+    UFUNCTION(BlueprintCallable, Category="Mission")
+    void OnMissionClear();
+
+    /** 현재 미션 결과. None=진행 중, Cleared/Failed=종료 */
+    UFUNCTION(BlueprintPure, Category="Mission")
+    EMissionResult GetMissionResult() const { return MissionResult; }
+
+    /** 미션 종료 시 발생. HUD 결과 화면·연출 구독용 */
+    UPROPERTY(BlueprintAssignable, Category="Mission")
+    FOnMissionEnded OnMissionEnded;
+
 private:
     // BeginPlay에서 스폰 후 캐싱한 스테이지 카메라
     UPROPERTY()
@@ -67,4 +95,10 @@ private:
     // StartMission에서 스폰한 현재 스테이지 컨트롤러
     UPROPERTY()
     TObjectPtr<AStageController> ActiveStageController;
+
+    // 현재 미션 결과 (중복 종료 방지용)
+    EMissionResult MissionResult = EMissionResult::None;
+
+    /** 미션 종료 공통 처리 — 결과 확정, 입력 잠금, 리포트 출력, 델리게이트 */
+    void EndMission(EMissionResult Result);
 };
