@@ -3,8 +3,7 @@ Plugins/*/Binaries/
 Plugins/*/Intermediate/
 Plugins/*/*.bak
 
-# Local UnrealMCP integration
-/Plugins/UnrealMCP/
+# Claude Code local config
 /.mcp.json
 /.claude/
 

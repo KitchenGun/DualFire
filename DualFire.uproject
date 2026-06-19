@@ -29,13 +29,6 @@
 		{
 			"Name": "Paper2D",
 			"Enabled": true
-		},
-		{
-			"Name": "UnrealMCP",
-			"Enabled": true,
-			"TargetAllowList": [
-				"Editor"
-			]
 		}
 	]
 }

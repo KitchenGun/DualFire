@@ -106,7 +106,6 @@ GameMode가 BeginPlay에서 스폰 후 PlayerController의 ViewTarget으로 설�
 | CommonUI / CommonInput | Runtime |
 | DataRegistry | Runtime |
 | ModelingToolsEditorMode | Editor |
-| UnrealMCP | Editor |
 
 ---
 
