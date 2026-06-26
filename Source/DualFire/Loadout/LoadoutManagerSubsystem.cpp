@@ -1,23 +1,39 @@
 // Copyright DualFire. All Rights Reserved.
 
-#include "Loadout/LoadoutManager.h"
+#include "Loadout/LoadoutManagerSubsystem.h"
 #include "Player/DualFirePlayerPawn.h"
 #include "Health/HealthComponent.h"
 #include "Weapon/WeaponComponent.h"
 #include "Core/LoadoutDataLibrary.h"
 #include "DualFire.h"
 
-void ULoadoutManager::SetActiveLoadout(const FLoadout& Loadout)
+void ULoadoutManagerSubsystem::Initialize(FSubsystemCollectionBase& Collection)
 {
-	ActiveLoadout = Loadout;
-	UE_LOG(LogDualFire, Log, TEXT("[LoadoutManager] 로드아웃 설정 — Ship:%s"), *Loadout.ShipID.ToString());
+	Super::Initialize(Collection);
+
+	if (!ShipDataTable)
+	{
+		ShipDataTable = LoadObject<UDataTable>(nullptr,
+			TEXT("/Game/Data/Loadout/DT_LoadoutShips.DT_LoadoutShips"));
+	}
+	if (!ShieldDataTable)
+	{
+		ShieldDataTable = LoadObject<UDataTable>(nullptr,
+			TEXT("/Game/Data/Loadout/DT_LoadoutShields.DT_LoadoutShields"));
+	}
 }
 
-bool ULoadoutManager::ApplyToPlayer(ADualFirePlayerPawn* Pawn)
+void ULoadoutManagerSubsystem::SetActiveLoadout(const FLoadout& Loadout)
+{
+	ActiveLoadout = Loadout;
+	UE_LOG(LogDualFire, Log, TEXT("[LoadoutManagerSubsystem] 로드아웃 설정 — Ship:%s"), *Loadout.ShipID.ToString());
+}
+
+bool ULoadoutManagerSubsystem::ApplyToPlayer(ADualFirePlayerPawn* Pawn)
 {
 	if (!IsValid(Pawn))
 	{
-		UE_LOG(LogDualFire, Warning, TEXT("[LoadoutManager] ApplyToPlayer: Pawn이 유효하지 않음"));
+		UE_LOG(LogDualFire, Warning, TEXT("[LoadoutManagerSubsystem] ApplyToPlayer: Pawn이 유효하지 않음"));
 		return false;
 	}
 
@@ -32,7 +48,7 @@ bool ULoadoutManager::ApplyToPlayer(ADualFirePlayerPawn* Pawn)
 	UHealthComponent* HealthComp = Pawn->GetHealthComp();
 	if (!IsValid(HealthComp))
 	{
-		UE_LOG(LogDualFire, Warning, TEXT("[LoadoutManager] HealthComponent 없음"));
+		UE_LOG(LogDualFire, Warning, TEXT("[LoadoutManagerSubsystem] HealthComponent 없음"));
 		return false;
 	}
 
@@ -52,14 +68,14 @@ bool ULoadoutManager::ApplyToPlayer(ADualFirePlayerPawn* Pawn)
 	FShieldRow ShieldRow;
 	if (ULoadoutDataLibrary::FindShieldRow(ShieldDataTable, ActiveLoadout.ShieldID, ShieldRow))
 	{
-		MaxShield     = FMath::Max(ShieldRow.MaxShield, 0);
-		RegenInterval = FMath::Max(ShieldRow.RegenInterval, 0.1f);
+		MaxShield      = FMath::Max(ShieldRow.MaxShield, 0);
+		RegenInterval  = FMath::Max(ShieldRow.RegenInterval, 0.1f);
 		BreakInvincSec = FMath::Max(ShieldRow.BreakInvincibilitySec, 0.0f);
 	}
 
 	HealthComp->bUseShield = (MaxShield > 0);
 	HealthComp->InitFromData(MaxHealth, MaxShield, RegenInterval, BreakInvincSec);
 
-	UE_LOG(LogDualFire, Log, TEXT("[LoadoutManager] 적용 완료 — HP:%d, Shield:%d"), MaxHealth, MaxShield);
+	UE_LOG(LogDualFire, Log, TEXT("[LoadoutManagerSubsystem] 적용 완료 — HP:%d, Shield:%d"), MaxHealth, MaxShield);
 	return true;
 }

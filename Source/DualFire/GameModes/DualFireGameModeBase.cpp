@@ -6,7 +6,7 @@
 #include "Camera/StageCameraActor.h"
 #include "Player/DualFirePlayerPawn.h"
 #include "Stage/StageController.h"
-#include "Loadout/LoadoutManager.h"
+#include "Loadout/LoadoutManagerSubsystem.h"
 
 #include "GameFramework/PlayerController.h"
 #include "Kismet/GameplayStatics.h"
@@ -28,36 +28,40 @@ void ADualFireGameModeBase::BeginPlay()
         UE_LOG(LogDualFire, Warning,
             TEXT("ADualFireGameModeBase: StageCameraClass 미설정 — "
                  "Details > Camera > StageCameraClass를 할당하세요."));
-        return;
-    }
-
-    FActorSpawnParameters SpawnParams;
-    SpawnParams.SpawnCollisionHandlingOverride =
-        ESpawnActorCollisionHandlingMethod::AlwaysSpawn;
-
-    StageCamera = GetWorld()->SpawnActor<AStageCameraActor>(
-        StageCameraClass,
-        StageCameraStartTransform,
-        SpawnParams);
-
-    if (!IsValid(StageCamera))
-    {
-        UE_LOG(LogDualFire, Error,
-            TEXT("ADualFireGameModeBase: StageCameraActor 스폰 실패."));
-        return;
-    }
-
-    // ── 첫 번째 PlayerController에 ViewTarget 설정 ────────────────────────────
-    APlayerController* PC = GetWorld()->GetFirstPlayerController();
-    if (IsValid(PC))
-    {
-        PC->SetViewTargetWithBlend(StageCamera, 0.f);
     }
     else
     {
-        UE_LOG(LogDualFire, Warning,
-            TEXT("ADualFireGameModeBase: PlayerController를 찾을 수 없습니다."));
+        FActorSpawnParameters SpawnParams;
+        SpawnParams.SpawnCollisionHandlingOverride =
+            ESpawnActorCollisionHandlingMethod::AlwaysSpawn;
+
+        StageCamera = GetWorld()->SpawnActor<AStageCameraActor>(
+            StageCameraClass,
+            StageCameraStartTransform,
+            SpawnParams);
+
+        if (!IsValid(StageCamera))
+        {
+            UE_LOG(LogDualFire, Error,
+                TEXT("ADualFireGameModeBase: StageCameraActor 스폰 실패."));
+        }
+        else
+        {
+            // ── 첫 번째 PlayerController에 ViewTarget 설정 ────────────────────
+            APlayerController* PC = GetWorld()->GetFirstPlayerController();
+            if (IsValid(PC))
+            {
+                PC->SetViewTargetWithBlend(StageCamera, 0.f);
+            }
+            else
+            {
+                UE_LOG(LogDualFire, Warning,
+                    TEXT("ADualFireGameModeBase: PlayerController를 찾을 수 없습니다."));
+            }
+        }
     }
+
+    StartMission();
 }
 
 void ADualFireGameModeBase::StartMission()
@@ -66,7 +70,7 @@ void ADualFireGameModeBase::StartMission()
     UGameInstance* GI = UGameplayStatics::GetGameInstance(this);
     if (IsValid(GI))
     {
-        ULoadoutManager* LM = GI->GetSubsystem<ULoadoutManager>();
+        ULoadoutManagerSubsystem* LM = GI->GetSubsystem<ULoadoutManagerSubsystem>();
         ADualFirePlayerPawn* Pawn = Cast<ADualFirePlayerPawn>(
             UGameplayStatics::GetPlayerPawn(this, 0));
 

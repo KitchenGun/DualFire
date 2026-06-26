@@ -5,7 +5,7 @@
 #include "CoreMinimal.h"
 #include "Subsystems/GameInstanceSubsystem.h"
 #include "Core/DualFireDataTypes.h"
-#include "LoadoutManager.generated.h"
+#include "LoadoutManagerSubsystem.generated.h"
 
 class ADualFirePlayerPawn;
 class UDataTable;
@@ -21,11 +21,13 @@ class UDataTable;
  * DataTable 없는 테스트 모드에서도 동작 (ShipRow/ShieldRow 없으면 기본값 사용).
  */
 UCLASS()
-class DUALFIRE_API ULoadoutManager : public UGameInstanceSubsystem
+class DUALFIRE_API ULoadoutManagerSubsystem : public UGameInstanceSubsystem
 {
 	GENERATED_BODY()
 
 public:
+	virtual void Initialize(FSubsystemCollectionBase& Collection) override;
+
 	// ── 로드아웃 관리 ─────────────────────────────────────────────────────────
 
 	UFUNCTION(BlueprintCallable, Category="Loadout")
@@ -34,7 +36,7 @@ public:
 	UFUNCTION(BlueprintPure, Category="Loadout")
 	const FLoadout& GetActiveLoadout() const { return ActiveLoadout; }
 
-	// ── DataTable 참조 (에디터에서 할당) ─────────────────────────────────────
+	// ── DataTable 참조 (생성자에서 자동 할당, 에디터에서 오버라이드 가능) ────────
 
 	UPROPERTY(EditDefaultsOnly, BlueprintReadOnly, Category="Loadout|Data")
 	TObjectPtr<UDataTable> ShipDataTable;

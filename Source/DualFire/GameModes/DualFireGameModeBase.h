@@ -11,6 +11,7 @@
 class AStageCameraActor;
 class ADualFirePlayerPawn;
 class AStageController;
+class ULoadoutManagerSubsystem;
 
 /** 미션 종료 시 브로드캐스트. 결과(Cleared/Failed)를 HUD·연출에 전달 */
 DECLARE_DYNAMIC_MULTICAST_DELEGATE_OneParam(FOnMissionEnded, EMissionResult, Result);
