@@ -22,6 +22,7 @@ FileOpenOrder/
 *.xcworkspace
 *.xcodeproj
 *.sln
+*.slnx
 *.opensdf
 
 # Generated files

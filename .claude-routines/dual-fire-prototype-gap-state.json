@@ -1,5 +1,5 @@
 {
-  "date": "2026-06-17",
+  "date": "2026-06-26",
   "target_document": "프로토타입 사양서 v0.4 (Google Drive ID: 1KNz-sPHlhElFoyuxB3DdDNIdsehX9mgr, 2026-05-13)",
   "total_specs": 44,
   "implemented": [
@@ -24,41 +24,41 @@
     "SPEC-LOAD-001",
     "SPEC-LOAD-002",
     "SPEC-LOAD-004",
+    "SPEC-STAGE-005",
     "SPEC-ENEMY-001",
-    "SPEC-ENEMY-002"
+    "SPEC-ENEMY-002",
+    "SPEC-ENEMY-004"
   ],
   "partial": [
     "SPEC-ATTR-005",
     "SPEC-MOVE-002",
-    "SPEC-MOVE-004",
     "SPEC-MOVE-005",
     "SPEC-SURV-008",
     "SPEC-LOAD-003",
     "SPEC-LOAD-005",
+    "SPEC-LOAD-006",
     "SPEC-STAGE-001",
     "SPEC-STAGE-002",
     "SPEC-STAGE-003",
     "SPEC-STAGE-004",
-    "SPEC-STAGE-005",
     "SPEC-ENEMY-003",
-    "SPEC-ENEMY-004",
-    "SPEC-DEBUG-002"
+    "SPEC-DEBUG-002",
+    "SPEC-DEBUG-004"
   ],
   "missing": [
-    "SPEC-LOAD-006",
+    "SPEC-MOVE-004",
     "SPEC-STAGE-006",
     "SPEC-ENEMY-005",
     "SPEC-DEBUG-001",
-    "SPEC-DEBUG-003",
-    "SPEC-DEBUG-004"
+    "SPEC-DEBUG-003"
   ],
   "unclear": [],
   "ambiguous_specs": [],
   "top_risks": [
-    "GameMode.OnMissionClear/Fail 연결 완료, 미션 종료 흐름 검증됨 (2026-06-17)",
-    "EliteCombat 진입 시 엘리트 스폰 로직 없음 — 엘리트 전투 불가",
-    "EliteCombat 진입 시 엘리트 스폰 로직 없음 — 엘리트 전투 불가",
-    "적 AI EnterStop/Hover/Spread3/Rotate3 미구현 — 지상 잡몹과 엘리트 행동 불가",
-    "로드아웃 UI 전무 — 빌드 선택 검증 불가"
+    "SPEC-STAGE-004: StageController에 EliteEnemyID 프로퍼티 없음 — EliteCombat 진입 시 엘리트 스폰 코드 없음, 프로토타입 핵심 엔딩 검증 불가",
+    "SPEC-ENEMY-005: Spread3/Rotate3 미구현 — EnemyAIComponent.h 명시적 TODO, 양면 잡몹·엘리트 공격 패턴 불가",
+    "SPEC-ENEMY-003: EnterStop/Hover 미구현 — Proto_Mob_Ground가 정지 없이 직선 통과, 지상 적 특성 검증 불가",
+    "SPEC-STAGE-006: Stage/Wave DataTable 에셋 없음 — bUseTestWaves=true 하드코딩 폴백 유지, 데이터 기반 검증 불가",
+    "SPEC-LOAD-003: FirePrimary/FireSpecial 단일 키 미적용 — 별도 무기타입별 키(Ground/Air/Universal) 방식 사용, 특수무장 2슬롯 동시 발사 의도 미검증"
   ]
 }
