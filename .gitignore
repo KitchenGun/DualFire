@@ -8,6 +8,9 @@ Plugins/*/*.bak
 /.claude/
 
 # Unreal Engine
+Config/DefaultEditor.ini
+# 라이팅 빌드 캐시 — "Build Lighting"으로 재생성 가능, 대용량(수백MB)이라 GitHub 100MB 제한에 걸림
+*_BuiltData.uasset
 Binaries/
 Build/
 Intermediate/
