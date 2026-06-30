@@ -16,8 +16,8 @@ void UHealthComponent::BeginPlay()
 
 	CurrentHealth = MaxHealth;
 	CurrentShield = bUseShield ? MaxShield : 0;
-	CurrentLives = MaxLives;
-	ShieldRegenAccumulator = 0.0f;
+	CurrentLife = MaxLife;
+	ShieldRecoveryAccumulator = 0.0f;
 
 	if (AActor* Owner = GetOwner())
 	{
@@ -44,7 +44,7 @@ void UHealthComponent::TickComponent(float DeltaTime, ELevelTick TickType, FActo
 
 	if (bUseShield && CurrentShield < MaxShield)
 	{
-		TickShieldRegen(DeltaTime);
+		TickShieldRecovery(DeltaTime);
 	}
 }
 
@@ -70,9 +70,9 @@ void UHealthComponent::ApplyDamage(int32 Damage)
 		if (CurrentShield == 0)
 		{
 			// 보호막 파괴 무적 (초과 데미지는 차단)
-			if (bUseInvincibility && BreakInvincibilitySec > 0.0f)
+			if (bUseInvincibility && BreakInvincibilityDuration > 0.0f)
 			{
-				StartInvincibility(BreakInvincibilitySec);
+				StartInvincibility(BreakInvincibilityDuration);
 			}
 			OnShieldBroken.Broadcast();
 
@@ -107,18 +107,18 @@ void UHealthComponent::HandleDeath()
 	AActor* Owner = GetOwner();
 	const FString OwnerName = IsValid(Owner) ? Owner->GetName() : TEXT("Unknown");
 
-	// 잔기가 남아있으면 부활, 없으면 최종 사망
-	if (bUseLives && CurrentLives > 0)
+	// 잔여 기체가 남아있으면 부활, 없으면 최종 사망
+	if (bUseLife && CurrentLife > 0)
 	{
-		CurrentLives -= 1;
-		OnLivesChanged.Broadcast(CurrentLives);
+		CurrentLife -= 1;
+		OnLifeChanged.Broadcast(CurrentLife);
 
-		UE_LOG(LogDualFire, Log, TEXT("[Health] %s 사망 → 리스폰 (잔기 %d 남음)"), *OwnerName, CurrentLives);
+		UE_LOG(LogDualFire, Log, TEXT("[Health] %s 사망 → 리스폰 (잔여 기체 %d 남음)"), *OwnerName, CurrentLife);
 		Respawn();
 		return;
 	}
 
-	UE_LOG(LogDualFire, Warning, TEXT("[Health] %s 최종 사망 (잔기 소진)"), *OwnerName);
+	UE_LOG(LogDualFire, Warning, TEXT("[Health] %s 최종 사망 (잔여 기체 소진)"), *OwnerName);
 	OnDeath.Broadcast();
 }
 
@@ -127,7 +127,7 @@ void UHealthComponent::Respawn()
 	// HP / Shield 풀충전 (사양 §5.3.7)
 	CurrentHealth = MaxHealth;
 	CurrentShield = bUseShield ? MaxShield : 0;
-	ShieldRegenAccumulator = 0.0f;
+	ShieldRecoveryAccumulator = 0.0f;
 
 	OnHealthChanged.Broadcast(CurrentHealth, MaxHealth);
 	OnShieldChanged.Broadcast(CurrentShield, MaxShield);
@@ -145,7 +145,7 @@ void UHealthComponent::Respawn()
 	RefreshTickEnabled();
 }
 
-void UHealthComponent::Heal(int32 Amount)
+void UHealthComponent::RecoverHealth(int32 Amount)
 {
 	if (Amount <= 0 || CurrentHealth >= MaxHealth)
 	{
@@ -156,13 +156,13 @@ void UHealthComponent::Heal(int32 Amount)
 	OnHealthChanged.Broadcast(CurrentHealth, MaxHealth);
 }
 
-void UHealthComponent::FullHealHealth()
+void UHealthComponent::FullRecoverHealth()
 {
 	CurrentHealth = MaxHealth;
 	OnHealthChanged.Broadcast(CurrentHealth, MaxHealth);
 }
 
-void UHealthComponent::FullHealShield()
+void UHealthComponent::FullRecoverShield()
 {
 	if (!bUseShield)
 	{
@@ -170,7 +170,7 @@ void UHealthComponent::FullHealShield()
 	}
 
 	CurrentShield = MaxShield;
-	ShieldRegenAccumulator = 0.0f;
+	ShieldRecoveryAccumulator = 0.0f;
 	OnShieldChanged.Broadcast(CurrentShield, MaxShield);
 
 	RefreshTickEnabled();
@@ -195,21 +195,21 @@ void UHealthComponent::StartInvincibility(float Duration)
 	RefreshTickEnabled();
 }
 
-void UHealthComponent::InitFromData(int32 InMaxHealth, int32 InMaxShield, float InRegenInterval, float InBreakInvincSec)
+void UHealthComponent::InitFromData(int32 InMaxHealth, int32 InMaxShield, float InShieldRecoveryDuration, float InBreakInvincibilityDuration)
 {
 	MaxHealth = FMath::Max(InMaxHealth, 1);
 	MaxShield = FMath::Max(InMaxShield, 0);
-	ShieldRegenInterval = FMath::Max(InRegenInterval, 0.1f);
-	BreakInvincibilitySec = FMath::Max(InBreakInvincSec, 0.0f);
+	ShieldRecoveryDuration = FMath::Max(InShieldRecoveryDuration, 0.1f);
+	BreakInvincibilityDuration = FMath::Max(InBreakInvincibilityDuration, 0.0f);
 
 	CurrentHealth = MaxHealth;
 	CurrentShield = bUseShield ? MaxShield : 0;
-	CurrentLives = MaxLives;
-	ShieldRegenAccumulator = 0.0f;
+	CurrentLife = MaxLife;
+	ShieldRecoveryAccumulator = 0.0f;
 
 	OnHealthChanged.Broadcast(CurrentHealth, MaxHealth);
 	OnShieldChanged.Broadcast(CurrentShield, MaxShield);
-	OnLivesChanged.Broadcast(CurrentLives);
+	OnLifeChanged.Broadcast(CurrentLife);
 
 	RefreshTickEnabled();
 }
@@ -250,19 +250,19 @@ void UHealthComponent::TickInvincibility(float DeltaTime)
 	}
 }
 
-void UHealthComponent::TickShieldRegen(float DeltaTime)
+void UHealthComponent::TickShieldRecovery(float DeltaTime)
 {
-	ShieldRegenAccumulator += DeltaTime;
+	ShieldRecoveryAccumulator += DeltaTime;
 
-	if (ShieldRegenAccumulator >= ShieldRegenInterval)
+	if (ShieldRecoveryAccumulator >= ShieldRecoveryDuration)
 	{
-		ShieldRegenAccumulator -= ShieldRegenInterval;
+		ShieldRecoveryAccumulator -= ShieldRecoveryDuration;
 		CurrentShield = FMath::Min(CurrentShield + 1, MaxShield);
 		OnShieldChanged.Broadcast(CurrentShield, MaxShield);
 
 		if (CurrentShield >= MaxShield)
 		{
-			ShieldRegenAccumulator = 0.0f;
+			ShieldRecoveryAccumulator = 0.0f;
 			RefreshTickEnabled();
 		}
 	}

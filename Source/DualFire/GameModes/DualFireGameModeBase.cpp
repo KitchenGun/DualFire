@@ -7,6 +7,7 @@
 #include "Player/DualFirePlayerPawn.h"
 #include "Stage/StageController.h"
 #include "Loadout/LoadoutManagerSubsystem.h"
+#include "Core/LoadoutDataLibrary.h"
 
 #include "GameFramework/PlayerController.h"
 #include "Kismet/GameplayStatics.h"
@@ -16,6 +17,51 @@ ADualFireGameModeBase::ADualFireGameModeBase()
     // ── 기본 폰 클래스 ─────────────────────────────────────────────────────────
     // BP_DualFireGameModeBase에서 BP_DualFirePlayerPawn으로 오버라이드 권장
     DefaultPawnClass = ADualFirePlayerPawn::StaticClass();
+}
+
+void ADualFireGameModeBase::InitGame(const FString& MapName, const FString& Options, FString& ErrorMessage)
+{
+    Super::InitGame(MapName, Options, ErrorMessage);
+
+    // Pawn 스폰(GetDefaultPawnClassForController_Implementation)보다 먼저 실행되어야
+    // TestLoadout이 기체 선택에도 반영된다. BeginPlay는 이미 늦음(Pawn 스폰 이후 호출).
+    UGameInstance* GI = UGameplayStatics::GetGameInstance(this);
+    if (!IsValid(GI))
+    {
+        return;
+    }
+
+    ULoadoutManagerSubsystem* LM = GI->GetSubsystem<ULoadoutManagerSubsystem>();
+    if (!IsValid(LM))
+    {
+        return;
+    }
+
+    // 격납고 등 외부에서 이미 SetActiveLoadout()을 호출하고 넘어온 경우는 덮어쓰지 않는다.
+    if (!LM->GetActiveLoadout().AircraftID.IsNone())
+    {
+        return;
+    }
+
+    LM->SetActiveLoadout(ULoadoutDataLibrary::MakeLoadoutFromRowHandles(TestLoadout));
+    UE_LOG(LogDualFire, Log, TEXT("[GameMode] InitGame: 외부 로드아웃 없음 — TestLoadout으로 폴백"));
+}
+
+UClass* ADualFireGameModeBase::GetDefaultPawnClassForController_Implementation(AController* InController)
+{
+    UGameInstance* GI = UGameplayStatics::GetGameInstance(this);
+    if (IsValid(GI))
+    {
+        if (ULoadoutManagerSubsystem* LM = GI->GetSubsystem<ULoadoutManagerSubsystem>())
+        {
+            if (TSubclassOf<ADualFirePlayerPawn> AircraftClass = LM->ResolveAircraftClass())
+            {
+                return AircraftClass;
+            }
+        }
+    }
+
+    return Super::GetDefaultPawnClassForController_Implementation(InController);
 }
 
 void ADualFireGameModeBase::BeginPlay()
@@ -121,7 +167,7 @@ void ADualFireGameModeBase::OnMissionClear()
 
 void ADualFireGameModeBase::EndMission(EMissionResult Result)
 {
-    // 중복 종료 방지 (잔기 0 사망과 엘리트 타임아웃이 동시에 들어오는 경우 등)
+    // 중복 종료 방지 (잔여 기체 0 사망과 엘리트 타임아웃이 동시에 들어오는 경우 등)
     if (MissionResult != EMissionResult::None)
     {
         return;

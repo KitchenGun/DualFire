@@ -34,11 +34,11 @@ void AEnemyBase::BeginPlay()
 {
 	Super::BeginPlay();
 
-	// 적은 잔기 없음(bUseLives=false) → HP 0 시 OnDeath 즉시 발생 → 격파
+	// 적은 잔여 기체 없음(bUseLife=false) → HP 0 시 OnDeath 즉시 발생 → 격파
 	HealthComp->OnDeath.AddDynamic(this, &AEnemyBase::OnEnemyDeath);
 
 	// 컴포넌트 BeginPlay가 Actor BeginPlay보다 먼저 실행되므로 InitFromData로 재초기화
-	HealthComp->InitFromData(MaxHealthPoints, 0, 1.0f, 0.0f);
+	HealthComp->InitFromData(MaxHealth, 0, 1.0f, 0.0f);
 }
 
 void AEnemyBase::OnEnemyDeath()

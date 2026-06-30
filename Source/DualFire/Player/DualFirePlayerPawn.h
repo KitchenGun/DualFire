@@ -21,9 +21,9 @@ struct FInputActionValue;
  * 2D 스크롤 슈팅 플레이어 폰 (단일 플레이어 전용).
  * APawn 기반, UDualFireMovementComponent로 XY 평면 이동.
  * Enhanced Input → AddMovementInput → MovementComp->ConsumeInputVector 흐름.
- * 비주얼: USkeletalMeshComponent (ShipMesh), 충돌: USphereComponent (HitboxComp)
+ * 비주얼: USkeletalMeshComponent (Mesh), 충돌: USphereComponent (HitboxComp)
  *
- * 미구현: HP/잔기, 사격 (BulletClass 스텁 프로퍼티만 보유)
+ * 미구현: HP/잔여 기체, 사격 (BulletClass 스텁 프로퍼티만 보유)
  */
 UCLASS(BlueprintType, Blueprintable)
 class DUALFIRE_API ADualFirePlayerPawn : public APawn
@@ -123,15 +123,15 @@ public:
     UFUNCTION(Exec)
     void DF_Damage(int32 Amount);
 
-    /** ex) DF_HealHP  →  HP 만회 */
+    /** ex) DF_RecoverHealth  →  HP 만회 */
     UFUNCTION(Exec)
-    void DF_HealHP();
+    void DF_RecoverHealth();
 
-    /** ex) DF_HealShield  →  Shield 만회 */
+    /** ex) DF_RecoverShield  →  Shield 만회 */
     UFUNCTION(Exec)
-    void DF_HealShield();
+    void DF_RecoverShield();
 
-    /** ex) DF_Kill  →  HP를 한 번에 0으로 (잔기/리스폰/사망 흐름 검증용) */
+    /** ex) DF_Kill  →  HP를 한 번에 0으로 (잔여 기체/리스폰/사망 흐름 검증용) */
     UFUNCTION(Exec)
     void DF_Kill();
 
@@ -168,7 +168,7 @@ protected:
     // ── 사망 처리 ────────────────────────────────────────────────────────────
 
     /**
-     * HealthComp.OnDeath(잔기 소진 최종 사망) 콜백.
+     * HealthComp.OnDeath(잔여 기체 소진 최종 사망) 콜백.
      * GameMode->OnMissionFail()로 연결. UFUNCTION 필수 (델리게이트 바인딩).
      */
     UFUNCTION()

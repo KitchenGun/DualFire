@@ -92,9 +92,9 @@ public:
 
 	// ── 공개 API ──────────────────────────────────────────────────────────────
 
-	/** EliteCombat 단계에서 엘리트 적이 격파되면 호출 → Ended(클리어)로 전환 */
+	/** EliteCombat 단계에서 엘리트 적이 격파(사망)되면 호출 → Ended(클리어)로 전환 */
 	UFUNCTION(BlueprintCallable, Category="Stage")
-	void OnEliteDefeated();
+	void OnEliteDeath();
 
 	UFUNCTION(BlueprintPure, Category="Stage")
 	float GetElapsedTime() const { return ElapsedTime; }

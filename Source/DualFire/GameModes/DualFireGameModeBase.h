@@ -5,6 +5,7 @@
 #include "CoreMinimal.h"
 #include "GameFramework/GameModeBase.h"
 #include "Core/DualFireTypes.h"
+#include "Core/DualFireDataTypes.h"
 #include "DualFireGameModeBase.generated.h"
 
 // Forward declarations — 헤더 인클루드 최소화
@@ -30,7 +31,26 @@ public:
     ADualFireGameModeBase();
 
     // ── AGameModeBase 오버라이드 ──────────────────────────────────────────────────
+    virtual void InitGame(const FString& MapName, const FString& Options, FString& ErrorMessage) override;
     virtual void BeginPlay() override;
+
+    /**
+     * 컨트롤러가 빙의할 Pawn 클래스를 결정.
+     * LoadoutManagerSubsystem.ActiveLoadout에 선택된 AircraftRow.AircraftClass가 있으면
+     * 그 BP 클래스를 사용하고, 없으면 기본 DefaultPawnClass로 폴백.
+     */
+    virtual UClass* GetDefaultPawnClassForController_Implementation(AController* InController) override;
+
+    // ── 테스트용 로드아웃 (격납고 UI 부재 시 폴백) ───────────────────────────────────
+
+    /**
+     * 격납고 레벨 등에서 LoadoutManagerSubsystem.SetActiveLoadout()을 미리 호출하고 넘어온 게
+     * 아닐 때(= ActiveLoadout이 비어있을 때)만 사용되는 테스트용 기본 로드아웃.
+     * BP 디테일 패널에서 각 슬롯을 데이터테이블 행 드롭다운으로 선택해 구성한다.
+     * 격납고가 이미 선택해서 넘어온 경우는 절대 덮어쓰지 않는다 (InitGame 참고).
+     */
+    UPROPERTY(EditDefaultsOnly, BlueprintReadOnly, Category="Loadout|Test")
+    FLoadoutRowHandles TestLoadout;
 
     // ── 스테이지 카메라 설정 ──────────────────────────────────────────────────────
 
@@ -67,7 +87,7 @@ public:
     // ── 미션 종료 ───────────────────────────────────────────────────────────────
 
     /**
-     * 미션 실패 처리. 잔기 소진 사망(§5.3.7) 또는 엘리트 제한 시간 초과(§5.5.4) 시 호출.
+     * 미션 실패 처리. 잔여 기체 소진 사망(§5.3.7) 또는 엘리트 제한 시간 초과(§5.5.4) 시 호출.
      * 검증 리포트 로그 출력 + 입력 잠금. 이미 종료된 경우 무시.
      */
     UFUNCTION(BlueprintCallable, Category="Mission")

@@ -20,7 +20,7 @@ public:
 	static bool FindWeaponRow(UDataTable* WeaponTable, FName WeaponID, FWeaponRow& OutWeaponRow);
 
 	UFUNCTION(BlueprintCallable, Category = "Loadout|Data")
-	static bool FindShipRow(UDataTable* ShipTable, FName ShipID, FShipRow& OutShipRow);
+	static bool FindAircraftRow(UDataTable* AircraftTable, FName AircraftID, FAircraftRow& OutAircraftRow);
 
 	UFUNCTION(BlueprintCallable, Category = "Loadout|Data")
 	static bool FindShieldRow(UDataTable* ShieldTable, FName ShieldID, FShieldRow& OutShieldRow);
@@ -33,6 +33,10 @@ public:
 
 	UFUNCTION(BlueprintPure, Category = "Loadout|Data")
 	static FProjectileRuntimeConfig MakeProjectileRuntimeConfig(const FWeaponRow& WeaponRow);
+
+	/** BP 디테일 패널에서 드롭다운으로 고른 FLoadoutRowHandles를 런타임용 FLoadout(FName 집합)으로 변환 */
+	UFUNCTION(BlueprintPure, Category = "Loadout|Data")
+	static FLoadout MakeLoadoutFromRowHandles(const FLoadoutRowHandles& RowHandles);
 
 private:
 	template <typename RowType>

@@ -11,10 +11,10 @@ void ULoadoutManagerSubsystem::Initialize(FSubsystemCollectionBase& Collection)
 {
 	Super::Initialize(Collection);
 
-	if (!ShipDataTable)
+	if (!AircraftDataTable)
 	{
-		ShipDataTable = LoadObject<UDataTable>(nullptr,
-			TEXT("/Game/Data/Loadout/DT_LoadoutShips.DT_LoadoutShips"));
+		AircraftDataTable = LoadObject<UDataTable>(nullptr,
+			TEXT("/Game/Data/Loadout/DT_LoadoutAircrafts.DT_LoadoutAircrafts"));
 	}
 	if (!ShieldDataTable)
 	{
@@ -26,7 +26,7 @@ void ULoadoutManagerSubsystem::Initialize(FSubsystemCollectionBase& Collection)
 void ULoadoutManagerSubsystem::SetActiveLoadout(const FLoadout& Loadout)
 {
 	ActiveLoadout = Loadout;
-	UE_LOG(LogDualFire, Log, TEXT("[LoadoutManagerSubsystem] 로드아웃 설정 — Ship:%s"), *Loadout.ShipID.ToString());
+	UE_LOG(LogDualFire, Log, TEXT("[LoadoutManagerSubsystem] 로드아웃 설정 — Aircraft:%s"), *Loadout.AircraftID.ToString());
 }
 
 bool ULoadoutManagerSubsystem::ApplyToPlayer(ADualFirePlayerPawn* Pawn)
@@ -52,30 +52,46 @@ bool ULoadoutManagerSubsystem::ApplyToPlayer(ADualFirePlayerPawn* Pawn)
 		return false;
 	}
 
-	// ShipRow에서 MaxHealth 조회 (없으면 현재 MaxHealth 유지)
+	// AircraftRow에서 MaxHealth 조회 (없으면 현재 MaxHealth 유지)
 	int32 MaxHealth = HealthComp->MaxHealth;
-	FShipRow ShipRow;
-	if (ULoadoutDataLibrary::FindShipRow(ShipDataTable, ActiveLoadout.ShipID, ShipRow))
+	FAircraftRow AircraftRow;
+	if (ULoadoutDataLibrary::FindAircraftRow(AircraftDataTable, ActiveLoadout.AircraftID, AircraftRow))
 	{
-		MaxHealth = FMath::Max(ShipRow.MaxHealth, 1);
+		MaxHealth = FMath::Max(AircraftRow.MaxHealth, 1);
 	}
 
 	// ShieldRow에서 Shield 파라미터 조회 (없으면 기본값)
 	int32 MaxShield = 0;
-	float RegenInterval = 5.0f;
-	float BreakInvincSec = 0.5f;
+	float ShieldRecoveryDuration = 5.0f;
+	float BreakInvincibilityDuration = 0.5f;
 
 	FShieldRow ShieldRow;
 	if (ULoadoutDataLibrary::FindShieldRow(ShieldDataTable, ActiveLoadout.ShieldID, ShieldRow))
 	{
-		MaxShield      = FMath::Max(ShieldRow.MaxShield, 0);
-		RegenInterval  = FMath::Max(ShieldRow.RegenInterval, 0.1f);
-		BreakInvincSec = FMath::Max(ShieldRow.BreakInvincibilitySec, 0.0f);
+		MaxShield                  = FMath::Max(ShieldRow.MaxShield, 0);
+		ShieldRecoveryDuration     = FMath::Max(ShieldRow.ShieldRecoveryDuration, 0.1f);
+		BreakInvincibilityDuration = FMath::Max(ShieldRow.BreakInvincibilityDuration, 0.0f);
 	}
 
 	HealthComp->bUseShield = (MaxShield > 0);
-	HealthComp->InitFromData(MaxHealth, MaxShield, RegenInterval, BreakInvincSec);
+	HealthComp->InitFromData(MaxHealth, MaxShield, ShieldRecoveryDuration, BreakInvincibilityDuration);
 
 	UE_LOG(LogDualFire, Log, TEXT("[LoadoutManagerSubsystem] 적용 완료 — HP:%d, Shield:%d"), MaxHealth, MaxShield);
 	return true;
+}
+
+TSubclassOf<ADualFirePlayerPawn> ULoadoutManagerSubsystem::ResolveAircraftClass() const
+{
+	FAircraftRow AircraftRow;
+	if (!ULoadoutDataLibrary::FindAircraftRow(AircraftDataTable, ActiveLoadout.AircraftID, AircraftRow))
+	{
+		return nullptr;
+	}
+
+	if (AircraftRow.AircraftClass.IsNull())
+	{
+		return nullptr;
+	}
+
+	return AircraftRow.AircraftClass.LoadSynchronous();
 }

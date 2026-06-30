@@ -37,7 +37,7 @@ public:
 	/** 격파에 필요한 누적 피해량. 0 이하가 되면 Destroy */
 	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category="Weapon",
 		meta=(ClampMin="1.0"))
-	float HitPoints = 10.f;
+	float Health = 10.f;
 
 	// ── IEnemyAttributeInterface ───────────────────────────────────────────────
 	virtual FEnemyAttribute GetEnemyAttributes_Implementation() const override

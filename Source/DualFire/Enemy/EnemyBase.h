@@ -19,7 +19,7 @@ class UEnemyAIComponent;
  * IEnemyAttributeInterface를 구현해 플레이어 탄 속성 매칭에 참여한다.
  *
  * 현재 구현: Linear 이동 + Single 공격.
- * 잔기/GameMode 연결은 다음 청크.
+ * 잔여 기체/GameMode 연결은 다음 청크.
  */
 UCLASS(BlueprintType, Blueprintable)
 class DUALFIRE_API AEnemyBase : public AActor, public IEnemyAttributeInterface
@@ -49,7 +49,7 @@ public:
 
 	/** HP 초기값. HealthComponent의 MaxHealth로 주입 */
 	UPROPERTY(EditDefaultsOnly, BlueprintReadOnly, Category="Enemy", meta=(ClampMin="1"))
-	int32 MaxHealthPoints = 3;
+	int32 MaxHealth = 3;
 
 	/** 이 적의 Ground/Air 속성. 플레이어 탄 매칭에 사용 */
 	UPROPERTY(EditDefaultsOnly, BlueprintReadOnly, Category="Enemy")
@@ -70,7 +70,7 @@ public:
 	}
 
 private:
-	/** HealthComp.OnDeath 콜백. 적은 잔기 없이 즉시 격파 → Destroy */
+	/** HealthComp.OnDeath 콜백. 적은 잔여 기체 없이 즉시 격파 → Destroy */
 	UFUNCTION()
 	void OnEnemyDeath();
 };

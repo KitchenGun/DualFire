@@ -28,11 +28,11 @@ float ATestTarget::TakeDamage(
 {
 	const float Applied = Super::TakeDamage(DamageAmount, DamageEvent, EventInstigator, DamageCauser);
 
-	HitPoints -= DamageAmount;
+	Health -= DamageAmount;
 	UE_LOG(LogDualFire, Log, TEXT("[TestTarget %s] 피격 -%.1f → 잔여 HP %.1f"),
-		*GetName(), DamageAmount, HitPoints);
+		*GetName(), DamageAmount, Health);
 
-	if (HitPoints <= 0.f)
+	if (Health <= 0.f)
 	{
 		UE_LOG(LogDualFire, Log, TEXT("[TestTarget %s] 격파"), *GetName());
 		Destroy();

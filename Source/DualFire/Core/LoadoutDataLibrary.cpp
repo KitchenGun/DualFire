@@ -19,9 +19,9 @@ namespace
 	}
 
 	template <>
-	FName GetRowID<FShipRow>(const FShipRow& Row)
+	FName GetRowID<FAircraftRow>(const FAircraftRow& Row)
 	{
-		return Row.ShipID;
+		return Row.AircraftID;
 	}
 
 	template <>
@@ -51,11 +51,11 @@ namespace
 	}
 
 	template <>
-	void EnsureRowID<FShipRow>(FShipRow& Row, FName RowID)
+	void EnsureRowID<FAircraftRow>(FAircraftRow& Row, FName RowID)
 	{
-		if (Row.ShipID.IsNone())
+		if (Row.AircraftID.IsNone())
 		{
-			Row.ShipID = RowID;
+			Row.AircraftID = RowID;
 		}
 	}
 
@@ -112,9 +112,9 @@ bool ULoadoutDataLibrary::FindWeaponRow(UDataTable* WeaponTable, FName WeaponID,
 	return FindRowByID(WeaponTable, WeaponID, OutWeaponRow, TEXT("FindWeaponRow"));
 }
 
-bool ULoadoutDataLibrary::FindShipRow(UDataTable* ShipTable, FName ShipID, FShipRow& OutShipRow)
+bool ULoadoutDataLibrary::FindAircraftRow(UDataTable* AircraftTable, FName AircraftID, FAircraftRow& OutAircraftRow)
 {
-	return FindRowByID(ShipTable, ShipID, OutShipRow, TEXT("FindShipRow"));
+	return FindRowByID(AircraftTable, AircraftID, OutAircraftRow, TEXT("FindAircraftRow"));
 }
 
 bool ULoadoutDataLibrary::FindShieldRow(UDataTable* ShieldTable, FName ShieldID, FShieldRow& OutShieldRow)
@@ -150,4 +150,16 @@ FProjectileRuntimeConfig ULoadoutDataLibrary::MakeProjectileRuntimeConfig(const 
 	RuntimeConfig.HitBehavior = WeaponRow.HitBehavior;
 	RuntimeConfig.PenetrationLimit = FMath::Max(0, WeaponRow.PenetrationLimit);
 	return RuntimeConfig;
+}
+
+FLoadout ULoadoutDataLibrary::MakeLoadoutFromRowHandles(const FLoadoutRowHandles& RowHandles)
+{
+	FLoadout Loadout;
+	Loadout.AircraftID = RowHandles.AircraftRow.RowName;
+	Loadout.PrimaryWeaponID = RowHandles.PrimaryWeaponRow.RowName;
+	Loadout.SpecialWeapon1ID = RowHandles.SpecialWeapon1Row.RowName;
+	Loadout.SpecialWeapon2ID = RowHandles.SpecialWeapon2Row.RowName;
+	Loadout.SuperWeaponID = RowHandles.SuperWeaponRow.RowName;
+	Loadout.ShieldID = RowHandles.ShieldRow.RowName;
+	return Loadout;
 }

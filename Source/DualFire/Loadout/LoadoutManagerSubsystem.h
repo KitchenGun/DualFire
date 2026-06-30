@@ -18,7 +18,7 @@ class UDataTable;
  *   2. GameMode.StartMission()에서 ApplyToPlayer() 호출
  *   3. WeaponComponent + HealthComponent 초기화 완료
  *
- * DataTable 없는 테스트 모드에서도 동작 (ShipRow/ShieldRow 없으면 기본값 사용).
+ * DataTable 없는 테스트 모드에서도 동작 (AircraftRow/ShieldRow 없으면 기본값 사용).
  */
 UCLASS()
 class DUALFIRE_API ULoadoutManagerSubsystem : public UGameInstanceSubsystem
@@ -39,7 +39,7 @@ public:
 	// ── DataTable 참조 (생성자에서 자동 할당, 에디터에서 오버라이드 가능) ────────
 
 	UPROPERTY(EditDefaultsOnly, BlueprintReadOnly, Category="Loadout|Data")
-	TObjectPtr<UDataTable> ShipDataTable;
+	TObjectPtr<UDataTable> AircraftDataTable;
 
 	UPROPERTY(EditDefaultsOnly, BlueprintReadOnly, Category="Loadout|Data")
 	TObjectPtr<UDataTable> ShieldDataTable;
@@ -49,10 +49,18 @@ public:
 	/**
 	 * ActiveLoadout을 Pawn에 적용.
 	 *  - WeaponComponent: ApplyLoadout()
-	 *  - HealthComponent: ShipRow(MaxHealth) + ShieldRow(Shield파라미터) → InitFromData()
+	 *  - HealthComponent: AircraftRow(MaxHealth) + ShieldRow(Shield파라미터) → InitFromData()
 	 */
 	UFUNCTION(BlueprintCallable, Category="Loadout")
 	bool ApplyToPlayer(ADualFirePlayerPawn* Pawn);
+
+	/**
+	 * ActiveLoadout.AircraftID로 AircraftRow를 조회해 스폰할 Pawn 클래스를 반환.
+	 * GameMode::GetDefaultPawnClassForController_Implementation에서 호출.
+	 * AircraftRow를 못 찾으면 nullptr (호출측이 기본 DefaultPawnClass로 폴백).
+	 */
+	UFUNCTION(BlueprintCallable, Category="Loadout")
+	TSubclassOf<ADualFirePlayerPawn> ResolveAircraftClass() const;
 
 private:
 	/** 현재 선택된 로드아웃. SetActiveLoadout로 설정, ApplyToPlayer로 주입 */

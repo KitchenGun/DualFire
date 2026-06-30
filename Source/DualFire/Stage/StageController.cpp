@@ -155,7 +155,7 @@ void AStageController::SetState(EStageState NewState)
 	case EStageState::Ended:
 		SetActorTickEnabled(false);
 		GetWorld()->GetTimerManager().ClearTimer(EliteTimeLimitHandle);
-		// 결과별 GameMode 호출은 OnEliteDefeated / OnEliteTimeLimitExpired에서 수행
+		// 결과별 GameMode 호출은 OnEliteDeath / OnEliteTimeLimitExpired에서 수행
 		break;
 
 	default:
@@ -163,7 +163,7 @@ void AStageController::SetState(EStageState NewState)
 	}
 }
 
-void AStageController::OnEliteDefeated()
+void AStageController::OnEliteDeath()
 {
 	if (CurrentState == EStageState::EliteCombat)
 	{

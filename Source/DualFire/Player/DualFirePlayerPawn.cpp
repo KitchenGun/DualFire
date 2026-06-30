@@ -54,7 +54,7 @@ ADualFirePlayerPawn::ADualFirePlayerPawn()
 
     // ── HealthComp ────────────────────────────────────────────────────────────
     HealthComp = CreateDefaultSubobject<UHealthComponent>(TEXT("HealthComp"));
-    HealthComp->bUseLives = true;   // 플레이어는 잔기/리스폰 사용
+    HealthComp->bUseLife = true;   // 플레이어는 잔여 기체/리스폰 사용
 }
 
 // ── APawn 오버라이드 ──────────────────────────────────────────────────────────
@@ -67,7 +67,7 @@ void ADualFirePlayerPawn::BeginPlay()
     HitboxComp->OnComponentBeginOverlap.AddDynamic(
         this, &ADualFirePlayerPawn::OnHitboxOverlapBegin);
 
-    // 최종 사망(잔기 소진) → 미션 실패 연결
+    // 최종 사망(잔여 기체 소진) → 미션 실패 연결
     if (IsValid(HealthComp))
     {
         HealthComp->OnDeath.AddDynamic(this, &ADualFirePlayerPawn::OnPlayerFinalDeath);
@@ -215,21 +215,21 @@ void ADualFirePlayerPawn::DF_Damage(int32 Amount)
     }
 }
 
-void ADualFirePlayerPawn::DF_HealHP()
+void ADualFirePlayerPawn::DF_RecoverHealth()
 {
     if (IsValid(HealthComp))
     {
-        HealthComp->FullHealHealth();
-        UE_LOG(LogDualFire, Log, TEXT("[Debug] DF_HealHP — HP 만회"));
+        HealthComp->FullRecoverHealth();
+        UE_LOG(LogDualFire, Log, TEXT("[Debug] DF_RecoverHealth — HP 만회"));
     }
 }
 
-void ADualFirePlayerPawn::DF_HealShield()
+void ADualFirePlayerPawn::DF_RecoverShield()
 {
     if (IsValid(HealthComp))
     {
-        HealthComp->FullHealShield();
-        UE_LOG(LogDualFire, Log, TEXT("[Debug] DF_HealShield — Shield 만회"));
+        HealthComp->FullRecoverShield();
+        UE_LOG(LogDualFire, Log, TEXT("[Debug] DF_RecoverShield — Shield 만회"));
     }
 }
 

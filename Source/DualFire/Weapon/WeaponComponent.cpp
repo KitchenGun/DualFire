@@ -11,7 +11,7 @@
 
 namespace
 {
-	const FName TestShipID(TEXT("TEST_SHIP"));
+	const FName TestAircraftID(TEXT("TEST_SHIP"));
 	const FName TestSuperWeaponID(TEXT("TEST_SUPER"));
 	const FName TestShieldID(TEXT("TEST_SHIELD"));
 	const FName TestGroundWeaponID(TEXT("TEST_AG"));
@@ -39,7 +39,7 @@ UWeaponComponent::UWeaponComponent()
 		WeaponDataTable = WeaponDataTableFinder.Object;
 	}
 
-	DefaultLoadout.ShipID = TestShipID;
+	DefaultLoadout.AircraftID = TestAircraftID;
 	DefaultLoadout.PrimaryWeaponID = TestGroundWeaponID;
 	DefaultLoadout.SpecialWeapon1ID = TestAirWeaponID;
 	DefaultLoadout.SpecialWeapon2ID = TestUniversalWeaponID;
