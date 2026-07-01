@@ -76,26 +76,23 @@ public:
 	UFUNCTION(BlueprintCallable, Category="Weapon|Loadout")
 	void FireLoadoutSlot(ELoadoutSlot Slot);
 
+	/** 기본 무기 슬롯(PrimaryWeapon) 발사 */
 	UFUNCTION(BlueprintCallable, Category="Weapon")
-	void FireGround();
+	void FirePrimary();
 
+	/** 특수무장 슬롯(SpecialWeapon1 + SpecialWeapon2) 발사. 각 슬롯은 쿨타임을 공유하지 않고 준비된 슬롯만 발사된다 */
 	UFUNCTION(BlueprintCallable, Category="Weapon")
-	void FireAir();
-
-	UFUNCTION(BlueprintCallable, Category="Weapon")
-	void FireUniversal();
+	void FireSpecial();
 
 	UFUNCTION(BlueprintPure, Category="Weapon|Loadout")
 	bool CanFireLoadoutSlot(ELoadoutSlot Slot) const;
 
 	UFUNCTION(BlueprintPure, Category="Weapon")
-	bool CanFireGround() const;
+	bool CanFirePrimary() const;
 
+	/** 특수무장 슬롯 중 하나라도 발사 가능하면 true */
 	UFUNCTION(BlueprintPure, Category="Weapon")
-	bool CanFireAir() const;
-
-	UFUNCTION(BlueprintPure, Category="Weapon")
-	bool CanFireUniversal() const;
+	bool CanFireSpecial() const;
 
 private:
 	FWeaponSlotState PrimaryWeaponSlot;

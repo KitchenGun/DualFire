@@ -82,17 +82,13 @@ public:
     UPROPERTY(EditDefaultsOnly, BlueprintReadOnly, Category="Input")
     TSoftObjectPtr<UInputAction> IA_Move;
 
-    /** 대지 무장 발사 (K키) */
+    /** 기본 무기 슬롯 발사 (키보드 Z/Space, 게임패드 A) */
     UPROPERTY(EditDefaultsOnly, BlueprintReadOnly, Category="Input")
-    TSoftObjectPtr<UInputAction> IA_FireGround;
+    TSoftObjectPtr<UInputAction> IA_FirePrimary;
 
-    /** 대공 무장 발사 (J키) */
+    /** 특수무장 슬롯 1+2 발사 (키보드 X, 게임패드 B) */
     UPROPERTY(EditDefaultsOnly, BlueprintReadOnly, Category="Input")
-    TSoftObjectPtr<UInputAction> IA_FireAir;
-
-    /** 범용 무장 발사 (L키) */
-    UPROPERTY(EditDefaultsOnly, BlueprintReadOnly, Category="Input")
-    TSoftObjectPtr<UInputAction> IA_FireUniversal;
+    TSoftObjectPtr<UInputAction> IA_FireSpecial;
 
     // 여러 IMC가 스택될 때 우선순위. 높을수록 먼저 처리
     UPROPERTY(EditDefaultsOnly, BlueprintReadOnly, Category="Input",
@@ -141,14 +137,11 @@ protected:
     /** IA_Move (Axis2D) 입력 처리. Triggered 이벤트로 매 프레임 호출 */
     void OnMoveInput(const FInputActionValue& Value);
 
-    /** 대지 무장 발사 (K키, Triggered=연사) */
-    void OnFireGroundInput(const FInputActionValue& Value);
+    /** 기본 무기 슬롯 발사 (Triggered=연사) */
+    void OnFirePrimaryInput(const FInputActionValue& Value);
 
-    /** 대공 무장 발사 (J키, Triggered=연사) */
-    void OnFireAirInput(const FInputActionValue& Value);
-
-    /** 범용 무장 발사 (L키, Triggered=연사) */
-    void OnFireUniversalInput(const FInputActionValue& Value);
+    /** 특수무장 슬롯 1+2 발사 (Triggered=연사) */
+    void OnFireSpecialInput(const FInputActionValue& Value);
 
     // ── 히트박스 오버랩 ──────────────────────────────────────────────────────
 

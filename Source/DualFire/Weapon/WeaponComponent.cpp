@@ -90,34 +90,27 @@ bool UWeaponComponent::ApplyLoadout(const FLoadout& Loadout)
 	return bPrimaryEquipped && bSpecial1Equipped && bSpecial2Equipped;
 }
 
-void UWeaponComponent::FireGround()
+void UWeaponComponent::FirePrimary()
 {
 	FireLoadoutSlot(ELoadoutSlot::PrimaryWeapon);
 }
 
-void UWeaponComponent::FireAir()
+void UWeaponComponent::FireSpecial()
 {
+	// 각 슬롯은 FireLoadoutSlot 내부에서 개별 쿨다운을 체크하므로
+	// 여기서는 순서대로 호출하기만 하면 "쿨타임 비공유, 준비된 슬롯만 발사" 요구사항이 만족된다.
 	FireLoadoutSlot(ELoadoutSlot::SpecialWeapon1);
-}
-
-void UWeaponComponent::FireUniversal()
-{
 	FireLoadoutSlot(ELoadoutSlot::SpecialWeapon2);
 }
 
-bool UWeaponComponent::CanFireGround() const
+bool UWeaponComponent::CanFirePrimary() const
 {
 	return CanFireLoadoutSlot(ELoadoutSlot::PrimaryWeapon);
 }
 
-bool UWeaponComponent::CanFireAir() const
+bool UWeaponComponent::CanFireSpecial() const
 {
-	return CanFireLoadoutSlot(ELoadoutSlot::SpecialWeapon1);
-}
-
-bool UWeaponComponent::CanFireUniversal() const
-{
-	return CanFireLoadoutSlot(ELoadoutSlot::SpecialWeapon2);
+	return CanFireLoadoutSlot(ELoadoutSlot::SpecialWeapon1) || CanFireLoadoutSlot(ELoadoutSlot::SpecialWeapon2);
 }
 
 void UWeaponComponent::FireLoadoutSlot(ELoadoutSlot Slot)

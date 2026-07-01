@@ -102,22 +102,16 @@ void ADualFirePlayerPawn::SetupPlayerInputComponent(UInputComponent* PlayerInput
     }
 
     // 발사 입력 — Triggered: 키를 누르는 동안 연사 (쿨다운으로 발사 간격 제어)
-    if (UInputAction* GroundIA = IA_FireGround.LoadSynchronous())
+    if (UInputAction* PrimaryIA = IA_FirePrimary.LoadSynchronous())
     {
-        EIC->BindAction(GroundIA, ETriggerEvent::Triggered,
-            this, &ADualFirePlayerPawn::OnFireGroundInput);
+        EIC->BindAction(PrimaryIA, ETriggerEvent::Triggered,
+            this, &ADualFirePlayerPawn::OnFirePrimaryInput);
     }
 
-    if (UInputAction* AirIA = IA_FireAir.LoadSynchronous())
+    if (UInputAction* SpecialIA = IA_FireSpecial.LoadSynchronous())
     {
-        EIC->BindAction(AirIA, ETriggerEvent::Triggered,
-            this, &ADualFirePlayerPawn::OnFireAirInput);
-    }
-
-    if (UInputAction* UniversalIA = IA_FireUniversal.LoadSynchronous())
-    {
-        EIC->BindAction(UniversalIA, ETriggerEvent::Triggered,
-            this, &ADualFirePlayerPawn::OnFireUniversalInput);
+        EIC->BindAction(SpecialIA, ETriggerEvent::Triggered,
+            this, &ADualFirePlayerPawn::OnFireSpecialInput);
     }
 }
 
@@ -139,27 +133,19 @@ void ADualFirePlayerPawn::OnMoveInput(const FInputActionValue& Value)
 
 // ── 발사 핸들러 ───────────────────────────────────────────────────────────────
 
-void ADualFirePlayerPawn::OnFireGroundInput(const FInputActionValue& Value)
+void ADualFirePlayerPawn::OnFirePrimaryInput(const FInputActionValue& Value)
 {
     if (IsValid(WeaponComp))
     {
-        WeaponComp->FireGround();
+        WeaponComp->FirePrimary();
     }
 }
 
-void ADualFirePlayerPawn::OnFireAirInput(const FInputActionValue& Value)
+void ADualFirePlayerPawn::OnFireSpecialInput(const FInputActionValue& Value)
 {
     if (IsValid(WeaponComp))
     {
-        WeaponComp->FireAir();
-    }
-}
-
-void ADualFirePlayerPawn::OnFireUniversalInput(const FInputActionValue& Value)
-{
-    if (IsValid(WeaponComp))
-    {
-        WeaponComp->FireUniversal();
+        WeaponComp->FireSpecial();
     }
 }
 
