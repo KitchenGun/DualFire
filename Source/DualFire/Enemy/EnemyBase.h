@@ -5,6 +5,7 @@
 #include "CoreMinimal.h"
 #include "GameFramework/Actor.h"
 #include "Enemy/EnemyAttributeInterface.h"
+#include "Core/PoolableActor.h"
 #include "Core/DualFireTypes.h"
 #include "EnemyBase.generated.h"
 
@@ -12,6 +13,7 @@ class USphereComponent;
 class USkeletalMeshComponent;
 class UHealthComponent;
 class UEnemyAIComponent;
+struct FEnemyRow;
 
 /**
  * 최소 적 액터.
@@ -22,7 +24,7 @@ class UEnemyAIComponent;
  * 잔여 기체/GameMode 연결은 다음 청크.
  */
 UCLASS(BlueprintType, Blueprintable)
-class DUALFIRE_API AEnemyBase : public AActor, public IEnemyAttributeInterface
+class DUALFIRE_API AEnemyBase : public AActor, public IEnemyAttributeInterface, public IPoolableActor
 {
 	GENERATED_BODY()
 
@@ -46,6 +48,8 @@ public:
 	AEnemyBase();
 
 	virtual void BeginPlay() override;
+	virtual void OnAcquiredFromPool_Implementation() override;
+	virtual void OnReleasedToPool_Implementation() override;
 
 	/** HP 초기값. HealthComponent의 MaxHealth로 주입 */
 	UPROPERTY(EditDefaultsOnly, BlueprintReadOnly, Category="Enemy", meta=(ClampMin="1"))
@@ -54,6 +58,11 @@ public:
 	/** 이 적의 Ground/Air 속성. 플레이어 탄 매칭에 사용 */
 	UPROPERTY(EditDefaultsOnly, BlueprintReadOnly, Category="Enemy")
 	FEnemyAttribute EnemyAttribute;
+
+	UFUNCTION(BlueprintCallable, Category="Enemy")
+	void InitFromEnemyRow(const FEnemyRow& Row);
+
+	UEnemyAIComponent* GetAIComponent() const { return AIComp; }
 
 	// ── IEnemyAttributeInterface ──────────────────────────────────────────────
 
@@ -73,4 +82,8 @@ private:
 	/** HealthComp.OnDeath 콜백. 적은 잔여 기체 없이 즉시 격파 → Destroy */
 	UFUNCTION()
 	void OnEnemyDeath();
+
+	void RegisterWithStageController();
+	void UnregisterFromStageController();
+	void ReturnToPoolOrDestroy();
 };

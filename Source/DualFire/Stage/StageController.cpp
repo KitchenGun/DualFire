@@ -1,12 +1,17 @@
 // Copyright DualFire. All Rights Reserved.
 
 #include "Stage/StageController.h"
+#include "Core/ActorPoolSubsystem.h"
 #include "Enemy/EnemyBase.h"
+#include "Enemy/EnemyAIComponent.h"
 #include "Camera/StageCameraActor.h"
 #include "GameModes/DualFireGameModeBase.h"
+#include "Weapon/Projectile/BaseProjectile.h"
 #include "DualFire.h"
 
+#include "Engine/DataTable.h"
 #include "Engine/World.h"
+#include "GameFramework/PlayerController.h"
 #include "TimerManager.h"
 #include "Kismet/GameplayStatics.h"
 
@@ -20,10 +25,33 @@ void AStageController::BeginPlay()
 {
 	Super::BeginPlay();
 
+	CachePlayerPawn(UGameplayStatics::GetPlayerPawn(this, 0));
+	if (APlayerController* PC = UGameplayStatics::GetPlayerController(this, 0))
+	{
+		PC->OnPossessedPawnChanged.AddDynamic(this, &AStageController::HandlePossessedPawnChanged);
+	}
+
+	PrewarmPools();
 	BuildActiveWaves();
 	SetState(EStageState::Timeline);
 
 	SetActorTickEnabled(true);
+}
+
+void AStageController::EndPlay(const EEndPlayReason::Type EndPlayReason)
+{
+	if (APlayerController* PC = UGameplayStatics::GetPlayerController(this, 0))
+	{
+		PC->OnPossessedPawnChanged.RemoveDynamic(this, &AStageController::HandlePossessedPawnChanged);
+	}
+
+	for (FTimerHandle& Handle : SequenceSpawnTimerHandles)
+	{
+		GetWorld()->GetTimerManager().ClearTimer(Handle);
+	}
+	SequenceSpawnTimerHandles.Reset();
+
+	Super::EndPlay(EndPlayReason);
 }
 
 void AStageController::Tick(float DeltaTime)
@@ -33,6 +61,10 @@ void AStageController::Tick(float DeltaTime)
 	if (CurrentState == EStageState::Timeline)
 	{
 		TickTimeline(DeltaTime);
+	}
+	if (CurrentState != EStageState::Ended)
+	{
+		TickEnemyAI(DeltaTime);
 	}
 }
 
@@ -47,7 +79,22 @@ void AStageController::BuildActiveWaves()
 	{
 		ActiveWaves = TestWaves;
 	}
-	// else: DataTable 조회 — 미구현 (다음 청크)
+	else if (IsValid(WaveDataTable))
+	{
+		TArray<FWaveRow*> Rows;
+		WaveDataTable->GetAllRows<FWaveRow>(TEXT("StageController.BuildActiveWaves"), Rows);
+		for (const FWaveRow* Row : Rows)
+		{
+			if (Row && (StageID.IsNone() || Row->StageID == StageID))
+			{
+				ActiveWaves.Add(*Row);
+			}
+		}
+	}
+	else
+	{
+		UE_LOG(LogDualFire, Warning, TEXT("[Stage] WaveDataTable 없음 — 웨이브 없음"));
+	}
 
 	// TriggerTime 오름차순 정렬
 	ActiveWaves.Sort([](const FWaveRow& A, const FWaveRow& B)
@@ -106,7 +153,39 @@ void AStageController::SpawnWaveSequential(FWaveRow Wave, int32 AlreadySpawned)
 	FActorSpawnParameters Params;
 	Params.SpawnCollisionHandlingOverride = ESpawnActorCollisionHandlingMethod::AlwaysSpawn;
 
-	GetWorld()->SpawnActor<AEnemyBase>(EnemyClass, SpawnLoc, FRotator::ZeroRotator, Params);
+	AEnemyBase* Enemy = nullptr;
+	if (UActorPoolSubsystem* Pool = GetWorld()->GetSubsystem<UActorPoolSubsystem>())
+	{
+		Enemy = Cast<AEnemyBase>(
+			Pool->AcquireActor(EnemyClass, FTransform(FRotator::ZeroRotator, SpawnLoc)));
+	}
+	else
+	{
+		Enemy = GetWorld()->SpawnActor<AEnemyBase>(EnemyClass, SpawnLoc, FRotator::ZeroRotator, Params);
+	}
+
+	if (IsValid(Enemy))
+	{
+		FEnemyRow EnemyRow;
+		if (FindEnemyRow(Wave.EnemyID, EnemyRow))
+		{
+			Enemy->InitFromEnemyRow(EnemyRow);
+		}
+		else
+		{
+			UE_LOG(LogDualFire, Warning, TEXT("[Stage] EnemyID '%s' 데이터 없음 — BP 기본값 사용"),
+				*Wave.EnemyID.ToString());
+		}
+
+		if (UEnemyAIComponent* AI = Enemy->GetAIComponent())
+		{
+			if (!IsValid(AI->ProjectileClass) && IsValid(EnemyProjectileClass))
+			{
+				AI->ProjectileClass = EnemyProjectileClass;
+			}
+			RegisterEnemyAI(AI);
+		}
+	}
 
 	const int32 NextCount = AlreadySpawned + 1;
 	if (NextCount < Wave.Count && Wave.SpawnInterval > 0.0f)
@@ -115,6 +194,7 @@ void AStageController::SpawnWaveSequential(FWaveRow Wave, int32 AlreadySpawned)
 		FTimerDelegate Del;
 		Del.BindUObject(this, &AStageController::SpawnWaveSequential, Wave, NextCount);
 		GetWorld()->GetTimerManager().SetTimer(SeqHandle, Del, Wave.SpawnInterval, false);
+		SequenceSpawnTimerHandles.Add(SeqHandle);
 	}
 	else if (NextCount < Wave.Count)
 	{
@@ -143,18 +223,22 @@ void AStageController::SetState(EStageState NewState)
 	switch (NewState)
 	{
 	case EStageState::EliteCombat:
-		SetActorTickEnabled(false); // 웨이브 Tick 중단
-		GetWorld()->GetTimerManager().SetTimer(
-			EliteTimeLimitHandle,
-			this,
-			&AStageController::OnEliteTimeLimitExpired,
-			EliteTimeLimit,
-			false);
+		// TODO: 엘리트 구현 전까지 80초 도달을 임시 클리어로 처리한다.
+		if (ADualFireGameModeBase* GM = Cast<ADualFireGameModeBase>(UGameplayStatics::GetGameMode(this)))
+		{
+			GM->OnMissionClear();
+		}
+		SetState(EStageState::Ended);
 		break;
 
 	case EStageState::Ended:
 		SetActorTickEnabled(false);
 		GetWorld()->GetTimerManager().ClearTimer(EliteTimeLimitHandle);
+		for (FTimerHandle& Handle : SequenceSpawnTimerHandles)
+		{
+			GetWorld()->GetTimerManager().ClearTimer(Handle);
+		}
+		SequenceSpawnTimerHandles.Reset();
 		// 결과별 GameMode 호출은 OnEliteDeath / OnEliteTimeLimitExpired에서 수행
 		break;
 
@@ -217,7 +301,7 @@ FVector AStageController::ResolveSpawnAnchor(ESpawnAnchor Anchor, const FVector&
 
 	const FBox2D Bounds = Cam->GetPlayableBounds();
 
-	// X: 화면 우측 바깥에서 스폰
+	// X: 화면 위쪽 바깥에서 스폰 (+X = 진행 방향)
 	const float SpawnX = Bounds.Max.X + SpawnMarginX;
 
 	// Y: 앵커 열에 따라 좌/중/우
@@ -252,4 +336,130 @@ AStageCameraActor* AStageController::GetStageCamera() const
 		return GM->GetStageCamera();
 	}
 	return nullptr;
+}
+
+void AStageController::RegisterEnemyAI(UEnemyAIComponent* AIComponent)
+{
+	if (IsValid(AIComponent))
+	{
+		ActiveEnemyAIComponents.AddUnique(AIComponent);
+	}
+}
+
+void AStageController::UnregisterEnemyAI(UEnemyAIComponent* AIComponent)
+{
+	ActiveEnemyAIComponents.RemoveSingleSwap(AIComponent);
+}
+
+void AStageController::PrewarmPools()
+{
+	UActorPoolSubsystem* Pool = GetWorld() ? GetWorld()->GetSubsystem<UActorPoolSubsystem>() : nullptr;
+	if (!IsValid(Pool))
+	{
+		return;
+	}
+
+	for (const TPair<FName, TSubclassOf<AEnemyBase>>& Pair : EnemyClassMap)
+	{
+		if (IsValid(Pair.Value))
+		{
+			Pool->Prewarm(Pair.Value, EnemyPrewarmCountPerClass);
+		}
+	}
+
+	if (IsValid(EnemyProjectileClass))
+	{
+		Pool->Prewarm(EnemyProjectileClass, EnemyProjectilePrewarmCount);
+	}
+
+	for (TSubclassOf<AActor> ProjectileClass : PlayerProjectilePrewarmClasses)
+	{
+		if (IsValid(ProjectileClass))
+		{
+			Pool->Prewarm(ProjectileClass, PlayerProjectilePrewarmCountPerClass);
+		}
+	}
+}
+
+bool AStageController::FindEnemyRow(FName EnemyID, FEnemyRow& OutEnemyRow) const
+{
+	if (!IsValid(EnemyDataTable) || EnemyID.IsNone())
+	{
+		return false;
+	}
+
+	if (const FEnemyRow* Row = EnemyDataTable->FindRow<FEnemyRow>(
+		EnemyID, TEXT("StageController.FindEnemyRow"), false))
+	{
+		OutEnemyRow = *Row;
+		return true;
+	}
+
+	TArray<FEnemyRow*> Rows;
+	EnemyDataTable->GetAllRows<FEnemyRow>(TEXT("StageController.FindEnemyRow"), Rows);
+	for (const FEnemyRow* Row : Rows)
+	{
+		if (Row && Row->EnemyID == EnemyID)
+		{
+			OutEnemyRow = *Row;
+			return true;
+		}
+	}
+
+	return false;
+}
+
+void AStageController::TickEnemyAI(float DeltaTime)
+{
+	AStageCameraActor* Camera = GetStageCamera();
+	if (!IsValid(Camera))
+	{
+		return;
+	}
+
+	const FBox2D Bounds = Camera->GetPlayableBounds();
+	const FVector PlayerLocation = GetCachedPlayerLocation();
+
+	for (int32 Index = ActiveEnemyAIComponents.Num() - 1; Index >= 0; --Index)
+	{
+		UEnemyAIComponent* AI = ActiveEnemyAIComponents[Index];
+		if (!IsValid(AI) || !IsValid(AI->GetOwner()) || AI->GetOwner()->IsHidden())
+		{
+			ActiveEnemyAIComponents.RemoveAtSwap(Index);
+			continue;
+		}
+
+		AI->UpdateAI(DeltaTime, Bounds, PlayerLocation);
+	}
+}
+
+FVector AStageController::GetCachedPlayerLocation()
+{
+	if (!CachedPlayerPawn.IsValid())
+	{
+		CachePlayerPawn(UGameplayStatics::GetPlayerPawn(this, 0));
+	}
+
+	if (CachedPlayerPawn.IsValid())
+	{
+		CachedPlayerLocation = CachedPlayerPawn->GetActorLocation();
+		bHasCachedPlayerLocation = true;
+	}
+
+	return bHasCachedPlayerLocation ? CachedPlayerLocation : FVector::ZeroVector;
+}
+
+void AStageController::CachePlayerPawn(APawn* NewPawn)
+{
+	CachedPlayerPawn = NewPawn;
+	if (CachedPlayerPawn.IsValid())
+	{
+		CachedPlayerLocation = CachedPlayerPawn->GetActorLocation();
+		bHasCachedPlayerLocation = true;
+	}
+}
+
+void AStageController::HandlePossessedPawnChanged(APawn* OldPawn, APawn* NewPawn)
+{
+	CachePlayerPawn(NewPawn);
 }

@@ -7,6 +7,7 @@
 #include "DualFireTypes.h"
 #include "DualFireDataTypes.generated.h"
 
+class USkeletalMesh;
 class UStaticMesh;
 class UTexture2D;
 class ABaseProjectile;
@@ -114,7 +115,7 @@ struct DUALFIRE_API FEnemyRow : public FTableRowBase
 	int32 MaxHealth = 1;
 
 	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Enemy")
-	TSoftObjectPtr<UStaticMesh> Mesh;
+	TSoftObjectPtr<USkeletalMesh> Mesh;
 
 	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Enemy")
 	EEnemyMovementPattern MovementPattern = EEnemyMovementPattern::Linear;

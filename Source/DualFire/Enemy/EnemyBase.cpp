@@ -1,13 +1,19 @@
 // Copyright DualFire. All Rights Reserved.
 
 #include "Enemy/EnemyBase.h"
+#include "Core/ActorPoolSubsystem.h"
+#include "Core/DualFireDataTypes.h"
 #include "Enemy/EnemyAIComponent.h"
+#include "GameModes/DualFireGameModeBase.h"
 #include "Health/HealthComponent.h"
+#include "Stage/StageController.h"
 #include "Core/DualFireCollisionChannels.h"
 #include "DualFire.h"
 
 #include "Components/SphereComponent.h"
 #include "Components/SkeletalMeshComponent.h"
+#include "Engine/SkeletalMesh.h"
+#include "Kismet/GameplayStatics.h"
 
 AEnemyBase::AEnemyBase()
 {
@@ -41,8 +47,91 @@ void AEnemyBase::BeginPlay()
 	HealthComp->InitFromData(MaxHealth, 0, 1.0f, 0.0f);
 }
 
+void AEnemyBase::OnAcquiredFromPool_Implementation()
+{
+	SetActorHiddenInGame(false);
+	SetActorEnableCollision(true);
+	if (HitboxComp)
+	{
+		HitboxComp->SetCollisionEnabled(ECollisionEnabled::QueryOnly);
+		HitboxComp->SetGenerateOverlapEvents(true);
+	}
+	if (AIComp)
+	{
+		AIComp->ResetRuntimeState();
+	}
+	RegisterWithStageController();
+}
+
+void AEnemyBase::OnReleasedToPool_Implementation()
+{
+	UnregisterFromStageController();
+	if (AIComp)
+	{
+		AIComp->StopAttackTimer();
+	}
+	if (HitboxComp)
+	{
+		HitboxComp->SetGenerateOverlapEvents(false);
+		HitboxComp->SetCollisionEnabled(ECollisionEnabled::NoCollision);
+	}
+}
+
+void AEnemyBase::InitFromEnemyRow(const FEnemyRow& Row)
+{
+	MaxHealth = FMath::Max(1, Row.MaxHealth);
+	EnemyAttribute = Row.Attribute;
+
+	if (USkeletalMesh* LoadedMesh = Row.Mesh.LoadSynchronous())
+	{
+		Mesh->SetSkeletalMesh(LoadedMesh);
+	}
+
+	if (HealthComp)
+	{
+		HealthComp->InitFromData(MaxHealth, 0, 1.0f, 0.0f);
+	}
+
+	if (AIComp)
+	{
+		AIComp->InitFromEnemyRow(Row);
+	}
+}
+
 void AEnemyBase::OnEnemyDeath()
 {
 	UE_LOG(LogDualFire, Log, TEXT("[Enemy] %s 격파"), *GetName());
+	ReturnToPoolOrDestroy();
+}
+
+void AEnemyBase::RegisterWithStageController()
+{
+	ADualFireGameModeBase* GM = Cast<ADualFireGameModeBase>(UGameplayStatics::GetGameMode(this));
+	if (IsValid(GM) && IsValid(GM->GetStageController()) && IsValid(AIComp))
+	{
+		GM->GetStageController()->RegisterEnemyAI(AIComp);
+	}
+}
+
+void AEnemyBase::UnregisterFromStageController()
+{
+	ADualFireGameModeBase* GM = Cast<ADualFireGameModeBase>(UGameplayStatics::GetGameMode(this));
+	if (IsValid(GM) && IsValid(GM->GetStageController()) && IsValid(AIComp))
+	{
+		GM->GetStageController()->UnregisterEnemyAI(AIComp);
+	}
+}
+
+void AEnemyBase::ReturnToPoolOrDestroy()
+{
+	if (UWorld* World = GetWorld())
+	{
+		if (UActorPoolSubsystem* Pool = World->GetSubsystem<UActorPoolSubsystem>())
+		{
+			Pool->ReleaseActor(this);
+			return;
+		}
+	}
+
 	Destroy();
 }

@@ -10,6 +10,10 @@
 
 class AEnemyBase;
 class AStageCameraActor;
+class ABaseProjectile;
+class APawn;
+class UDataTable;
+class UEnemyAIComponent;
 
 DECLARE_DYNAMIC_MULTICAST_DELEGATE_OneParam(FOnStageStateChanged, EStageState, NewState);
 
@@ -34,6 +38,7 @@ public:
 	AStageController();
 
 	virtual void BeginPlay() override;
+	virtual void EndPlay(const EEndPlayReason::Type EndPlayReason) override;
 	virtual void Tick(float DeltaTime) override;
 
 	// ── 상태 ─────────────────────────────────────────────────────────────────
@@ -59,6 +64,15 @@ public:
 	/** EliteCombat 제한 시간(초). 이 시간 내에 처리 못하면 EliteCombat → Ended (실패) */
 	UPROPERTY(EditDefaultsOnly, BlueprintReadWrite, Category="Stage", meta=(ClampMin="1.0"))
 	float EliteTimeLimit = 60.0f;
+
+	UPROPERTY(EditDefaultsOnly, BlueprintReadWrite, Category="Stage|Data")
+	FName StageID = TEXT("STAGE_TEST");
+
+	UPROPERTY(EditDefaultsOnly, BlueprintReadWrite, Category="Stage|Data")
+	TObjectPtr<UDataTable> WaveDataTable;
+
+	UPROPERTY(EditDefaultsOnly, BlueprintReadWrite, Category="Stage|Data")
+	TObjectPtr<UDataTable> EnemyDataTable;
 
 	// ── 적 스폰 ───────────────────────────────────────────────────────────────
 
@@ -90,6 +104,21 @@ public:
 	UPROPERTY(EditDefaultsOnly, BlueprintReadWrite, Category="Stage|Debug")
 	TArray<FWaveRow> TestWaves;
 
+	UPROPERTY(EditDefaultsOnly, BlueprintReadWrite, Category="Stage|Pool", meta=(ClampMin="0"))
+	int32 EnemyPrewarmCountPerClass = 32;
+
+	UPROPERTY(EditDefaultsOnly, BlueprintReadWrite, Category="Stage|Pool")
+	TSubclassOf<ABaseProjectile> EnemyProjectileClass;
+
+	UPROPERTY(EditDefaultsOnly, BlueprintReadWrite, Category="Stage|Pool", meta=(ClampMin="0"))
+	int32 EnemyProjectilePrewarmCount = 128;
+
+	UPROPERTY(EditDefaultsOnly, BlueprintReadWrite, Category="Stage|Pool")
+	TArray<TSubclassOf<AActor>> PlayerProjectilePrewarmClasses;
+
+	UPROPERTY(EditDefaultsOnly, BlueprintReadWrite, Category="Stage|Pool", meta=(ClampMin="0"))
+	int32 PlayerProjectilePrewarmCountPerClass = 64;
+
 	// ── 공개 API ──────────────────────────────────────────────────────────────
 
 	/** EliteCombat 단계에서 엘리트 적이 격파(사망)되면 호출 → Ended(클리어)로 전환 */
@@ -98,6 +127,9 @@ public:
 
 	UFUNCTION(BlueprintPure, Category="Stage")
 	float GetElapsedTime() const { return ElapsedTime; }
+
+	void RegisterEnemyAI(UEnemyAIComponent* AIComponent);
+	void UnregisterEnemyAI(UEnemyAIComponent* AIComponent);
 
 private:
 	/** TriggerTime 오름차순으로 정렬된 실행 대상 웨이브 목록 */
@@ -108,6 +140,15 @@ private:
 
 	/** EliteCombat 제한 시간 타이머 핸들 */
 	FTimerHandle EliteTimeLimitHandle;
+
+	TArray<FTimerHandle> SequenceSpawnTimerHandles;
+
+	UPROPERTY()
+	TArray<TObjectPtr<UEnemyAIComponent>> ActiveEnemyAIComponents;
+
+	TWeakObjectPtr<APawn> CachedPlayerPawn;
+	FVector CachedPlayerLocation = FVector::ZeroVector;
+	bool bHasCachedPlayerLocation = false;
 
 	/** ActiveWaves를 구성하고 TriggerTime 기준 정렬 (BeginPlay) */
 	void BuildActiveWaves();
@@ -135,4 +176,13 @@ private:
 
 	/** 엘리트 제한 시간 만료 콜백 → Ended(실패) */
 	void OnEliteTimeLimitExpired();
+
+	void PrewarmPools();
+	bool FindEnemyRow(FName EnemyID, FEnemyRow& OutEnemyRow) const;
+	void TickEnemyAI(float DeltaTime);
+	FVector GetCachedPlayerLocation();
+	void CachePlayerPawn(APawn* NewPawn);
+
+	UFUNCTION()
+	void HandlePossessedPawnChanged(APawn* OldPawn, APawn* NewPawn);
 };

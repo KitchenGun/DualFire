@@ -1,6 +1,7 @@
 // Copyright DualFire. All Rights Reserved.
 
 #include "Enemy/EnemyAIComponent.h"
+#include "Core/ActorPoolSubsystem.h"
 #include "Core/DualFireCollisionChannels.h"
 #include "DualFire.h"
 
@@ -9,12 +10,68 @@
 
 UEnemyAIComponent::UEnemyAIComponent()
 {
-	PrimaryComponentTick.bCanEverTick = true;
+	PrimaryComponentTick.bCanEverTick = false;
 }
 
 void UEnemyAIComponent::BeginPlay()
 {
 	Super::BeginPlay();
+
+	ResetRuntimeState();
+	StartAttackTimer();
+}
+
+void UEnemyAIComponent::UpdateAI(float DeltaTime, const FBox2D& PlayableBounds, const FVector& PlayerLocation)
+{
+	CachedPlayerLocation = PlayerLocation;
+	bHasCachedPlayerLocation = true;
+
+	switch (MovementPattern)
+	{
+	case EEnemyMovementPattern::Linear:
+		TickLinearMovement(DeltaTime);
+		break;
+	case EEnemyMovementPattern::EnterStop:
+		TickEnterStopMovement(DeltaTime);
+		break;
+	default:
+		break;
+	}
+
+	if (AActor* Owner = GetOwner())
+	{
+		if (Owner->GetActorLocation().X < PlayableBounds.Min.X - DespawnMargin)
+		{
+			ReleaseOwnerToPool();
+		}
+	}
+}
+
+void UEnemyAIComponent::InitFromEnemyRow(const FEnemyRow& Row)
+{
+	MovementPattern = Row.MovementPattern;
+	AttackPattern = Row.AttackPattern;
+	ProjectileDamage = FMath::Max(1.0f, static_cast<float>(Row.AttackDamage));
+	ProjectileSpeed = FMath::Max(100.0f, Row.EnemyProjectileSpeed);
+	AttackInterval = FMath::Max(0.1f, Row.FireInterval);
+
+	ResetRuntimeState();
+	StartAttackTimer();
+}
+
+void UEnemyAIComponent::ResetRuntimeState()
+{
+	if (AActor* Owner = GetOwner())
+	{
+		SpawnLocation = Owner->GetActorLocation();
+	}
+	bEnterStopReached = false;
+	bHasCachedPlayerLocation = false;
+}
+
+void UEnemyAIComponent::StartAttackTimer()
+{
+	StopAttackTimer();
 
 	if (AttackPattern != EEnemyAttackPattern::None && IsValid(ProjectileClass))
 	{
@@ -30,17 +87,11 @@ void UEnemyAIComponent::BeginPlay()
 	}
 }
 
-void UEnemyAIComponent::TickComponent(float DeltaTime, ELevelTick TickType, FActorComponentTickFunction* ThisTickFunction)
+void UEnemyAIComponent::StopAttackTimer()
 {
-	Super::TickComponent(DeltaTime, TickType, ThisTickFunction);
-
-	switch (MovementPattern)
+	if (UWorld* World = GetWorld())
 	{
-	case EEnemyMovementPattern::Linear:
-		TickLinearMovement(DeltaTime);
-		break;
-	default:
-		break;
+		World->GetTimerManager().ClearTimer(AttackTimerHandle);
 	}
 }
 
@@ -53,11 +104,59 @@ void UEnemyAIComponent::TickLinearMovement(float DeltaTime)
 	}
 
 	Owner->AddActorWorldOffset(FVector(-MoveSpeed * DeltaTime, 0.0f, 0.0f));
+}
 
-	if (Owner->GetActorLocation().X < DestroyBelowX)
+void UEnemyAIComponent::TickEnterStopMovement(float DeltaTime)
+{
+	if (bEnterStopReached)
 	{
-		Owner->Destroy();
+		return;
 	}
+
+	AActor* Owner = GetOwner();
+	if (!IsValid(Owner))
+	{
+		return;
+	}
+
+	const FVector CurrentLocation = Owner->GetActorLocation();
+	const float TargetX = SpawnLocation.X - EnterDistance;
+	const float NextX = FMath::Max(CurrentLocation.X - MoveSpeed * DeltaTime, TargetX);
+	Owner->SetActorLocation(FVector(NextX, CurrentLocation.Y, CurrentLocation.Z));
+
+	bEnterStopReached = NextX <= TargetX + KINDA_SMALL_NUMBER;
+}
+
+void UEnemyAIComponent::ReleaseOwnerToPool()
+{
+	AActor* Owner = GetOwner();
+	if (!IsValid(Owner))
+	{
+		return;
+	}
+
+	if (UWorld* World = GetWorld())
+	{
+		if (UActorPoolSubsystem* Pool = World->GetSubsystem<UActorPoolSubsystem>())
+		{
+			Pool->ReleaseActor(Owner);
+			return;
+		}
+	}
+
+	Owner->Destroy();
+}
+
+FVector UEnemyAIComponent::GetAimDirection(const FVector& ProjectileSpawnLocation) const
+{
+	if (!bHasCachedPlayerLocation)
+	{
+		return FVector(-1.0f, 0.0f, 0.0f);
+	}
+
+	FVector Dir = CachedPlayerLocation - ProjectileSpawnLocation;
+	Dir.Z = 0.0f;
+	return Dir.IsNearlyZero() ? FVector(-1.0f, 0.0f, 0.0f) : Dir.GetSafeNormal();
 }
 
 void UEnemyAIComponent::FireSingle()
@@ -74,26 +173,36 @@ void UEnemyAIComponent::FireSingle()
 		return;
 	}
 
-	const FVector SpawnLocation = Owner->GetActorLocation() + MuzzleOffset;
+	const FVector ProjectileSpawnLocation = Owner->GetActorLocation() + MuzzleOffset;
 
-	FActorSpawnParameters Params;
-	Params.Owner     = Owner;
-	Params.Instigator = Cast<APawn>(Owner);
-	Params.SpawnCollisionHandlingOverride = ESpawnActorCollisionHandlingMethod::AlwaysSpawn;
-
-	ABaseProjectile* Projectile = World->SpawnActor<ABaseProjectile>(
-		ProjectileClass, SpawnLocation, FRotator::ZeroRotator, Params);
+	ABaseProjectile* Projectile = nullptr;
+	if (UActorPoolSubsystem* Pool = World->GetSubsystem<UActorPoolSubsystem>())
+	{
+		Projectile = Cast<ABaseProjectile>(
+			Pool->AcquireActor(ProjectileClass, FTransform(FRotator::ZeroRotator, ProjectileSpawnLocation)));
+	}
+	else
+	{
+		FActorSpawnParameters Params;
+		Params.Owner = Owner;
+		Params.Instigator = Cast<APawn>(Owner);
+		Params.SpawnCollisionHandlingOverride = ESpawnActorCollisionHandlingMethod::AlwaysSpawn;
+		Projectile = World->SpawnActor<ABaseProjectile>(
+			ProjectileClass, ProjectileSpawnLocation, FRotator::ZeroRotator, Params);
+	}
 
 	if (!IsValid(Projectile))
 	{
 		return;
 	}
+	Projectile->SetOwner(Owner);
+	Projectile->SetInstigator(Cast<APawn>(Owner));
 
 	FProjectileRuntimeConfig Config;
 	Config.CollisionProfileName  = DualFireProfile::EnemyBullet;
 	Config.TargetChannel         = DualFireChannel::PlayerHitbox;
 	Config.bUseAttributeMatching = false;
-	Config.VelocityDirection     = FVector(-1.0f, 0.0f, 0.0f);
+	Config.VelocityDirection     = GetAimDirection(ProjectileSpawnLocation);
 	Config.Damage                = ProjectileDamage;
 	Config.ProjectileSpeed       = ProjectileSpeed;
 	Config.HitBehavior           = EHitBehavior::Destroy;

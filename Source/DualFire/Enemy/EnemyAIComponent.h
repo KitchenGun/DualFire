@@ -4,6 +4,7 @@
 
 #include "CoreMinimal.h"
 #include "Components/ActorComponent.h"
+#include "Core/DualFireDataTypes.h"
 #include "Core/DualFireTypes.h"
 #include "Weapon/Projectile/BaseProjectile.h"
 #include "EnemyAIComponent.generated.h"
@@ -27,7 +28,11 @@ public:
 	UEnemyAIComponent();
 
 	virtual void BeginPlay() override;
-	virtual void TickComponent(float DeltaTime, ELevelTick TickType, FActorComponentTickFunction* ThisTickFunction) override;
+
+	void UpdateAI(float DeltaTime, const FBox2D& PlayableBounds, const FVector& PlayerLocation);
+	void InitFromEnemyRow(const FEnemyRow& Row);
+	void ResetRuntimeState();
+	void StopAttackTimer();
 
 	// ── 이동 ─────────────────────────────────────────────────────────────────
 
@@ -38,9 +43,13 @@ public:
 	UPROPERTY(EditDefaultsOnly, BlueprintReadWrite, Category="AI|Movement", meta=(ClampMin="0.0"))
 	float MoveSpeed = 300.0f;
 
-	/** 이 위치(월드 X)보다 뒤로 나가면 자동 Destroy. 화면 밖 청소 */
-	UPROPERTY(EditDefaultsOnly, BlueprintReadWrite, Category="AI|Movement")
-	float DestroyBelowX = -2000.0f;
+	/** EnterStop: 스폰 지점에서 -X 방향으로 이 거리만큼 진입 후 정지 */
+	UPROPERTY(EditDefaultsOnly, BlueprintReadWrite, Category="AI|Movement", meta=(ClampMin="0.0"))
+	float EnterDistance = 400.0f;
+
+	/** 화면 아래쪽 이탈 판정 여유 거리 */
+	UPROPERTY(EditDefaultsOnly, BlueprintReadWrite, Category="AI|Movement", meta=(ClampMin="0.0"))
+	float DespawnMargin = 300.0f;
 
 	// ── 공격 ─────────────────────────────────────────────────────────────────
 
@@ -75,8 +84,16 @@ private:
 	/** Single 공격 주기 타이머 핸들 */
 	FTimerHandle AttackTimerHandle;
 
-	/** Linear 이동 처리 — X- 방향 등속 이동, 화면 밖이면 Destroy */
+	FVector SpawnLocation = FVector::ZeroVector;
+	FVector CachedPlayerLocation = FVector::ZeroVector;
+	bool bHasCachedPlayerLocation = false;
+	bool bEnterStopReached = false;
+
+	void StartAttackTimer();
 	void TickLinearMovement(float DeltaTime);
+	void TickEnterStopMovement(float DeltaTime);
+	void ReleaseOwnerToPool();
+	FVector GetAimDirection(const FVector& SpawnLocation) const;
 
 	/** 단발 발사 — 적 탄 스폰 후 ApplyRuntimeConfig로 적 탄 설정 주입 */
 	void FireSingle();
