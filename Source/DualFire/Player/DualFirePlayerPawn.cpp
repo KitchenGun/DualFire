@@ -107,11 +107,21 @@ void ADualFirePlayerPawn::SetupPlayerInputComponent(UInputComponent* PlayerInput
         EIC->BindAction(PrimaryIA, ETriggerEvent::Triggered,
             this, &ADualFirePlayerPawn::OnFirePrimaryInput);
     }
+    else
+    {
+        UE_LOG(LogTemp, Warning,
+            TEXT("ADualFirePlayerPawn: IA_FirePrimary 에셋이 할당되지 않았습니다."));
+    }
 
     if (UInputAction* SpecialIA = IA_FireSpecial.LoadSynchronous())
     {
         EIC->BindAction(SpecialIA, ETriggerEvent::Triggered,
             this, &ADualFirePlayerPawn::OnFireSpecialInput);
+    }
+    else
+    {
+        UE_LOG(LogTemp, Warning,
+            TEXT("ADualFirePlayerPawn: IA_FireSpecial 에셋이 할당되지 않았습니다."));
     }
 }
 

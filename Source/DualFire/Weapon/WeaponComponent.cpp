@@ -127,6 +127,23 @@ void UWeaponComponent::FireLoadoutSlot(ELoadoutSlot Slot)
 		return;
 	}
 
+	switch (SlotState->WeaponData.FireMode)
+	{
+	case EFireMode::SingleShot:
+		// TODO: SingleShot(클릭당 1발) 미구현 — 구현 전까지 Auto와 동일하게 폴백
+		if (!SlotState->bSingleShotWarningLogged)
+		{
+			UE_LOG(LogDualFire, Warning,
+				TEXT("[WeaponComp] FireMode SingleShot not implemented for %s — falling back to Auto"),
+				*SlotState->WeaponID.ToString());
+			SlotState->bSingleShotWarningLogged = true;
+		}
+		break;
+	case EFireMode::Auto:
+	default:
+		break;
+	}
+
 	AActor* Owner = GetOwner();
 	UWorld* World = GetWorld();
 	if (!IsValid(Owner) || !IsValid(World))
@@ -225,6 +242,13 @@ bool UWeaponComponent::EquipWeaponSlot(ELoadoutSlot Slot, FName WeaponID, TSubcl
 	if (!ULoadoutDataLibrary::IsWeaponCategoryCompatible(Slot, WeaponRow.Category))
 	{
 		UE_LOG(LogDualFire, Warning, TEXT("[WeaponComp] Weapon category mismatch: %s"), *WeaponID.ToString());
+		return false;
+	}
+
+	// 기획(프로토타입 §5.2.5): 발사 속도 0 이하는 데이터 오류 — 해당 무장은 발사하지 않는다
+	if (WeaponRow.FireRate <= 0.f)
+	{
+		UE_LOG(LogDualFire, Warning, TEXT("[WeaponComp] Invalid FireRate (<= 0) for weapon %s — equip rejected as data error"), *WeaponID.ToString());
 		return false;
 	}
 

@@ -18,6 +18,8 @@ struct FWeaponSlotState
 	TSubclassOf<ABaseProjectile> ProjectileClass;
 	FTimerHandle CooldownHandle;
 	bool bCooldownActive = false;
+	// SingleShot 미구현 폴백 경고를 슬롯당 1회로 제한 (Triggered 연사로 인한 로그 스팸 방지)
+	bool bSingleShotWarningLogged = false;
 
 	void Reset(ELoadoutSlot InSlot)
 	{
@@ -27,6 +29,7 @@ struct FWeaponSlotState
 		ProjectileClass = nullptr;
 		CooldownHandle.Invalidate();
 		bCooldownActive = false;
+		bSingleShotWarningLogged = false;
 	}
 };
 
