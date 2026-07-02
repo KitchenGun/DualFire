@@ -5,6 +5,7 @@
 #include "CoreMinimal.h"
 #include "GameFramework/Actor.h"
 #include "Core/DualFireTypes.h"
+#include "Core/PoolableActor.h"
 #include "BaseProjectile.generated.h"
 
 class USphereComponent;
@@ -68,7 +69,7 @@ struct DUALFIRE_API FProjectileRuntimeConfig
  * 적과 Overlap 시 속성 비교 → 일치하면 데미지, 불일치하면 관통 진행.
  */
 UCLASS(Abstract, BlueprintType, Blueprintable)
-class DUALFIRE_API ABaseProjectile : public AActor
+class DUALFIRE_API ABaseProjectile : public AActor, public IPoolableActor
 {
 	GENERATED_BODY()
 
@@ -86,6 +87,10 @@ public:
 	ABaseProjectile();
 
 	virtual void BeginPlay() override;
+	virtual void LifeSpanExpired() override;
+
+	virtual void OnAcquiredFromPool_Implementation() override;
+	virtual void OnReleasedToPool_Implementation() override;
 
 	// ── 무장 속성 (서브클래스 생성자에서 설정, 런타임엔 ApplyRuntimeConfig로 덮어씀) ──
 
@@ -158,4 +163,6 @@ private:
 
 	/** false이면 속성 비교 없이 무조건 히트 */
 	bool bUseAttributeMatching = true;
+
+	void ReturnToPoolOrDestroy();
 };

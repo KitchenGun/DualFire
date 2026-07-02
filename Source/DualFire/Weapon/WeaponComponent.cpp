@@ -2,6 +2,7 @@
 
 #include "Weapon/WeaponComponent.h"
 
+#include "Core/ActorPoolSubsystem.h"
 #include "Core/LoadoutDataLibrary.h"
 #include "DualFire.h"
 #include "Engine/DataTable.h"
@@ -167,16 +168,27 @@ void UWeaponComponent::FireLoadoutSlot(ELoadoutSlot Slot)
 	SpawnParams.Owner = Owner;
 	SpawnParams.SpawnCollisionHandlingOverride = ESpawnActorCollisionHandlingMethod::AlwaysSpawn;
 
-	ABaseProjectile* Projectile = World->SpawnActor<ABaseProjectile>(
-		SlotState->ProjectileClass,
-		SpawnLocation,
-		SpawnRotation,
-		SpawnParams);
+	ABaseProjectile* Projectile = nullptr;
+	if (UActorPoolSubsystem* Pool = World->GetSubsystem<UActorPoolSubsystem>())
+	{
+		Projectile = Cast<ABaseProjectile>(
+			Pool->AcquireActor(SlotState->ProjectileClass, FTransform(SpawnRotation, SpawnLocation)));
+	}
+	else
+	{
+		Projectile = World->SpawnActor<ABaseProjectile>(
+			SlotState->ProjectileClass,
+			SpawnLocation,
+			SpawnRotation,
+			SpawnParams);
+	}
 
 	if (!IsValid(Projectile))
 	{
 		return;
 	}
+	Projectile->SetOwner(Owner);
+	Projectile->SetInstigator(Cast<APawn>(Owner));
 
 	Projectile->ApplyRuntimeConfig(ULoadoutDataLibrary::MakeProjectileRuntimeConfig(SlotState->WeaponData));
 

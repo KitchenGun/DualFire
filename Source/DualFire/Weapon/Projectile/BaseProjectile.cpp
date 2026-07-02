@@ -1,6 +1,7 @@
 // Copyright DualFire. All Rights Reserved.
 
 #include "Weapon/Projectile/BaseProjectile.h"
+#include "Core/ActorPoolSubsystem.h"
 #include "Components/SphereComponent.h"
 #include "GameFramework/ProjectileMovementComponent.h"
 #include "Kismet/GameplayStatics.h"
@@ -46,6 +47,52 @@ void ABaseProjectile::BeginPlay()
 	CollisionComp->OnComponentBeginOverlap.AddDynamic(this, &ABaseProjectile::OnProjectileOverlapBegin);
 }
 
+void ABaseProjectile::LifeSpanExpired()
+{
+	ReturnToPoolOrDestroy();
+}
+
+void ABaseProjectile::OnAcquiredFromPool_Implementation()
+{
+	AlreadyHitActors.Reset();
+	PenetrationCount = 0;
+
+	if (CollisionComp)
+	{
+		CollisionComp->SetCollisionEnabled(ECollisionEnabled::QueryOnly);
+		CollisionComp->SetGenerateOverlapEvents(true);
+		CollisionComp->ClearMoveIgnoreActors();
+	}
+
+	if (ProjectileMovement)
+	{
+		ProjectileMovement->Activate(true);
+		ProjectileMovement->StopMovementImmediately();
+	}
+
+	SetLifeSpan(LifeSpan);
+}
+
+void ABaseProjectile::OnReleasedToPool_Implementation()
+{
+	AlreadyHitActors.Reset();
+	PenetrationCount = 0;
+	SetLifeSpan(0.0f);
+
+	if (CollisionComp)
+	{
+		CollisionComp->SetGenerateOverlapEvents(false);
+		CollisionComp->SetCollisionEnabled(ECollisionEnabled::NoCollision);
+		CollisionComp->ClearMoveIgnoreActors();
+	}
+
+	if (ProjectileMovement)
+	{
+		ProjectileMovement->StopMovementImmediately();
+		ProjectileMovement->Deactivate();
+	}
+}
+
 void ABaseProjectile::ApplyRuntimeConfig(const FProjectileRuntimeConfig& RuntimeConfig)
 {
 	AttributeArray = RuntimeConfig.AttributeArray;
@@ -65,6 +112,17 @@ void ABaseProjectile::ApplyRuntimeConfig(const FProjectileRuntimeConfig& Runtime
 	if (!RuntimeConfig.CollisionProfileName.IsNone() && IsValid(CollisionComp))
 	{
 		CollisionComp->SetCollisionProfileName(RuntimeConfig.CollisionProfileName);
+	}
+
+	if (CollisionComp)
+	{
+		CollisionComp->ClearMoveIgnoreActors();
+		if (AActor* InstigatorPawn = GetInstigator())
+		{
+			CollisionComp->IgnoreActorWhenMoving(InstigatorPawn, true);
+		}
+		CollisionComp->SetGenerateOverlapEvents(true);
+		CollisionComp->SetCollisionEnabled(ECollisionEnabled::QueryOnly);
 	}
 
 	if (ProjectileMovement)
@@ -116,12 +174,12 @@ void ABaseProjectile::OnProjectileOverlapBegin(
 			++PenetrationCount;
 			if (PenetrationLimit <= 0 || PenetrationCount >= PenetrationLimit)
 			{
-				Destroy();
+				ReturnToPoolOrDestroy();
 			}
 			break;
 		case EHitBehavior::Destroy:
 		default:
-			Destroy();
+			ReturnToPoolOrDestroy();
 			break;
 		}
 	}
@@ -154,4 +212,18 @@ bool ABaseProjectile::CheckAttributeMatch(AActor* OtherActor) const
 		EnemyAttributes = FEnemyAttribute::FromAttribute(IEnemyAttributeInterface::Execute_GetEnemyAttribute(OtherActor));
 	}
 	return FEnemyAttribute::IsMatch(AttributeArray, EnemyAttributes);
+}
+
+void ABaseProjectile::ReturnToPoolOrDestroy()
+{
+	if (UWorld* World = GetWorld())
+	{
+		if (UActorPoolSubsystem* Pool = World->GetSubsystem<UActorPoolSubsystem>())
+		{
+			Pool->ReleaseActor(this);
+			return;
+		}
+	}
+
+	Destroy();
 }
