@@ -5,6 +5,7 @@
 #include "Core/LoadoutDataLibrary.h"
 #include "DualFire.h"
 #include "Engine/DataTable.h"
+#include "Engine/Engine.h"
 #include "Engine/World.h"
 #include "TimerManager.h"
 #include "UObject/ConstructorHelpers.h"
@@ -95,11 +96,13 @@ void UWeaponComponent::FirePrimary()
 	FireLoadoutSlot(ELoadoutSlot::PrimaryWeapon);
 }
 
-void UWeaponComponent::FireSpecial()
+void UWeaponComponent::FireSpecial1()
 {
-	// 각 슬롯은 FireLoadoutSlot 내부에서 개별 쿨다운을 체크하므로
-	// 여기서는 순서대로 호출하기만 하면 "쿨타임 비공유, 준비된 슬롯만 발사" 요구사항이 만족된다.
 	FireLoadoutSlot(ELoadoutSlot::SpecialWeapon1);
+}
+
+void UWeaponComponent::FireSpecial2()
+{
 	FireLoadoutSlot(ELoadoutSlot::SpecialWeapon2);
 }
 
@@ -108,9 +111,14 @@ bool UWeaponComponent::CanFirePrimary() const
 	return CanFireLoadoutSlot(ELoadoutSlot::PrimaryWeapon);
 }
 
-bool UWeaponComponent::CanFireSpecial() const
+bool UWeaponComponent::CanFireSpecial1() const
 {
-	return CanFireLoadoutSlot(ELoadoutSlot::SpecialWeapon1) || CanFireLoadoutSlot(ELoadoutSlot::SpecialWeapon2);
+	return CanFireLoadoutSlot(ELoadoutSlot::SpecialWeapon1);
+}
+
+bool UWeaponComponent::CanFireSpecial2() const
+{
+	return CanFireLoadoutSlot(ELoadoutSlot::SpecialWeapon2);
 }
 
 void UWeaponComponent::FireLoadoutSlot(ELoadoutSlot Slot)
@@ -184,6 +192,31 @@ void UWeaponComponent::FireLoadoutSlot(ELoadoutSlot Slot)
 		false);
 
 	UE_LOG(LogDualFire, Verbose, TEXT("[WeaponComp] Fired %s"), *SlotState->WeaponID.ToString());
+
+#if !UE_BUILD_SHIPPING
+	// 발사 중인 무장을 로그가 아닌 화면에 표시 — 어떤 슬롯이 무엇을 쐈는지 즉시 육안 식별 가능하도록.
+	// 슬롯별 고정 키(연사 중 줄 쌓임 방지) + 슬롯별 색상으로 구분.
+	if (GEngine)
+	{
+		static const int32 OnScreenMessageKeyBase = 5000;
+		FColor MessageColor = FColor::White;
+		switch (Slot)
+		{
+		case ELoadoutSlot::PrimaryWeapon:  MessageColor = FColor::Cyan;   break;
+		case ELoadoutSlot::SpecialWeapon1: MessageColor = FColor::Yellow; break;
+		case ELoadoutSlot::SpecialWeapon2: MessageColor = FColor::Orange; break;
+		default: break;
+		}
+
+		GEngine->AddOnScreenDebugMessage(
+			OnScreenMessageKeyBase + static_cast<int32>(Slot),
+			1.0f,
+			MessageColor,
+			FString::Printf(TEXT("[%s] Fired %s"),
+				*UEnum::GetDisplayValueAsText(Slot).ToString(),
+				*SlotState->WeaponID.ToString()));
+	}
+#endif
 }
 
 bool UWeaponComponent::CanFireLoadoutSlot(ELoadoutSlot Slot) const

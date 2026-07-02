@@ -86,9 +86,13 @@ public:
     UPROPERTY(EditDefaultsOnly, BlueprintReadOnly, Category="Input")
     TSoftObjectPtr<UInputAction> IA_FirePrimary;
 
-    /** 특수무장 슬롯 1+2 발사 (키보드 X, 게임패드 B) */
+    /** 특수무장 슬롯 1 발사 (키보드 X, 게임패드 B) */
     UPROPERTY(EditDefaultsOnly, BlueprintReadOnly, Category="Input")
-    TSoftObjectPtr<UInputAction> IA_FireSpecial;
+    TSoftObjectPtr<UInputAction> IA_FireSpecial1;
+
+    /** 특수무장 슬롯 2 발사 (키보드 C, 게임패드 X) */
+    UPROPERTY(EditDefaultsOnly, BlueprintReadOnly, Category="Input")
+    TSoftObjectPtr<UInputAction> IA_FireSpecial2;
 
     // 여러 IMC가 스택될 때 우선순위. 높을수록 먼저 처리
     UPROPERTY(EditDefaultsOnly, BlueprintReadOnly, Category="Input",
@@ -140,8 +144,11 @@ protected:
     /** 기본 무기 슬롯 발사 (Triggered=연사) */
     void OnFirePrimaryInput(const FInputActionValue& Value);
 
-    /** 특수무장 슬롯 1+2 발사 (Triggered=연사) */
-    void OnFireSpecialInput(const FInputActionValue& Value);
+    /** 특수무장 슬롯 1 발사 (Triggered=연사) */
+    void OnFireSpecial1Input(const FInputActionValue& Value);
+
+    /** 특수무장 슬롯 2 발사 (Triggered=연사) */
+    void OnFireSpecial2Input(const FInputActionValue& Value);
 
     // ── 히트박스 오버랩 ──────────────────────────────────────────────────────
 

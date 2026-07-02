@@ -83,9 +83,13 @@ public:
 	UFUNCTION(BlueprintCallable, Category="Weapon")
 	void FirePrimary();
 
-	/** 특수무장 슬롯(SpecialWeapon1 + SpecialWeapon2) 발사. 각 슬롯은 쿨타임을 공유하지 않고 준비된 슬롯만 발사된다 */
+	/** 특수무장 슬롯 1 발사 */
 	UFUNCTION(BlueprintCallable, Category="Weapon")
-	void FireSpecial();
+	void FireSpecial1();
+
+	/** 특수무장 슬롯 2 발사 */
+	UFUNCTION(BlueprintCallable, Category="Weapon")
+	void FireSpecial2();
 
 	UFUNCTION(BlueprintPure, Category="Weapon|Loadout")
 	bool CanFireLoadoutSlot(ELoadoutSlot Slot) const;
@@ -93,9 +97,11 @@ public:
 	UFUNCTION(BlueprintPure, Category="Weapon")
 	bool CanFirePrimary() const;
 
-	/** 특수무장 슬롯 중 하나라도 발사 가능하면 true */
 	UFUNCTION(BlueprintPure, Category="Weapon")
-	bool CanFireSpecial() const;
+	bool CanFireSpecial1() const;
+
+	UFUNCTION(BlueprintPure, Category="Weapon")
+	bool CanFireSpecial2() const;
 
 private:
 	FWeaponSlotState PrimaryWeaponSlot;

@@ -113,15 +113,26 @@ void ADualFirePlayerPawn::SetupPlayerInputComponent(UInputComponent* PlayerInput
             TEXT("ADualFirePlayerPawn: IA_FirePrimary 에셋이 할당되지 않았습니다."));
     }
 
-    if (UInputAction* SpecialIA = IA_FireSpecial.LoadSynchronous())
+    if (UInputAction* Special1IA = IA_FireSpecial1.LoadSynchronous())
     {
-        EIC->BindAction(SpecialIA, ETriggerEvent::Triggered,
-            this, &ADualFirePlayerPawn::OnFireSpecialInput);
+        EIC->BindAction(Special1IA, ETriggerEvent::Triggered,
+            this, &ADualFirePlayerPawn::OnFireSpecial1Input);
     }
     else
     {
         UE_LOG(LogTemp, Warning,
-            TEXT("ADualFirePlayerPawn: IA_FireSpecial 에셋이 할당되지 않았습니다."));
+            TEXT("ADualFirePlayerPawn: IA_FireSpecial1 에셋이 할당되지 않았습니다."));
+    }
+
+    if (UInputAction* Special2IA = IA_FireSpecial2.LoadSynchronous())
+    {
+        EIC->BindAction(Special2IA, ETriggerEvent::Triggered,
+            this, &ADualFirePlayerPawn::OnFireSpecial2Input);
+    }
+    else
+    {
+        UE_LOG(LogTemp, Warning,
+            TEXT("ADualFirePlayerPawn: IA_FireSpecial2 에셋이 할당되지 않았습니다."));
     }
 }
 
@@ -151,11 +162,19 @@ void ADualFirePlayerPawn::OnFirePrimaryInput(const FInputActionValue& Value)
     }
 }
 
-void ADualFirePlayerPawn::OnFireSpecialInput(const FInputActionValue& Value)
+void ADualFirePlayerPawn::OnFireSpecial1Input(const FInputActionValue& Value)
 {
     if (IsValid(WeaponComp))
     {
-        WeaponComp->FireSpecial();
+        WeaponComp->FireSpecial1();
+    }
+}
+
+void ADualFirePlayerPawn::OnFireSpecial2Input(const FInputActionValue& Value)
+{
+    if (IsValid(WeaponComp))
+    {
+        WeaponComp->FireSpecial2();
     }
 }
 
