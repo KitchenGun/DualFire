@@ -27,7 +27,7 @@ class DUALFIRE_API AStageCameraActor : public AActor
         meta=(AllowPrivateAccess="true"))
     TObjectPtr<USceneComponent> SceneRoot;
 
-    // -Y 위치에서 +Y 방향(XZ 게임 평면) 바라봄. Yaw=90, 직교 투영
+    // +Z 위치에서 -Z 방향(XY 게임 평면)을 내려다보는 직교 카메라. Pitch=-90
     UPROPERTY(VisibleAnywhere, BlueprintReadOnly, Category="Components",
         meta=(AllowPrivateAccess="true"))
     TObjectPtr<UCameraComponent> CameraComp;
@@ -36,20 +36,25 @@ public:
     AStageCameraActor();
 
     // ── AActor 오버라이드 ────────────────────────────────────────────────────────
+    virtual void OnConstruction(const FTransform& Transform) override;
     virtual void Tick(float DeltaTime) override;
 
     // ── 카메라 설정 ──────────────────────────────────────────────────────────────
 
-    // 직교 투영 너비 (월드 단위). 16:9 기준 높이 = OrthoWidth / AspectRatio
+    // 직교 투영 너비 (월드 단위). 4:3 기준 1600x1200 플레이 영역
     UPROPERTY(EditDefaultsOnly, BlueprintReadWrite, Category="Camera",
         meta=(ClampMin="256.0"))
-    float OrthoWidth = 2048.f;
+    float OrthoWidth = 1600.f;
+
+    UPROPERTY(EditDefaultsOnly, BlueprintReadWrite, Category="Camera",
+        meta=(ClampMin="0.1"))
+    float AspectRatio = 4.f / 3.f;
 
     // ── 스크롤 설정 ──────────────────────────────────────────────────────────────
 
     // +X 방향 자동 이동 속도 (units/s). 0 = 정지
     UPROPERTY(EditAnywhere, BlueprintReadWrite, Category="Scroll")
-    float ScrollSpeed = 0.f;
+    float ScrollSpeed = 200.f;
 
     // GetPlayableBounds() 적용 마진. X=좌우, Y=상하 (월드 단위)
     UPROPERTY(EditAnywhere, BlueprintReadWrite, Category="Scroll")
@@ -63,15 +68,21 @@ public:
     UFUNCTION(BlueprintCallable, Category="Scroll")
     void SetPaused(bool bInPaused);
 
+    /** 현재 스크롤 속도 벡터. 일시 정지 또는 속도 0이면 Zero */
+    UFUNCTION(BlueprintPure, Category="Scroll")
+    FVector GetScrollVelocity() const;
+
     /**
      * 현재 카메라 프러스텀에서 XY 이동 가능 영역 반환.
      * FBox2D.X = 월드 X(앞뒤), FBox2D.Y = 월드 Y(좌우).
-     * OrthoWidth + 뷰포트 종횡비(없으면 16:9 폴백) + PlayableInset 적용.
+     * OrthoWidth + 고정 종횡비(꺼진 경우 뷰포트 폴백) + PlayableInset 적용.
      */
     UFUNCTION(BlueprintPure, Category="Scroll")
     FBox2D GetPlayableBounds() const;
 
 private:
+    void ApplyCameraSettings();
+
     // SetPaused로만 변경
     UPROPERTY(BlueprintReadOnly, Category="Scroll", meta=(AllowPrivateAccess="true"))
     bool bPaused = false;

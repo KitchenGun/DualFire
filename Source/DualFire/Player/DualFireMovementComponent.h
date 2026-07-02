@@ -6,6 +6,8 @@
 #include "GameFramework/PawnMovementComponent.h"
 #include "DualFireMovementComponent.generated.h"
 
+class AStageCameraActor;
+
 /**
  * 2D 스크롤 슈팅용 플레이어 이동 컴포넌트.
  * 이동 평면: XY (X=앞뒤, Y=좌우), Z 고정.
@@ -49,8 +51,10 @@ private:
     bool bMovementLocked = false;
 
     /**
-     * StageCameraActor::GetPlayableBounds() 기반 XZ 클램핑.
+     * StageCameraActor::GetPlayableBounds() 기반 XY 클램핑.
      * StageCamera가 아직 없으면 InLocation을 그대로 반환 + 경고 로그.
      */
-    FVector ClampToScreenBounds(const FVector& InLocation) const;
+    FVector ClampToScreenBounds(const FVector& InLocation, const AStageCameraActor* Camera) const;
+
+    AStageCameraActor* GetStageCamera() const;
 };

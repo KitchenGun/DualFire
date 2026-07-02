@@ -24,21 +24,27 @@ AStageCameraActor::AStageCameraActor()
     CameraComp->SetupAttachment(SceneRoot);
     CameraComp->SetRelativeLocation(FVector(0.f, 0.f, 1500.f));
     CameraComp->SetRelativeRotation(FRotator(-90.f, 0.f, 0.f));
-    CameraComp->ProjectionMode = ECameraProjectionMode::Orthographic;
-    CameraComp->OrthoWidth = OrthoWidth;
+    ApplyCameraSettings();
+}
+
+void AStageCameraActor::OnConstruction(const FTransform& Transform)
+{
+    Super::OnConstruction(Transform);
+    ApplyCameraSettings();
 }
 
 void AStageCameraActor::Tick(float DeltaTime)
 {
     Super::Tick(DeltaTime);
 
-    if (bPaused || FMath::IsNearlyZero(ScrollSpeed))
+    const FVector ScrollVelocity = GetScrollVelocity();
+    if (ScrollVelocity.IsNearlyZero())
     {
         return;
     }
 
     // +X 방향 자동 스크롤
-    SetActorLocation(GetActorLocation() + FVector(ScrollSpeed * DeltaTime, 0.f, 0.f));
+    SetActorLocation(GetActorLocation() + ScrollVelocity * DeltaTime);
 }
 
 // ── 제어 함수 ──────────────────────────────────────────────────────────────────
@@ -53,28 +59,38 @@ void AStageCameraActor::SetPaused(bool bInPaused)
     bPaused = bInPaused;
 }
 
+FVector AStageCameraActor::GetScrollVelocity() const
+{
+    return (bPaused || FMath::IsNearlyZero(ScrollSpeed))
+        ? FVector::ZeroVector
+        : FVector(ScrollSpeed, 0.f, 0.f);
+}
+
 // ── 이동 가능 영역 계산 ───────────────────────────────────────────────────────────
 
 FBox2D AStageCameraActor::GetPlayableBounds() const
 {
     // ── 뷰포트 종횡비 계산 ───────────────────────────────────────────────────────
-    // GEngine / GameViewport가 없으면 16:9 폴백
-    float AspectRatio = 16.f / 9.f;
+    // 고정 종횡비가 꺼진 경우만 뷰포트 종횡비를 사용한다.
+    float DesiredAspectRatio = (CameraComp && CameraComp->bConstrainAspectRatio)
+        ? CameraComp->AspectRatio
+        : 16.f / 9.f;
 
-    if (GEngine && GEngine->GameViewport)
+    if ((!CameraComp || !CameraComp->bConstrainAspectRatio) && GEngine && GEngine->GameViewport)
     {
         FVector2D ViewportSize;
         GEngine->GameViewport->GetViewportSize(ViewportSize);
         if (!ViewportSize.IsNearlyZero() && ViewportSize.Y > SMALL_NUMBER)
         {
-            AspectRatio = ViewportSize.X / ViewportSize.Y;
+            DesiredAspectRatio = ViewportSize.X / ViewportSize.Y;
         }
     }
+    DesiredAspectRatio = FMath::Max(DesiredAspectRatio, SMALL_NUMBER);
 
     // OrthoWidth  → 월드 Y 축 범위 (좌우, 화면 수평)
     // OrthoHeight = OrthoWidth / AspectRatio → 월드 X 축 범위 (앞뒤, 화면 수직)
     const float HalfW = OrthoWidth * 0.5f;
-    const float HalfH = (OrthoWidth / AspectRatio) * 0.5f;
+    const float HalfH = (OrthoWidth / DesiredAspectRatio) * 0.5f;
     const FVector Loc = GetActorLocation();
 
     // FBox2D.X = 월드 X(앞뒤), FBox2D.Y = 월드 Y(좌우)
@@ -82,4 +98,17 @@ FBox2D AStageCameraActor::GetPlayableBounds() const
         FVector2D(Loc.X - HalfH + PlayableInset.Y, Loc.Y - HalfW + PlayableInset.X),
         FVector2D(Loc.X + HalfH - PlayableInset.Y, Loc.Y + HalfW - PlayableInset.X)
     );
+}
+
+void AStageCameraActor::ApplyCameraSettings()
+{
+    if (!CameraComp)
+    {
+        return;
+    }
+
+    CameraComp->ProjectionMode = ECameraProjectionMode::Orthographic;
+    CameraComp->OrthoWidth = OrthoWidth;
+    CameraComp->bConstrainAspectRatio = true;
+    CameraComp->AspectRatio = FMath::Max(AspectRatio, 0.1f);
 }

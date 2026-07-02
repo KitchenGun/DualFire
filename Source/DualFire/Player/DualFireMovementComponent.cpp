@@ -56,7 +56,9 @@ void UDualFireMovementComponent::TickComponent(
     Velocity = TargetVelocity;
     Velocity.Z = 0.f; // bConstrainToPlane 이중 보장
 
-    FVector Delta = Velocity * DeltaTime;
+    AStageCameraActor* Camera = GetStageCamera();
+    const FVector ScrollDelta = IsValid(Camera) ? Camera->GetScrollVelocity() * DeltaTime : FVector::ZeroVector;
+    FVector Delta = (Velocity * DeltaTime) + ScrollDelta;
 
     if (Delta.IsNearlyZero(0.01f))
     {
@@ -68,7 +70,7 @@ void UDualFireMovementComponent::TickComponent(
     // 이동 후 예상 위치에 화면 경계 클램핑 적용
     const FVector PrevLocation = UpdatedComponent->GetComponentLocation();
     const FVector DesiredLocation = PrevLocation + Delta;
-    const FVector ClampedDesired = ClampToScreenBounds(DesiredLocation);
+    const FVector ClampedDesired = ClampToScreenBounds(DesiredLocation, Camera);
 
     Delta = ClampedDesired - PrevLocation;
     Delta.Z = 0.f;
@@ -108,24 +110,12 @@ void UDualFireMovementComponent::SetMovementLocked(bool bLocked)
 
 // ── 화면 경계 클램핑 ──────────────────────────────────────────────────────────
 
-FVector UDualFireMovementComponent::ClampToScreenBounds(const FVector& InLocation) const
+FVector UDualFireMovementComponent::ClampToScreenBounds(
+    const FVector& InLocation,
+    const AStageCameraActor* Camera) const
 {
-    // GameMode → StageCamera 경로로 이동 가능 영역 취득
-    ADualFireGameModeBase* GM =
-        GetWorld() ? GetWorld()->GetAuthGameMode<ADualFireGameModeBase>() : nullptr;
-
-    if (!IsValid(GM))
-    {
-        UE_LOG(LogDualFire, Warning,
-            TEXT("UDualFireMovementComponent: DualFireGameModeBase 없음 — 클램핑 스킵"));
-        return InLocation;
-    }
-
-    AStageCameraActor* Camera = GM->GetStageCamera();
     if (!IsValid(Camera))
     {
-        UE_LOG(LogDualFire, Warning,
-            TEXT("UDualFireMovementComponent: StageCamera nullptr — 클램핑 스킵"));
         return InLocation;
     }
 
@@ -136,4 +126,28 @@ FVector UDualFireMovementComponent::ClampToScreenBounds(const FVector& InLocatio
         FMath::Clamp(InLocation.Y, Bounds.Min.Y, Bounds.Max.Y),
         InLocation.Z
     );
+}
+
+AStageCameraActor* UDualFireMovementComponent::GetStageCamera() const
+{
+    // GameMode → StageCamera 경로로 이동 가능 영역 취득
+    ADualFireGameModeBase* GM =
+        GetWorld() ? GetWorld()->GetAuthGameMode<ADualFireGameModeBase>() : nullptr;
+
+    if (!IsValid(GM))
+    {
+        UE_LOG(LogDualFire, Warning,
+            TEXT("UDualFireMovementComponent: DualFireGameModeBase 없음 — 스크롤/클램핑 스킵"));
+        return nullptr;
+    }
+
+    AStageCameraActor* Camera = GM->GetStageCamera();
+    if (!IsValid(Camera))
+    {
+        UE_LOG(LogDualFire, Warning,
+            TEXT("UDualFireMovementComponent: StageCamera nullptr — 스크롤/클램핑 스킵"));
+        return nullptr;
+    }
+
+    return Camera;
 }
