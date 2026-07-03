@@ -9,6 +9,9 @@ Plugins/*/*.bak
 
 # Unreal Engine
 Config/DefaultEditor.ini
+# dualfire_asset_diff 유틸리티가 만드는 임시 diff용 패키지
+Content/_DiffTemp/
+Content/Python/__pycache__/
 # 라이팅 빌드 캐시 — "Build Lighting"으로 재생성 가능, 대용량(수백MB)이라 GitHub 100MB 제한에 걸림
 *_BuiltData.uasset
 Binaries/
