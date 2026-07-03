@@ -9,7 +9,10 @@
 #include "BaseProjectile.generated.h"
 
 class USphereComponent;
+class UStaticMeshComponent;
 class UProjectileMovementComponent;
+class UMaterialInterface;
+class UMaterialInstanceDynamic;
 
 /**
  * 무장 데이터(FWeaponRow) 또는 적 AI가 발사 직후 탄환에 주입하는 런타임 설정 묶음.
@@ -83,6 +86,11 @@ class DUALFIRE_API ABaseProjectile : public AActor, public IPoolableActor
 		meta=(AllowPrivateAccess="true"))
 	TObjectPtr<UProjectileMovementComponent> ProjectileMovement;
 
+	/** 육안 식별용 비주얼(구체). 충돌 없음 — 판정은 CollisionComp 전담 */
+	UPROPERTY(VisibleAnywhere, BlueprintReadOnly, Category="Components",
+		meta=(AllowPrivateAccess="true"))
+	TObjectPtr<UStaticMeshComponent> VisualMesh;
+
 public:
 	ABaseProjectile();
 
@@ -120,6 +128,14 @@ public:
 	/** 관통 가능 횟수 (LimitedPenetrate일 때만 사용). 0이면 무제한 */
 	UPROPERTY(EditDefaultsOnly, BlueprintReadWrite, Category="Weapon", meta=(ClampMin="0"))
 	int32 PenetrationLimit = 0;
+
+	/** VisualMesh에 적용할 언릿 색상. 서브클래스(BP)에서 덮어써 탄환 종류를 구분(예: 적 탄=빨강) */
+	UPROPERTY(EditDefaultsOnly, BlueprintReadWrite, Category="Weapon|Visual")
+	FLinearColor ProjectileColor = FLinearColor::White;
+
+	/** ProjectileColor를 "Color" 벡터 파라미터로 받는 언릿 머티리얼. 기본값은 생성자에서 M_ProjectileUnlit 할당 */
+	UPROPERTY(EditDefaultsOnly, BlueprintReadWrite, Category="Weapon|Visual")
+	TObjectPtr<UMaterialInterface> VisualMaterial;
 
 	/** 발사 직후 무장/AI가 런타임 설정을 일괄 주입. 속도·콜리전·타깃 채널을 갱신 */
 	UFUNCTION(BlueprintCallable, Category="Weapon")
@@ -164,5 +180,10 @@ private:
 	/** false이면 속성 비교 없이 무조건 히트 */
 	bool bUseAttributeMatching = true;
 
+	/** VisualMaterial에서 생성한 다이내믹 인스턴스. ProjectileColor를 "Color" 파라미터로 적용 */
+	UPROPERTY()
+	TObjectPtr<UMaterialInstanceDynamic> VisualMID;
+
 	void ReturnToPoolOrDestroy();
+	void ApplyVisualColor();
 };

@@ -3,11 +3,16 @@
 #include "Weapon/Projectile/BaseProjectile.h"
 #include "Core/ActorPoolSubsystem.h"
 #include "Components/SphereComponent.h"
+#include "Components/StaticMeshComponent.h"
 #include "GameFramework/ProjectileMovementComponent.h"
 #include "Kismet/GameplayStatics.h"
+#include "Materials/MaterialInstanceDynamic.h"
+#include "Materials/MaterialInterface.h"
+#include "Engine/StaticMesh.h"
 #include "Core/DualFireCollisionChannels.h"
 #include "Enemy/EnemyAttributeInterface.h"
 #include "DualFire.h"
+#include "UObject/ConstructorHelpers.h"
 
 ABaseProjectile::ABaseProjectile()
 {
@@ -22,6 +27,28 @@ ABaseProjectile::ABaseProjectile()
 	ProjectileMovement->bRotationFollowsVelocity = false;
 	ProjectileMovement->bShouldBounce = false;
 	ProjectileMovement->ProjectileGravityScale = 0.f;
+
+	// 육안 식별용 구체 — 콜리전은 CollisionComp가 전담하므로 여기서는 비활성
+	VisualMesh = CreateDefaultSubobject<UStaticMeshComponent>(TEXT("VisualMesh"));
+	VisualMesh->SetupAttachment(CollisionComp);
+	VisualMesh->SetCollisionEnabled(ECollisionEnabled::NoCollision);
+	VisualMesh->SetCastShadow(false);
+	// 엔진 기본 구체(반지름 50) — CollisionComp 반지름(8)에 맞춰 축소
+	VisualMesh->SetRelativeScale3D(FVector(0.16f));
+
+	static ConstructorHelpers::FObjectFinder<UStaticMesh> SphereMeshFinder(
+		TEXT("/Engine/BasicShapes/Sphere.Sphere"));
+	if (SphereMeshFinder.Succeeded())
+	{
+		VisualMesh->SetStaticMesh(SphereMeshFinder.Object);
+	}
+
+	static ConstructorHelpers::FObjectFinder<UMaterialInterface> VisualMaterialFinder(
+		TEXT("/Game/Blueprint/Weapon/M_ProjectileUnlit.M_ProjectileUnlit"));
+	if (VisualMaterialFinder.Succeeded())
+	{
+		VisualMaterial = VisualMaterialFinder.Object;
+	}
 
 	// 기본값: 플레이어 탄 설정 — ApplyRuntimeConfig로 덮어씌울 수 있음
 	TargetChannel = DualFireChannel::EnemyBody;
@@ -41,6 +68,8 @@ void ABaseProjectile::BeginPlay()
 	ProjectileMovement->InitialSpeed = ProjectileSpeed;
 	ProjectileMovement->MaxSpeed     = ProjectileSpeed;
 	ProjectileMovement->Velocity     = GetActorForwardVector() * ProjectileSpeed;
+
+	ApplyVisualColor();
 
 	SetLifeSpan(LifeSpan);
 
@@ -226,4 +255,25 @@ void ABaseProjectile::ReturnToPoolOrDestroy()
 	}
 
 	Destroy();
+}
+
+void ABaseProjectile::ApplyVisualColor()
+{
+	if (!VisualMesh || !VisualMaterial)
+	{
+		return;
+	}
+
+	// 풀 재사용 액터의 첫 BeginPlay(=Prewarm 스폰)에서 1회만 생성 — ProjectileColor는 클래스(BP)별 고정값이라
+	// 매 발사마다 다시 만들 필요가 없다.
+	if (!VisualMID)
+	{
+		VisualMID = UMaterialInstanceDynamic::Create(VisualMaterial, this);
+		VisualMesh->SetMaterial(0, VisualMID);
+	}
+
+	if (VisualMID)
+	{
+		VisualMID->SetVectorParameterValue(TEXT("Color"), ProjectileColor);
+	}
 }
