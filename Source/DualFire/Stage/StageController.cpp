@@ -15,6 +15,13 @@
 #include "TimerManager.h"
 #include "Kismet/GameplayStatics.h"
 
+namespace
+{
+	// 모든 적 이동 패턴(Linear/EnterStop)이 월드 -X 방향으로 진행한다.
+	// 액터 기본 전방(+X)과 반대이므로 스폰 시 Yaw 180도를 줘서 모델 전면이 진행 방향을 보게 한다.
+	const FRotator EnemyFacingRotation(0.f, 180.f, 0.f);
+}
+
 AStageController::AStageController()
 {
 	PrimaryActorTick.bCanEverTick = true;
@@ -157,11 +164,11 @@ void AStageController::SpawnWaveSequential(FWaveRow Wave, int32 AlreadySpawned)
 	if (UActorPoolSubsystem* Pool = GetWorld()->GetSubsystem<UActorPoolSubsystem>())
 	{
 		Enemy = Cast<AEnemyBase>(
-			Pool->AcquireActor(EnemyClass, FTransform(FRotator::ZeroRotator, SpawnLoc)));
+			Pool->AcquireActor(EnemyClass, FTransform(EnemyFacingRotation, SpawnLoc)));
 	}
 	else
 	{
-		Enemy = GetWorld()->SpawnActor<AEnemyBase>(EnemyClass, SpawnLoc, FRotator::ZeroRotator, Params);
+		Enemy = GetWorld()->SpawnActor<AEnemyBase>(EnemyClass, SpawnLoc, EnemyFacingRotation, Params);
 	}
 
 	if (IsValid(Enemy))
