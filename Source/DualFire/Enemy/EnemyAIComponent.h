@@ -14,10 +14,10 @@
  * EnemyBase에 부착해서 사용. 다른 AActor에 붙여도 동작한다.
  *
  * 구현된 패턴:
- *   이동: Linear (X- 방향 등속 이동)
+ *   이동: Linear (X- 방향 등속 이동), EnterStop (진입 후 정지)
  *   공격: None / Single (일정 간격 단발 발사)
  *
- * 미구현: EnterStop, Hover, Spread3, Rotate3
+ * 미구현: Hover, Spread3, Rotate3
  */
 UCLASS(ClassGroup=Enemy, meta=(BlueprintSpawnableComponent))
 class DUALFIRE_API UEnemyAIComponent : public UActorComponent
@@ -29,7 +29,11 @@ public:
 
 	virtual void BeginPlay() override;
 
-	void UpdateAI(float DeltaTime, const FBox2D& PlayableBounds, const FVector& PlayerLocation);
+	void UpdateAI(
+		float DeltaTime,
+		const FBox2D& PlayableBounds,
+		const FVector& PlayerLocation,
+		bool bPlayerLocationValid);
 	void InitFromEnemyRow(const FEnemyRow& Row);
 	void ResetRuntimeState();
 	void StopAttackTimer();

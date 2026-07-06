@@ -426,6 +426,7 @@ void AStageController::TickEnemyAI(float DeltaTime)
 
 	const FBox2D Bounds = Camera->GetPlayableBounds();
 	const FVector PlayerLocation = GetCachedPlayerLocation();
+	const bool bPlayerLocationValid = bHasCachedPlayerLocation;
 
 	for (int32 Index = ActiveEnemyAIComponents.Num() - 1; Index >= 0; --Index)
 	{
@@ -436,7 +437,7 @@ void AStageController::TickEnemyAI(float DeltaTime)
 			continue;
 		}
 
-		AI->UpdateAI(DeltaTime, Bounds, PlayerLocation);
+		AI->UpdateAI(DeltaTime, Bounds, PlayerLocation, bPlayerLocationValid);
 	}
 }
 

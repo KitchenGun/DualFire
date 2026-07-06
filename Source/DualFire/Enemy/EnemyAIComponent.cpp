@@ -18,13 +18,19 @@ void UEnemyAIComponent::BeginPlay()
 	Super::BeginPlay();
 
 	ResetRuntimeState();
-	StartAttackTimer();
 }
 
-void UEnemyAIComponent::UpdateAI(float DeltaTime, const FBox2D& PlayableBounds, const FVector& PlayerLocation)
+void UEnemyAIComponent::UpdateAI(
+	float DeltaTime,
+	const FBox2D& PlayableBounds,
+	const FVector& PlayerLocation,
+	bool bPlayerLocationValid)
 {
-	CachedPlayerLocation = PlayerLocation;
-	bHasCachedPlayerLocation = true;
+	if (bPlayerLocationValid)
+	{
+		CachedPlayerLocation = PlayerLocation;
+		bHasCachedPlayerLocation = true;
+	}
 
 	switch (MovementPattern)
 	{
@@ -73,12 +79,18 @@ void UEnemyAIComponent::StartAttackTimer()
 {
 	StopAttackTimer();
 
+	UWorld* World = GetWorld();
+	if (!IsValid(World))
+	{
+		return;
+	}
+
 	if (AttackPattern != EEnemyAttackPattern::None && IsValid(ProjectileClass))
 	{
 		FTimerDelegate Del;
 		Del.BindUObject(this, &UEnemyAIComponent::FireSingle);
 
-		GetWorld()->GetTimerManager().SetTimer(
+		World->GetTimerManager().SetTimer(
 			AttackTimerHandle,
 			Del,
 			AttackInterval,
