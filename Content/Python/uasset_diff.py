@@ -13,6 +13,13 @@
 스크린샷을 보고 판독할 필요가 없다. 결과는 LogPython(Warning)에 찍히고
 반환값으로도 받을 수 있다.
 
+이전 버전 로드는 두 경로를 지원한다.
+1. (우선) UassetDiffLibrary C++ 헬퍼가 있으면 — 에디터 내장 리비전 컨트롤
+   diff와 동일한 LOAD_ForDiff 로드. Content 복사·레지스트리 등록 없음.
+2. (폴백) 헬퍼가 없는 프로젝트(py 파일만 복사한 경우) — Content/_DiffTemp에
+   임시 복사 후 load_asset. 동작은 하지만 에디터 재시작 전까지 임시 파일
+   잠금이 남을 수 있다.
+
 한계: 블루프린트 이벤트그래프(노드) 변경은 CDO 리플렉션만으로는 감지할 수
 없다. 로직 변경이 의심되면 에디터 내장 "Diff Against Depot" 툴을
 (unreal.AssetToolsHelpers.get_asset_tools().diff_against_depot) 별도로
@@ -41,13 +48,41 @@ import unreal
 _TEMP_PACKAGE_DIR = "/Game/_DiffTemp"
 
 
+def _ensure_loadable_for_diff(disk_path):
+    """LOAD_ForDiff 로드가 가능한 경로를 보장한다.
+
+    엔진의 /Temp/ 패키지 루트는 프로젝트 Saved/ 디렉토리에 매핑되므로,
+    Saved/ 밖(OS temp 등)의 파일은 Saved/Temp/UassetDiff/로 복사해야
+    FPackagePath가 /Temp/ 패키지명으로 변환된다(소스컨트롤 diff와 동일 원리).
+    호출마다 고유 파일명을 부여해, 같은 에셋을 다른 리비전으로 연속 비교해도
+    이미 로드된 이전 패키지가 재사용되는 일이 없도록 한다.
+
+    반환: (로드에 사용할 경로, 복사본 여부)
+    """
+    saved_dir = unreal.Paths.convert_relative_path_to_full(unreal.Paths.project_saved_dir())
+    saved_norm = os.path.normpath(saved_dir).lower()
+    src_norm = os.path.normpath(os.path.abspath(disk_path)).lower()
+    if src_norm.startswith(saved_norm):
+        return disk_path, False
+
+    dst_dir = os.path.join(saved_dir, "Temp", "UassetDiff")
+    os.makedirs(dst_dir, exist_ok=True)
+    dst = os.path.join(dst_dir, f"{int(time.time() * 1000)}_{os.path.basename(disk_path)}")
+    shutil.copyfile(disk_path, dst)
+    return dst, True
+
+
+def _cdo_from_asset(asset_obj):
+    generated_class = getattr(asset_obj, "generated_class", None)
+    obj_class = generated_class() if generated_class else asset_obj.get_class()
+    return unreal.get_default_object(obj_class)
+
+
 def _get_cdo(asset_path):
     obj = unreal.load_asset(asset_path)
     if obj is None:
         raise RuntimeError(f"에셋 로드 실패: {asset_path}")
-    generated_class = getattr(obj, "generated_class", None)
-    obj_class = generated_class() if generated_class else obj.get_class()
-    return unreal.get_default_object(obj_class)
+    return _cdo_from_asset(obj)
 
 
 def _normalize_value(value, old_pkg, new_pkg):
@@ -125,6 +160,23 @@ def _diff_components(old_cdo, new_cdo, old_pkg, new_pkg):
     return lines
 
 
+def _diff_and_report(old_cdo, new_cdo, old_pkg, current_asset_path, log_prefix):
+    lines = []
+    lines.extend(_diff_object_properties(old_cdo, new_cdo, old_pkg, current_asset_path))
+    lines.extend(_diff_components(old_cdo, new_cdo, old_pkg, current_asset_path))
+
+    if not lines:
+        unreal.log_warning(
+            f"{log_prefix} {current_asset_path}: 프로퍼티/컴포넌트 변경 없음 "
+            "(이벤트그래프 로직 변경은 이 방식으로 감지되지 않음)"
+        )
+    else:
+        for line in lines:
+            unreal.log_warning(f"{log_prefix} {line}")
+    unreal.log_warning(f"{log_prefix}_COUNT {len(lines)}")
+    return lines
+
+
 def diff_asset_against_file(current_asset_path, old_uasset_disk_path, log_prefix="ASSETDIFF"):
     """current_asset_path(예: /Game/Blueprint/BP_Test)와 old_uasset_disk_path
     (이전 버전 .uasset 파일의 절대경로 — 출처는 git이든 백업이든 무관)를 비교한다.
@@ -132,11 +184,39 @@ def diff_asset_against_file(current_asset_path, old_uasset_disk_path, log_prefix
     반환값: diff 라인 리스트(빈 리스트면 프로퍼티/컴포넌트 차이 없음).
     같은 내용을 LogPython(Warning)으로도 출력한다(log_prefix로 필터링 가능).
     """
+    # 1순위: 에디터 리비전 컨트롤 diff와 동일한 LOAD_ForDiff 로드 (C++ 헬퍼).
+    # Content 복사·레지스트리 등록 없이 /Temp/ 패키지에 메모리 로드만 한다.
+    helper = getattr(unreal, "UassetDiffLibrary", None)
+    if helper is not None:
+        load_path, is_copy = _ensure_loadable_for_diff(old_uasset_disk_path)
+        try:
+            old_package = helper.load_package_for_diff(load_path, current_asset_path)
+            old_asset = helper.find_asset_in_package(old_package) if old_package else None
+            if old_asset is not None:
+                old_pkg = old_package.get_path_name()
+                old_cdo = _cdo_from_asset(old_asset)
+                new_cdo = _get_cdo(current_asset_path)
+                return _diff_and_report(old_cdo, new_cdo, old_pkg, current_asset_path, log_prefix)
+            unreal.log_warning(
+                f"{log_prefix} LOAD_ForDiff 로드 실패 — Content 복사 폴백으로 진행: {load_path}")
+        finally:
+            if is_copy:
+                # 링커가 파일을 잡고 있으면 실패할 수 있다 — Saved/Temp라 잔여물 무해
+                try:
+                    os.remove(load_path)
+                except OSError:
+                    pass
+
+    return _diff_via_content_copy(current_asset_path, old_uasset_disk_path, log_prefix)
+
+
+def _diff_via_content_copy(current_asset_path, old_uasset_disk_path, log_prefix):
+    """(폴백) UassetDiffLibrary 헬퍼가 없는 프로젝트용 — Content/_DiffTemp에 임시
+    복사 후 load_asset. 로드된 임시 패키지의 파일 잠금이 에디터 재시작 전까지
+    남을 수 있다(고유 run_id 폴더라 다음 호출과 충돌은 없음)."""
     # 패키지 내부에 저장된 오브젝트 이름(예: "BP_Test")은 파일을 복사해도 그대로
     # 유지된다. load_asset()은 "패키지 경로의 마지막 세그먼트 == 오브젝트 이름"을
     # 기대하므로, 이름은 그대로 두고 상위 폴더만 바꿔 경로 충돌을 피한다.
-    # 폴더 자체도 호출마다 고유하게 만든다 — 이전 호출의 정리(delete_asset)가
-    # 파일 잠금 등으로 완전히 끝나지 않았어도 다음 호출과 절대 충돌하지 않도록.
     run_id = str(int(time.time() * 1000))
     asset_name = current_asset_path.rsplit("/", 1)[-1]
     temp_asset_path = f"{_TEMP_PACKAGE_DIR}/{run_id}/{asset_name}"
@@ -152,21 +232,7 @@ def diff_asset_against_file(current_asset_path, old_uasset_disk_path, log_prefix
     try:
         old_cdo = _get_cdo(temp_asset_path)
         new_cdo = _get_cdo(current_asset_path)
-
-        lines = []
-        lines.extend(_diff_object_properties(old_cdo, new_cdo, temp_asset_path, current_asset_path))
-        lines.extend(_diff_components(old_cdo, new_cdo, temp_asset_path, current_asset_path))
-
-        if not lines:
-            unreal.log_warning(
-                f"{log_prefix} {current_asset_path}: 프로퍼티/컴포넌트 변경 없음 "
-                "(이벤트그래프 로직 변경은 이 방식으로 감지되지 않음)"
-            )
-        else:
-            for line in lines:
-                unreal.log_warning(f"{log_prefix} {line}")
-        unreal.log_warning(f"{log_prefix}_COUNT {len(lines)}")
-        return lines
+        return _diff_and_report(old_cdo, new_cdo, temp_asset_path, current_asset_path, log_prefix)
     finally:
         # 실패해도(파일 잠금 등) 다음 호출은 run_id가 달라 절대 충돌하지 않는다.
         # 여기서는 최선 노력으로만 정리한다.
@@ -197,10 +263,22 @@ def diff_against_git_revision(current_asset_path, repo_relative_path, revision="
         cwd=repo_root, capture_output=True, check=True,
     )
 
-    fd, tmp_path = tempfile.mkstemp(suffix=os.path.splitext(repo_relative_path)[1] or ".uasset")
+    # Saved/Temp 아래에 만들어야 LOAD_ForDiff 경로가 복사 없이 바로 로드 가능
+    # (/Temp/ 패키지 루트 = Saved/ 매핑). _ensure_loadable_for_diff가 no-op이 된다.
+    tmp_dir = os.path.join(
+        unreal.Paths.convert_relative_path_to_full(unreal.Paths.project_saved_dir()),
+        "Temp", "UassetDiff")
+    os.makedirs(tmp_dir, exist_ok=True)
+    fd, tmp_path = tempfile.mkstemp(
+        suffix=os.path.splitext(repo_relative_path)[1] or ".uasset", dir=tmp_dir)
     try:
         with os.fdopen(fd, "wb") as f:
             f.write(result.stdout)
         return diff_asset_against_file(current_asset_path, tmp_path)
     finally:
-        os.remove(tmp_path)
+        # 로드된 패키지의 링커가 파일을 잡고 있으면 삭제가 실패할 수 있다.
+        # OS temp라 잔여물이 남아도 무해 — 결과를 버리지 않도록 조용히 무시.
+        try:
+            os.remove(tmp_path)
+        except OSError:
+            pass
