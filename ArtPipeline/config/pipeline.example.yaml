@@ -1,0 +1,22 @@
+comfy:
+  url: http://127.0.0.1:8001
+  data_dir: ${DUALFIRE_COMFY_DATA_DIR}
+
+workflow_file: workflows/qwen_image_edit_2511_api.json
+
+models:
+  diffusion: qwen_image_edit_2511_fp8mixed.safetensors
+  text_encoder: qwen_2.5_vl_7b_fp8_scaled.safetensors
+  vae: qwen_image_vae.safetensors
+  lightning_lora: Qwen-Image-Edit-2511-Lightning-4steps-V1.0-bf16.safetensors
+
+generation:
+  steps: 40
+  cfg: 4.0
+  sampler: euler
+  scheduler: simple
+  denoise: 1.0
+  candidates: 4
+  seed_base: 250900
+  timeout_seconds: 600
+  poll_interval_seconds: 1

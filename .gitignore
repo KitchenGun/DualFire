@@ -38,6 +38,16 @@ DualFire/Intermediate/
 DualFire/Saved/
 DualFire/DerivedDataCache/
 
+# DualFire art pipeline local/input/generated work
+/ArtPipeline/.venv/
+/ArtPipeline/.pytest_cache/
+/ArtPipeline/**/__pycache__/
+/ArtPipeline/**/*.pyc
+/ArtPipeline/config/pipeline.local.yaml
+/ArtPipeline/assets/**/input/
+/ArtPipeline/assets/**/work/
+/ArtPipeline/assets/**/output/preview/
+
 # Compiled source
 *.pdb
 
