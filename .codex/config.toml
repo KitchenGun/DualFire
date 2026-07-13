@@ -1,0 +1,67 @@
+#:schema https://developers.openai.com/codex/config-schema.json
+
+[mcp_servers.comfyui]
+command = "uv"
+args = [
+  "run",
+  "--project",
+  "ArtPipeline",
+  "python",
+  "ArtPipeline/scripts/comfyui_mcp_launcher.py",
+]
+enabled = true
+required = false
+startup_timeout_sec = 30
+tool_timeout_sec = 900
+default_tools_approval_mode = "writes"
+
+enabled_tools = [
+  "get_system_stats",
+  "list_skills",
+  "read_skill",
+  "list_packs",
+  "read_pack_workflow",
+  "list_workflow_templates",
+  "check_workflow_runtime",
+  "list_local_models",
+  "get_node_info",
+  "list_workflows",
+  "get_workflow",
+  "upload_image",
+  "validate_workflow",
+  "enqueue_workflow",
+  "get_job_status",
+  "get_queue",
+  "cancel_job",
+  "list_output_images",
+  "view_image",
+  "analyze_color",
+  "list_assets",
+  "get_asset_metadata",
+  "get_history",
+  "get_logs",
+]
+
+disabled_tools = [
+  "search_models",
+  "download_model",
+  "download_civitai_model",
+  "remove_model",
+  "search_custom_nodes",
+  "install_custom_node",
+  "apply_manifest",
+  "add_extra_path",
+  "remove_extra_path",
+  "save_workflow",
+  "strip_workflow",
+  "stop_comfyui",
+  "start_comfyui",
+  "restart_comfyui",
+  "install_comfyui",
+  "update_comfyui",
+  "update_all",
+  "generate_image",
+  "generate_with_controlnet",
+  "generate_with_ip_adapter",
+  "generate_with_api_node",
+]
