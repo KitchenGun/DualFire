@@ -1,0 +1,53 @@
+schema_version: 2
+asset_id: DF_PL_FIGHTER_SHADOWLESS_QWEN_01
+category: player
+grade: normal
+attribute: none
+source:
+  file: input/source.png
+  mask_file: work/masks/birefnet.png
+  chroma_key: null
+  frame_fit:
+    padding: 32
+  sha256: b82e84b204914240d9203e43b67fda9e6df2bbbf5ba2b78292316c07308ca1cf
+  origin: user_provided
+  license: unverified
+target:
+  cell_width: 1024
+  cell_height: 1024
+  view: top_down_orthographic
+  color_mode: preserve
+  palette_limit: 48
+  reserved_palette_colors: []
+  alpha_threshold: 128
+canonical:
+  canvas_mode: fit
+  chroma_key:
+    color:
+    - 0
+    - 255
+    - 0
+    tolerance: 8
+  frame_fit:
+    padding: 32
+animations:
+  idle:
+    frames: 1
+    fps: 1
+    loop: true
+    recipe_version: static_keyframe_hd_v1
+    qwen:
+      input_state: source
+      prompt_file: prompts/idle.txt
+      candidates: 1
+anchors:
+  coordinate_origin: top_left
+  pivot:
+  - 512
+  - 512
+  hit_center:
+  - 512
+  - 512
+  muzzle:
+  - 512
+  - 32

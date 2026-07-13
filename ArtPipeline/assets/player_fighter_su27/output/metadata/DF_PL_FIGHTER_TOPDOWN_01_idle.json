@@ -1,0 +1,45 @@
+{
+  "schema_version": 2,
+  "asset_id": "DF_PL_FIGHTER_TOPDOWN_01",
+  "state": "idle",
+  "frame_width": 1024,
+  "frame_height": 1024,
+  "fps": 1.0,
+  "loop": true,
+  "frames": [
+    "DF_PL_FIGHTER_TOPDOWN_01_idle_000.png"
+  ],
+  "sheet": {
+    "file": "DF_PL_FIGHTER_TOPDOWN_01_idle_sheet.png",
+    "rows": 1,
+    "columns": 1,
+    "padding": 0
+  },
+  "coordinate_origin": "top_left",
+  "pivot": [
+    512,
+    512
+  ],
+  "hit_center": [
+    512,
+    512
+  ],
+  "anchors": {
+    "muzzle": [
+      512,
+      32
+    ]
+  },
+  "hashes": {
+    "frames": {
+      "DF_PL_FIGHTER_TOPDOWN_01_idle_000.png": "c2700e890189e0375d161acf974721dae0f45ffc7155d34550ffe71271f743a7"
+    },
+    "sheet": "c2700e890189e0375d161acf974721dae0f45ffc7155d34550ffe71271f743a7"
+  },
+  "provenance": {
+    "canonical_file": "work/canonical/idle.png",
+    "canonical_sha256": "c2700e890189e0375d161acf974721dae0f45ffc7155d34550ffe71271f743a7",
+    "candidate_sha256": "dac9ec30710c1a8b49beb3097ea58de8d2b853af57b9d80bd7cf838b8bab349b",
+    "recipe_version": "static_keyframe_hd_v1"
+  }
+}
