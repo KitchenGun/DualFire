@@ -1,0 +1,111 @@
+schema_version: 2
+asset_id: DF_PL_FIGHTER_01_FLIGHT
+category: player
+grade: normal
+attribute: none
+source:
+  file: input/front.png
+  mask_file: null
+  chroma_key:
+    color:
+    - 0
+    - 255
+    - 0
+    tolerance: 48
+  frame_fit: null
+  sha256: 5f10232922ec6724d5a13f5eebb3e763a02ba49c44b8de16348990a7be24e0d4
+  origin: user_provided
+  license: project_approved
+target:
+  cell_width: 1075
+  cell_height: 1464
+  view: top_down_orthographic
+  color_mode: preserve
+  palette_limit: 256
+  reserved_palette_colors:
+  - - 255
+    - 242
+    - 200
+  - - 255
+    - 188
+    - 74
+  - - 255
+    - 112
+    - 36
+  alpha_threshold: 128
+canonical:
+  canvas_mode: preserve
+  chroma_key:
+    color:
+    - 0
+    - 255
+    - 0
+    tolerance: 48
+  frame_fit:
+    padding: 0
+animations:
+  north_afterburner_off:
+    frames: 2
+    fps: 12
+    loop: true
+    recipe_version: fighter_flight_hd_v1
+    qwen:
+      input_state: source
+      prompt_file: prompts/north_afterburner_off.txt
+      candidates: 4
+  move_left_afterburner_off:
+    frames: 2
+    fps: 12
+    loop: true
+    recipe_version: fighter_flight_hd_v1
+    qwen:
+      input_state: north_afterburner_off
+      prompt_file: prompts/move_left_afterburner_off.txt
+      candidates: 2
+  move_right_afterburner_off:
+    frames: 2
+    fps: 12
+    loop: true
+    recipe_version: fighter_flight_hd_v1
+    qwen:
+      input_state: north_afterburner_off
+      prompt_file: prompts/move_right_afterburner_off.txt
+      candidates: 2
+  north_afterburner_on:
+    frames: 2
+    fps: 12
+    loop: true
+    recipe_version: fighter_flight_hd_v1
+    qwen:
+      input_state: north_afterburner_off
+      prompt_file: prompts/north_afterburner_on.txt
+      candidates: 2
+  move_left_afterburner_on:
+    frames: 2
+    fps: 12
+    loop: true
+    recipe_version: fighter_flight_hd_v1
+    qwen:
+      input_state: north_afterburner_off
+      prompt_file: prompts/move_left_afterburner_on.txt
+      candidates: 2
+  move_right_afterburner_on:
+    frames: 2
+    fps: 12
+    loop: true
+    recipe_version: fighter_flight_hd_v1
+    qwen:
+      input_state: north_afterburner_off
+      prompt_file: prompts/move_right_afterburner_on.txt
+      candidates: 2
+anchors:
+  coordinate_origin: top_left
+  pivot:
+  - 537
+  - 732
+  hit_center:
+  - 537
+  - 732
+  muzzle:
+  - 537
+  - 110
