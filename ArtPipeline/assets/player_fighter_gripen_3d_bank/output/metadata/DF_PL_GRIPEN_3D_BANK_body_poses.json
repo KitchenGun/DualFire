@@ -1,0 +1,79 @@
+{
+  "asset_id": "DF_PL_GRIPEN_3D_BANK",
+  "source": {
+    "package": "FlightGear JAS39-Gripen",
+    "url": "https://mirrors.ibiblio.org/flightgear/ftp/Aircraft-2020/JAS39-Gripen.zip",
+    "archive_sha256": "BEFF3CD32850103153F124747333639C6DF5B707459B92498110E2EC943FEB65",
+    "license": "GPL-2.0",
+    "converted_model": "ArtPipeline/work/fighter-jas39-gripen/converted/gripen.glb"
+  },
+  "rendering": {
+    "engine": "Blender 5.1.2 Eevee",
+    "camera": "orthographic_top_down",
+    "lighting": "fixed_three_point",
+    "source_top_axis": "Z",
+    "forward_axis": "X",
+    "light_energy_scale": 16,
+    "excluded_mesh_prefixes": [
+      "axe",
+      "porte",
+      "portiques",
+      "roue"
+    ],
+    "canonical_style_projection": false,
+    "postprocess": "none"
+  },
+  "canvas": [
+    512,
+    512
+  ],
+  "sheet": [
+    3584,
+    512
+  ],
+  "sheet_sha256": "36217cf0567dc02cc3907919229b37d666276f820397d42bafc8a2633e417145",
+  "poses": [
+    {
+      "name": "BankLeft45",
+      "roll_degrees": -45,
+      "file": "output/body/DF_PL_GRIPEN_3D_BANK_BankLeft45.png",
+      "sha256": "d88f2ed38ae9a522bba729887b103df64fe2e3d0d1cc919020bdbced6e90c311"
+    },
+    {
+      "name": "BankLeft30",
+      "roll_degrees": -30,
+      "file": "output/body/DF_PL_GRIPEN_3D_BANK_BankLeft30.png",
+      "sha256": "d01086e2a5fb36ee436ae97afea7788380c986b59be561dad58216691ea22b67"
+    },
+    {
+      "name": "BankLeft15",
+      "roll_degrees": -15,
+      "file": "output/body/DF_PL_GRIPEN_3D_BANK_BankLeft15.png",
+      "sha256": "77a55e567589106b1168936012d9c187d2426009a44fbc98051a3af429e536ef"
+    },
+    {
+      "name": "Neutral",
+      "roll_degrees": 0,
+      "file": "output/body/DF_PL_GRIPEN_3D_BANK_Neutral.png",
+      "sha256": "4c80ab133a6c303c10b2f738367db06234131a556b9cbb8347a18d0ba02b92cd"
+    },
+    {
+      "name": "BankRight15",
+      "roll_degrees": 15,
+      "file": "output/body/DF_PL_GRIPEN_3D_BANK_BankRight15.png",
+      "sha256": "4164d0cb712de8146920663f2ca0b2b879791d736ed68a304f56eb83a7f3b9fd"
+    },
+    {
+      "name": "BankRight30",
+      "roll_degrees": 30,
+      "file": "output/body/DF_PL_GRIPEN_3D_BANK_BankRight30.png",
+      "sha256": "6342adc9aaf1ecf76f6e5d5146888753f2fe02626bc02da17274015cdbedd3e7"
+    },
+    {
+      "name": "BankRight45",
+      "roll_degrees": 45,
+      "file": "output/body/DF_PL_GRIPEN_3D_BANK_BankRight45.png",
+      "sha256": "f51122cfc59f578b57a19b9659b9660e98deeca33973fa8c8cb19bde9bd78609"
+    }
+  ]
+}

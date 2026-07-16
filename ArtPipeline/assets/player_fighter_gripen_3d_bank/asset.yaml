@@ -1,0 +1,33 @@
+schema_version: 1
+asset_id: DF_PL_GRIPEN_3D_BANK
+category: player_aircraft
+source:
+  file: ../../work/fighter-jas39-gripen/converted/gripen.glb
+  origin: FlightGear JAS39-Gripen aircraft package
+  url: https://mirrors.ibiblio.org/flightgear/ftp/Aircraft-2020/JAS39-Gripen.zip
+  archive_sha256: BEFF3CD32850103153F124747333639C6DF5B707459B92498110E2EC943FEB65
+  license: GPL-2.0
+render:
+  renderer: Blender 5.1.2 Eevee
+  camera: orthographic_top_down
+  source_top_axis: Z
+  local_forward_axis: X
+  ortho_scale_factor: 1.9
+  lighting: fixed_three_point
+  light_energy_scale: 16
+  preserve_source_materials: true
+  excluded_mesh_prefixes: [axe, porte, portiques, roue]
+poses:
+  - {name: BankLeft45, roll_degrees: -45}
+  - {name: BankLeft30, roll_degrees: -30}
+  - {name: BankLeft15, roll_degrees: -15}
+  - {name: Neutral, roll_degrees: 0}
+  - {name: BankRight15, roll_degrees: 15}
+  - {name: BankRight30, roll_degrees: 30}
+  - {name: BankRight45, roll_degrees: 45}
+output:
+  cell_width: 512
+  cell_height: 512
+  color_mode: RGBA
+  transparent_background: true
+  postprocess: none
