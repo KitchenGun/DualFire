@@ -41,6 +41,8 @@ DualFire/DerivedDataCache/
 # DualFire art pipeline local/input/generated work
 /ArtPipeline/.venv/
 /ArtPipeline/.pytest_cache/
+/ArtPipeline/.tmp/
+/ArtPipeline/work/
 /ArtPipeline/**/__pycache__/
 /ArtPipeline/**/*.pyc
 /ArtPipeline/config/pipeline.local.yaml
