@@ -1,0 +1,56 @@
+{
+  "asset_id": "DF_PL_F22_3D_BANK",
+  "source": "ArtPipeline/work/fighter-f22-raptor/source/f22.fbx",
+  "rendering": {
+    "engine": "Blender Eevee",
+    "camera": "orthographic_top_down",
+    "lighting": "fixed_three_point",
+    "canonical_style_projection": false,
+    "postprocess": "none"
+  },
+  "canvas": [
+    512,
+    512
+  ],
+  "sheet": [
+    3584,
+    512
+  ],
+  "poses": [
+    {
+      "name": "BankLeft45",
+      "roll_degrees": -45,
+      "file": "output/body/DF_PL_F22_3D_BANK_BankLeft45.png"
+    },
+    {
+      "name": "BankLeft30",
+      "roll_degrees": -30,
+      "file": "output/body/DF_PL_F22_3D_BANK_BankLeft30.png"
+    },
+    {
+      "name": "BankLeft15",
+      "roll_degrees": -15,
+      "file": "output/body/DF_PL_F22_3D_BANK_BankLeft15.png"
+    },
+    {
+      "name": "Neutral",
+      "roll_degrees": 0,
+      "file": "output/body/DF_PL_F22_3D_BANK_Neutral.png"
+    },
+    {
+      "name": "BankRight15",
+      "roll_degrees": 15,
+      "file": "output/body/DF_PL_F22_3D_BANK_BankRight15.png"
+    },
+    {
+      "name": "BankRight30",
+      "roll_degrees": 30,
+      "file": "output/body/DF_PL_F22_3D_BANK_BankRight30.png"
+    },
+    {
+      "name": "BankRight45",
+      "roll_degrees": 45,
+      "file": "output/body/DF_PL_F22_3D_BANK_BankRight45.png"
+    }
+  ]
+}
