@@ -1,5 +1,12 @@
 #:schema https://developers.openai.com/codex/config-schema.json
 
+model = "gpt-5.6-sol"
+model_reasoning_effort = "medium"
+
+[agents]
+max_threads = 4
+max_depth = 1
+
 [mcp_servers.comfyui]
 command = "uv"
 args = [
