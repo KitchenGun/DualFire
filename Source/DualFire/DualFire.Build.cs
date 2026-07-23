@@ -8,15 +8,12 @@ public class DualFire : ModuleRules
 	{
 		PCHUsage = PCHUsageMode.UseExplicitOrSharedPCHs;
 
-		PrivateIncludePaths.AddRange(new string[] { "DualFire", "DualFire/Player", "DualFire/Core", "DualFire/Weapon", "DualFire/Weapon/Projectile", "DualFire/Enemy", "DualFire/Health", "DualFire/Stage", "DualFire/Loadout", "DualFire/GameModes", "DualFire/Camera" });
+		PrivateIncludePaths.AddRange(new string[] { "DualFire", "DualFire/Player", "DualFire/Core", "DualFire/Weapon", "DualFire/Weapon/Projectile", "DualFire/Enemy", "DualFire/Health", "DualFire/Stage", "DualFire/Loadout", "DualFire/GameModes", "DualFire/Camera", "DualFire/UI" });
 
-		PublicDependencyModuleNames.AddRange(new string[] { "Core", "CoreUObject", "Engine", "InputCore", "EnhancedInput", "DataRegistry" });
+		PublicDependencyModuleNames.AddRange(new string[] { "Core", "CoreUObject", "Engine", "InputCore", "EnhancedInput", "DataRegistry", "CommonUI", "UMG" });
 
-		PrivateDependencyModuleNames.AddRange(new string[] { "CommonUI", "CommonInput" });
+		PrivateDependencyModuleNames.AddRange(new string[] { "CommonInput", "Slate", "SlateCore" });
 
-		// Uncomment if you are using Slate UI
-		// PrivateDependencyModuleNames.AddRange(new string[] { "Slate", "SlateCore" });
-		
 		// Uncomment if you are using online features
 		// PrivateDependencyModuleNames.Add("OnlineSubsystem");
 
