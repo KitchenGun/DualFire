@@ -23,6 +23,10 @@
 			"Enabled": true
 		},
 		{
+			"Name": "EnhancedInput",
+			"Enabled": true
+		},
+		{
 			"Name": "DataRegistry",
 			"Enabled": true
 		},
