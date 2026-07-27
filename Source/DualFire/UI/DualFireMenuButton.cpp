@@ -2,8 +2,17 @@
 
 #include "UI/DualFireMenuButton.h"
 
-#include "Components/Border.h"
-#include "Components/TextBlock.h"
+#include "UI/DualFireMenuButtonStyle.h"
+
+#include "CommonTextBlock.h"
+
+UDualFireMenuButton::UDualFireMenuButton()
+{
+	Style = UDualFireMenuButtonStyle::StaticClass();
+	SetIsSelectable(true);
+	SetShouldSelectUponReceivingFocus(true);
+	SetIsInteractableWhenSelected(true);
+}
 
 void UDualFireMenuButton::SetLabelText(const FText& InLabelText)
 {
@@ -14,41 +23,34 @@ void UDualFireMenuButton::SetLabelText(const FText& InLabelText)
 	}
 }
 
+void UDualFireMenuButton::NativeOnInitialized()
+{
+	Super::NativeOnInitialized();
+	OnFocusLost().AddUObject(this, &ThisClass::HandleFocusLost);
+}
+
 void UDualFireMenuButton::NativePreConstruct()
 {
 	Super::NativePreConstruct();
 	SetLabelText(LabelText);
-	RefreshVisualState();
+	NativeOnCurrentTextStyleChanged();
 }
 
-void UDualFireMenuButton::NativeOnHovered()
+void UDualFireMenuButton::NativeOnCurrentTextStyleChanged()
 {
-	Super::NativeOnHovered();
-	RefreshVisualState();
-}
+	Super::NativeOnCurrentTextStyleChanged();
 
-void UDualFireMenuButton::NativeOnUnhovered()
-{
-	Super::NativeOnUnhovered();
-	RefreshVisualState();
-}
-
-void UDualFireMenuButton::NativeOnSelected(const bool bBroadcast)
-{
-	Super::NativeOnSelected(bBroadcast);
-	RefreshVisualState();
-}
-
-void UDualFireMenuButton::NativeOnDeselected(const bool bBroadcast)
-{
-	Super::NativeOnDeselected(bBroadcast);
-	RefreshVisualState();
-}
-
-void UDualFireMenuButton::RefreshVisualState()
-{
-	if (IsValid(ButtonBackground))
+	if (IsValid(ButtonLabel))
 	{
-		ButtonBackground->SetBrushColor(IsHovered() || GetSelected() ? FocusedColor : NormalColor);
+		if (const TSubclassOf<UCommonTextStyle> CurrentTextStyle = GetCurrentTextStyleClass())
+		{
+			ButtonLabel->SetStyle(CurrentTextStyle);
+		}
 	}
+}
+
+void UDualFireMenuButton::HandleFocusLost()
+{
+	// 포커스 표현에 Selected 상태를 사용하므로 이탈 시 선택 상태를 남기지 않는다.
+	ClearSelection();
 }
