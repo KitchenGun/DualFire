@@ -10,18 +10,32 @@
 
 // Forward declarations — 헤더 인클루드 최소화
 class USceneComponent;
-class USkeletalMeshComponent;
 class USphereComponent;
+class UPaperFlipbook;
+class UPaperFlipbookComponent;
 class UDualFireMovementComponent;
 class UInputMappingContext;
 class UInputAction;
 struct FInputActionValue;
 
+/** 기체 시트의 고정 프레임 순서. 값은 Flipbook 프레임 인덱스와 일치한다. */
+UENUM(BlueprintType)
+enum class EAircraftBankPose : uint8
+{
+    Right45 = 0,
+    Right30 = 1,
+    Right15 = 2,
+    Neutral = 3,
+    Left15  = 4,
+    Left30  = 5,
+    Left45  = 6,
+};
+
 /**
  * 2D 스크롤 슈팅 플레이어 폰 (단일 플레이어 전용).
  * APawn 기반, UDualFireMovementComponent로 XY 평면 이동.
  * Enhanced Input → AddMovementInput → MovementComp->ConsumeInputVector 흐름.
- * 비주얼: USkeletalMeshComponent (Mesh), 충돌: USphereComponent (HitboxComp)
+ * 비주얼: UPaperFlipbookComponent (AircraftVisual), 충돌: USphereComponent (HitboxComp)
  *
  * 미구현: HP/잔여 기체, 사격 (BulletClass 스텁 프로퍼티만 보유)
  */
@@ -36,10 +50,10 @@ class DUALFIRE_API ADualFirePlayerPawn : public APawn
         meta=(AllowPrivateAccess="true"))
     TObjectPtr<USceneComponent> SceneRoot;
 
-    // 3D 스켈레탈 메시 비주얼. 충돌 없음 (히트박스는 HitboxComp 전담)
+    // 7포즈 Paper2D 기체 비주얼. 충돌 없음 (히트박스는 HitboxComp 전담)
     UPROPERTY(VisibleAnywhere, BlueprintReadOnly, Category="Components",
         meta=(AllowPrivateAccess="true"))
-    TObjectPtr<USkeletalMeshComponent> Mesh;
+    TObjectPtr<UPaperFlipbookComponent> AircraftVisual;
 
     // 피격 감지 전용 히트박스. Profile="PlayerPawn" (ObjectType=PlayerHitbox, EnemyBullet=Overlap)
     UPROPERTY(VisibleAnywhere, BlueprintReadOnly, Category="Components",
@@ -109,6 +123,14 @@ public:
     UFUNCTION(BlueprintPure, Category="Components")
     UHealthComponent* GetHealthComp() const { return HealthComp; }
 
+    /** DataTable에서 로드한 기체 Flipbook을 현재 Pawn 외형에 적용한다. */
+    UFUNCTION(BlueprintCallable, Category="Aircraft")
+    void ApplyAircraftVisual(UPaperFlipbook* InFlipbook);
+
+    /** 자동 재생 없이 지정된 뱅킹 프레임 하나를 표시한다. */
+    UFUNCTION(BlueprintCallable, Category="Aircraft")
+    void SetAircraftBankPose(EAircraftBankPose Pose);
+
     /** 슈퍼웨폰 발동 등에서 이동 속도 배율 변경. MovementComp에 위임 */
     UFUNCTION(BlueprintCallable, Category="Movement")
     void SetSpeedMultiplier(float InMultiplier);
@@ -140,6 +162,9 @@ protected:
 
     /** IA_Move (Axis2D) 입력 처리. Triggered 이벤트로 매 프레임 호출 */
     void OnMoveInput(const FInputActionValue& Value);
+
+    /** 이동 입력 종료 시 기체 포즈를 중립으로 되돌린다. */
+    void OnMoveInputCompleted(const FInputActionValue& Value);
 
     /** 기본 무기 슬롯 발사 (Triggered=연사) */
     void OnFirePrimaryInput(const FInputActionValue& Value);
@@ -175,6 +200,9 @@ protected:
     void OnPlayerFinalDeath();
 
 private:
+    /** 좌우 입력 세기를 15/30/45도 뱅킹 포즈로 변환한다. */
+    void UpdateAircraftBankPose(float HorizontalInput);
+
     /** IMC를 로드해 LocalPlayer Subsystem에 등록. BeginPlay에서 1회 호출 */
     void SetupInputMappingContext();
 };

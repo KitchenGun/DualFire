@@ -1,0 +1,28 @@
+schema_version: 1
+asset_id: DF_PL_AIRCRAFT_2D_BANK
+category: player_aircraft
+source:
+  origin: user_provided
+  files:
+    f22: input/F22_128x128_sheet.png
+    eurofighter: input/EuroFighter_128x128_sheet.png
+  license: project_approved
+sheet:
+  frame_width: 128
+  frame_height: 128
+  columns: 7
+  rows: 1
+  color_mode: RGBA
+  frame_order:
+    - Right45
+    - Right30
+    - Right15
+    - Neutral
+    - Left15
+    - Left30
+    - Left45
+import:
+  pixels_per_unreal_unit: 1.0
+  filter: nearest
+  mipmaps: false
+  transparent_background: true

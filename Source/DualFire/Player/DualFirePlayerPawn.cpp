@@ -11,7 +11,8 @@
 
 #include "Components/SceneComponent.h"
 #include "Components/SphereComponent.h"
-#include "Components/SkeletalMeshComponent.h"
+#include "PaperFlipbook.h"
+#include "PaperFlipbookComponent.h"
 
 #include "EnhancedInputComponent.h"
 #include "EnhancedInputSubsystems.h"
@@ -31,10 +32,14 @@ ADualFirePlayerPawn::ADualFirePlayerPawn()
     SceneRoot = CreateDefaultSubobject<USceneComponent>(TEXT("SceneRoot"));
     SetRootComponent(SceneRoot);
 
-    // ── Mesh (비주얼 전담) ────────────────────────────────────────────────
-    Mesh = CreateDefaultSubobject<USkeletalMeshComponent>(TEXT("Mesh"));
-    Mesh->SetupAttachment(SceneRoot);
-    Mesh->SetCollisionEnabled(ECollisionEnabled::NoCollision); // 충돌은 HitboxComp 전담
+    // ── AircraftVisual (Paper2D 비주얼 전담) ──────────────────────────────
+    AircraftVisual = CreateDefaultSubobject<UPaperFlipbookComponent>(TEXT("AircraftVisual"));
+    AircraftVisual->SetupAttachment(SceneRoot);
+    AircraftVisual->SetCollisionEnabled(ECollisionEnabled::NoCollision);
+    AircraftVisual->SetRelativeRotation(FRotator(0.f, 90.f, -90.f));
+    AircraftVisual->SetLooping(false);
+    AircraftVisual->Stop();
+    AircraftVisual->CastShadow = false;
 
     // ── HitboxComp (피격 감지 전담) ───────────────────────────────────────────
     // Profile="PlayerPawn": ObjectType=PlayerHitbox, EnemyBullet=Overlap, 나머지 Ignore
@@ -94,6 +99,10 @@ void ADualFirePlayerPawn::SetupPlayerInputComponent(UInputComponent* PlayerInput
     {
         EIC->BindAction(MoveIA, ETriggerEvent::Triggered,
             this, &ADualFirePlayerPawn::OnMoveInput);
+        EIC->BindAction(MoveIA, ETriggerEvent::Completed,
+            this, &ADualFirePlayerPawn::OnMoveInputCompleted);
+        EIC->BindAction(MoveIA, ETriggerEvent::Canceled,
+            this, &ADualFirePlayerPawn::OnMoveInputCompleted);
     }
     else
     {
@@ -150,6 +159,84 @@ void ADualFirePlayerPawn::OnMoveInput(const FInputActionValue& Value)
 
     AddMovementInput(FVector::RightVector,   Axis.X);
     AddMovementInput(FVector::ForwardVector, Axis.Y);
+    UpdateAircraftBankPose(Axis.X);
+}
+
+void ADualFirePlayerPawn::OnMoveInputCompleted(const FInputActionValue& Value)
+{
+    SetAircraftBankPose(EAircraftBankPose::Neutral);
+}
+
+void ADualFirePlayerPawn::ApplyAircraftVisual(UPaperFlipbook* InFlipbook)
+{
+    if (!IsValid(AircraftVisual))
+    {
+        UE_LOG(LogDualFire, Error, TEXT("[Player] AircraftVisual 컴포넌트가 없습니다."));
+        return;
+    }
+
+    AircraftVisual->SetFlipbook(InFlipbook);
+    AircraftVisual->SetLooping(false);
+    AircraftVisual->Stop();
+
+    if (!IsValid(InFlipbook))
+    {
+        UE_LOG(LogDualFire, Warning, TEXT("[Player] 기체 BankFlipbook이 설정되지 않았습니다."));
+        return;
+    }
+
+    if (InFlipbook->GetNumFrames() != 7)
+    {
+        UE_LOG(LogDualFire, Warning,
+            TEXT("[Player] BankFlipbook 프레임 수가 7이 아닙니다: %s (%d)"),
+            *InFlipbook->GetName(), InFlipbook->GetNumFrames());
+    }
+
+    SetAircraftBankPose(EAircraftBankPose::Neutral);
+}
+
+void ADualFirePlayerPawn::SetAircraftBankPose(EAircraftBankPose Pose)
+{
+    if (!IsValid(AircraftVisual) || !IsValid(AircraftVisual->GetFlipbook()))
+    {
+        return;
+    }
+
+    const int32 LastFrameIndex = FMath::Max(0, AircraftVisual->GetFlipbookLengthInFrames() - 1);
+    const int32 FrameIndex = FMath::Clamp(static_cast<int32>(Pose), 0, LastFrameIndex);
+    AircraftVisual->SetPlaybackPositionInFrames(FrameIndex, false);
+}
+
+void ADualFirePlayerPawn::UpdateAircraftBankPose(float HorizontalInput)
+{
+    EAircraftBankPose Pose = EAircraftBankPose::Neutral;
+
+    if (HorizontalInput >= 0.8f)
+    {
+        Pose = EAircraftBankPose::Right45;
+    }
+    else if (HorizontalInput >= 0.5f)
+    {
+        Pose = EAircraftBankPose::Right30;
+    }
+    else if (HorizontalInput >= 0.2f)
+    {
+        Pose = EAircraftBankPose::Right15;
+    }
+    else if (HorizontalInput <= -0.8f)
+    {
+        Pose = EAircraftBankPose::Left45;
+    }
+    else if (HorizontalInput <= -0.5f)
+    {
+        Pose = EAircraftBankPose::Left30;
+    }
+    else if (HorizontalInput <= -0.2f)
+    {
+        Pose = EAircraftBankPose::Left15;
+    }
+
+    SetAircraftBankPose(Pose);
 }
 
 // ── 발사 핸들러 ───────────────────────────────────────────────────────────────

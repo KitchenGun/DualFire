@@ -10,6 +10,7 @@
 class USkeletalMesh;
 class UStaticMesh;
 class UTexture2D;
+class UPaperFlipbook;
 class ABaseProjectile;
 class UMaterialInterface;
 class ADualFirePlayerPawn;
@@ -280,12 +281,16 @@ struct DUALFIRE_API FAircraftRow : public FTableRowBase
 	int32 MaxHealth = 1;
 
 	/**
-	 * 스폰할 기체 Pawn 블루프린트 클래스. 외형(Mesh)과 히트박스 크기(HitboxComp 반지름)는
-	 * 이 BP 자체의 컴포넌트 설정으로 관리한다 (DataTable 수치 컬럼으로 별도 관리하지 않음).
+	 * 스폰할 공통 Pawn 블루프린트 클래스. 외형은 BankFlipbook으로 주입하고,
+	 * 히트박스 크기(HitboxComp 반지름)는 이 BP의 컴포넌트 설정으로 관리한다.
 	 * GameMode가 미션 시작 시 이 클래스로 플레이어 Pawn을 스폰한다.
 	 */
 	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Aircraft")
 	TSoftClassPtr<ADualFirePlayerPawn> AircraftClass;
+
+	/** 좌우 입력에 따라 프레임을 선택하는 7포즈 Paper2D Flipbook */
+	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Aircraft")
+	TSoftObjectPtr<UPaperFlipbook> BankFlipbook;
 
 	/** 로드아웃 UI에 표시할 기체 아이콘 */
 	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Aircraft")

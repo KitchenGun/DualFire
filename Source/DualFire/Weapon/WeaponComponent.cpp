@@ -13,7 +13,7 @@
 
 namespace
 {
-	const FName TestAircraftID(TEXT("TEST_SHIP"));
+	const FName TestAircraftID(TEXT("F22"));
 	const FName TestSuperWeaponID(TEXT("TEST_SUPER"));
 	const FName TestShieldID(TEXT("TEST_SHIELD"));
 	const FName TestGroundWeaponID(TEXT("TEST_AG"));

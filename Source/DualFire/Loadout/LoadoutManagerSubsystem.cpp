@@ -6,6 +6,7 @@
 #include "Weapon/WeaponComponent.h"
 #include "Core/LoadoutDataLibrary.h"
 #include "DualFire.h"
+#include "PaperFlipbook.h"
 
 void ULoadoutManagerSubsystem::Initialize(FSubsystemCollectionBase& Collection)
 {
@@ -52,12 +53,19 @@ bool ULoadoutManagerSubsystem::ApplyToPlayer(ADualFirePlayerPawn* Pawn)
 		return false;
 	}
 
-	// AircraftRow에서 MaxHealth 조회 (없으면 현재 MaxHealth 유지)
+	// AircraftRow에서 외형과 MaxHealth 조회 (없으면 현재 값 유지)
 	int32 MaxHealth = HealthComp->MaxHealth;
 	FAircraftRow AircraftRow;
 	if (ULoadoutDataLibrary::FindAircraftRow(AircraftDataTable, ActiveLoadout.AircraftID, AircraftRow))
 	{
+		Pawn->ApplyAircraftVisual(AircraftRow.BankFlipbook.LoadSynchronous());
 		MaxHealth = FMath::Max(AircraftRow.MaxHealth, 1);
+	}
+	else
+	{
+		UE_LOG(LogDualFire, Warning,
+			TEXT("[LoadoutManagerSubsystem] 기체 행을 찾지 못함 — Aircraft:%s"),
+			*ActiveLoadout.AircraftID.ToString());
 	}
 
 	// ShieldRow에서 Shield 파라미터 조회 (없으면 기본값)
