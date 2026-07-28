@@ -26,6 +26,7 @@ public:
 protected:
 	virtual void NativeOnInitialized() override;
 	virtual void NativePreConstruct() override;
+	virtual void NativeOnHovered() override;
 	virtual void NativeOnCurrentTextStyleChanged() override;
 
 	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Menu Button", meta = (ExposeOnSpawn))

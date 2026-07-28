@@ -36,6 +36,20 @@ void UDualFireMenuButton::NativePreConstruct()
 	NativeOnCurrentTextStyleChanged();
 }
 
+void UDualFireMenuButton::NativeOnHovered()
+{
+	Super::NativeOnHovered();
+
+	// 마우스 탐색도 Common UI의 단일 선택 상태를 사용하도록 포커스를 동기화한다.
+	if (GetIsEnabled())
+	{
+		if (APlayerController* Controller = GetOwningPlayer())
+		{
+			SetUserFocus(Controller);
+		}
+	}
+}
+
 void UDualFireMenuButton::NativeOnCurrentTextStyleChanged()
 {
 	Super::NativeOnCurrentTextStyleChanged();
