@@ -1,0 +1,2241 @@
+{
+  "schema_version": 1,
+  "style": "DualFire outline cyan",
+  "palette": {
+    "outline": "#58DFF5FF",
+    "highlight": "#C9F8FFFF",
+    "active": "#20D7F2E8",
+    "fill": "#04141ECC",
+    "text": "#EAFBFFFF",
+    "muted": "#317589FF"
+  },
+  "unreal_import": {
+    "folder": "/Game/UI/Textures/InputGlyphs",
+    "texture_group": "UI",
+    "mip_gen_settings": "NoMipmaps",
+    "never_stream": true,
+    "srgb": true
+  },
+  "controller_data": {
+    "keyboard_mouse": "/Game/Blueprint/UI/Input/BP_CommonInputControllerData_KeyboardMouse",
+    "xbox": "/Game/Blueprint/UI/Input/BP_CommonInputControllerData_Xbox"
+  },
+  "expected_counts": {
+    "Keyboard": 104,
+    "Mouse": 11,
+    "Xbox": 32
+  },
+  "entries": [
+    {
+      "device": "Keyboard",
+      "asset_name": "T_UI_Input_Keyboard_Esc",
+      "unreal_fkey": "Escape",
+      "display": "ESC",
+      "renderer": "key",
+      "source_size": [
+        128,
+        128
+      ],
+      "brush_size": [
+        36,
+        36
+      ]
+    },
+    {
+      "device": "Keyboard",
+      "asset_name": "T_UI_Input_Keyboard_F1",
+      "unreal_fkey": "F1",
+      "display": "F1",
+      "renderer": "key",
+      "source_size": [
+        128,
+        128
+      ],
+      "brush_size": [
+        36,
+        36
+      ]
+    },
+    {
+      "device": "Keyboard",
+      "asset_name": "T_UI_Input_Keyboard_F2",
+      "unreal_fkey": "F2",
+      "display": "F2",
+      "renderer": "key",
+      "source_size": [
+        128,
+        128
+      ],
+      "brush_size": [
+        36,
+        36
+      ]
+    },
+    {
+      "device": "Keyboard",
+      "asset_name": "T_UI_Input_Keyboard_F3",
+      "unreal_fkey": "F3",
+      "display": "F3",
+      "renderer": "key",
+      "source_size": [
+        128,
+        128
+      ],
+      "brush_size": [
+        36,
+        36
+      ]
+    },
+    {
+      "device": "Keyboard",
+      "asset_name": "T_UI_Input_Keyboard_F4",
+      "unreal_fkey": "F4",
+      "display": "F4",
+      "renderer": "key",
+      "source_size": [
+        128,
+        128
+      ],
+      "brush_size": [
+        36,
+        36
+      ]
+    },
+    {
+      "device": "Keyboard",
+      "asset_name": "T_UI_Input_Keyboard_F5",
+      "unreal_fkey": "F5",
+      "display": "F5",
+      "renderer": "key",
+      "source_size": [
+        128,
+        128
+      ],
+      "brush_size": [
+        36,
+        36
+      ]
+    },
+    {
+      "device": "Keyboard",
+      "asset_name": "T_UI_Input_Keyboard_F6",
+      "unreal_fkey": "F6",
+      "display": "F6",
+      "renderer": "key",
+      "source_size": [
+        128,
+        128
+      ],
+      "brush_size": [
+        36,
+        36
+      ]
+    },
+    {
+      "device": "Keyboard",
+      "asset_name": "T_UI_Input_Keyboard_F7",
+      "unreal_fkey": "F7",
+      "display": "F7",
+      "renderer": "key",
+      "source_size": [
+        128,
+        128
+      ],
+      "brush_size": [
+        36,
+        36
+      ]
+    },
+    {
+      "device": "Keyboard",
+      "asset_name": "T_UI_Input_Keyboard_F8",
+      "unreal_fkey": "F8",
+      "display": "F8",
+      "renderer": "key",
+      "source_size": [
+        128,
+        128
+      ],
+      "brush_size": [
+        36,
+        36
+      ]
+    },
+    {
+      "device": "Keyboard",
+      "asset_name": "T_UI_Input_Keyboard_F9",
+      "unreal_fkey": "F9",
+      "display": "F9",
+      "renderer": "key",
+      "source_size": [
+        128,
+        128
+      ],
+      "brush_size": [
+        36,
+        36
+      ]
+    },
+    {
+      "device": "Keyboard",
+      "asset_name": "T_UI_Input_Keyboard_F10",
+      "unreal_fkey": "F10",
+      "display": "F10",
+      "renderer": "key",
+      "source_size": [
+        128,
+        128
+      ],
+      "brush_size": [
+        36,
+        36
+      ]
+    },
+    {
+      "device": "Keyboard",
+      "asset_name": "T_UI_Input_Keyboard_F11",
+      "unreal_fkey": "F11",
+      "display": "F11",
+      "renderer": "key",
+      "source_size": [
+        128,
+        128
+      ],
+      "brush_size": [
+        36,
+        36
+      ]
+    },
+    {
+      "device": "Keyboard",
+      "asset_name": "T_UI_Input_Keyboard_F12",
+      "unreal_fkey": "F12",
+      "display": "F12",
+      "renderer": "key",
+      "source_size": [
+        128,
+        128
+      ],
+      "brush_size": [
+        36,
+        36
+      ]
+    },
+    {
+      "device": "Keyboard",
+      "asset_name": "T_UI_Input_Keyboard_PrintScreen",
+      "unreal_fkey": null,
+      "display": "PRTSC",
+      "renderer": "key",
+      "source_size": [
+        192,
+        96
+      ],
+      "brush_size": [
+        64,
+        32
+      ],
+      "map_to_controller_data": false,
+      "note": "UE 5.8 InputCore has no dedicated PrintScreen FKey; display-only glyph."
+    },
+    {
+      "device": "Keyboard",
+      "asset_name": "T_UI_Input_Keyboard_ScrollLock",
+      "unreal_fkey": "ScrollLock",
+      "display": "SCRLK",
+      "renderer": "key",
+      "source_size": [
+        192,
+        96
+      ],
+      "brush_size": [
+        64,
+        32
+      ]
+    },
+    {
+      "device": "Keyboard",
+      "asset_name": "T_UI_Input_Keyboard_Pause",
+      "unreal_fkey": "Pause",
+      "display": "PAUSE",
+      "renderer": "key",
+      "source_size": [
+        192,
+        96
+      ],
+      "brush_size": [
+        64,
+        32
+      ]
+    },
+    {
+      "device": "Keyboard",
+      "asset_name": "T_UI_Input_Keyboard_Grave",
+      "unreal_fkey": "Tilde",
+      "display": "`",
+      "renderer": "key",
+      "source_size": [
+        128,
+        128
+      ],
+      "brush_size": [
+        36,
+        36
+      ]
+    },
+    {
+      "device": "Keyboard",
+      "asset_name": "T_UI_Input_Keyboard_One",
+      "unreal_fkey": "One",
+      "display": "1",
+      "renderer": "key",
+      "source_size": [
+        128,
+        128
+      ],
+      "brush_size": [
+        36,
+        36
+      ]
+    },
+    {
+      "device": "Keyboard",
+      "asset_name": "T_UI_Input_Keyboard_Two",
+      "unreal_fkey": "Two",
+      "display": "2",
+      "renderer": "key",
+      "source_size": [
+        128,
+        128
+      ],
+      "brush_size": [
+        36,
+        36
+      ]
+    },
+    {
+      "device": "Keyboard",
+      "asset_name": "T_UI_Input_Keyboard_Three",
+      "unreal_fkey": "Three",
+      "display": "3",
+      "renderer": "key",
+      "source_size": [
+        128,
+        128
+      ],
+      "brush_size": [
+        36,
+        36
+      ]
+    },
+    {
+      "device": "Keyboard",
+      "asset_name": "T_UI_Input_Keyboard_Four",
+      "unreal_fkey": "Four",
+      "display": "4",
+      "renderer": "key",
+      "source_size": [
+        128,
+        128
+      ],
+      "brush_size": [
+        36,
+        36
+      ]
+    },
+    {
+      "device": "Keyboard",
+      "asset_name": "T_UI_Input_Keyboard_Five",
+      "unreal_fkey": "Five",
+      "display": "5",
+      "renderer": "key",
+      "source_size": [
+        128,
+        128
+      ],
+      "brush_size": [
+        36,
+        36
+      ]
+    },
+    {
+      "device": "Keyboard",
+      "asset_name": "T_UI_Input_Keyboard_Six",
+      "unreal_fkey": "Six",
+      "display": "6",
+      "renderer": "key",
+      "source_size": [
+        128,
+        128
+      ],
+      "brush_size": [
+        36,
+        36
+      ]
+    },
+    {
+      "device": "Keyboard",
+      "asset_name": "T_UI_Input_Keyboard_Seven",
+      "unreal_fkey": "Seven",
+      "display": "7",
+      "renderer": "key",
+      "source_size": [
+        128,
+        128
+      ],
+      "brush_size": [
+        36,
+        36
+      ]
+    },
+    {
+      "device": "Keyboard",
+      "asset_name": "T_UI_Input_Keyboard_Eight",
+      "unreal_fkey": "Eight",
+      "display": "8",
+      "renderer": "key",
+      "source_size": [
+        128,
+        128
+      ],
+      "brush_size": [
+        36,
+        36
+      ]
+    },
+    {
+      "device": "Keyboard",
+      "asset_name": "T_UI_Input_Keyboard_Nine",
+      "unreal_fkey": "Nine",
+      "display": "9",
+      "renderer": "key",
+      "source_size": [
+        128,
+        128
+      ],
+      "brush_size": [
+        36,
+        36
+      ]
+    },
+    {
+      "device": "Keyboard",
+      "asset_name": "T_UI_Input_Keyboard_Zero",
+      "unreal_fkey": "Zero",
+      "display": "0",
+      "renderer": "key",
+      "source_size": [
+        128,
+        128
+      ],
+      "brush_size": [
+        36,
+        36
+      ]
+    },
+    {
+      "device": "Keyboard",
+      "asset_name": "T_UI_Input_Keyboard_Minus",
+      "unreal_fkey": "Hyphen",
+      "display": "-",
+      "renderer": "key",
+      "source_size": [
+        128,
+        128
+      ],
+      "brush_size": [
+        36,
+        36
+      ]
+    },
+    {
+      "device": "Keyboard",
+      "asset_name": "T_UI_Input_Keyboard_Equals",
+      "unreal_fkey": "Equals",
+      "display": "=",
+      "renderer": "key",
+      "source_size": [
+        128,
+        128
+      ],
+      "brush_size": [
+        36,
+        36
+      ]
+    },
+    {
+      "device": "Keyboard",
+      "asset_name": "T_UI_Input_Keyboard_Backspace",
+      "unreal_fkey": "BackSpace",
+      "display": "BACKSPACE",
+      "renderer": "key",
+      "source_size": [
+        192,
+        96
+      ],
+      "brush_size": [
+        64,
+        32
+      ]
+    },
+    {
+      "device": "Keyboard",
+      "asset_name": "T_UI_Input_Keyboard_Tab",
+      "unreal_fkey": "Tab",
+      "display": "TAB",
+      "renderer": "key",
+      "source_size": [
+        192,
+        96
+      ],
+      "brush_size": [
+        64,
+        32
+      ]
+    },
+    {
+      "device": "Keyboard",
+      "asset_name": "T_UI_Input_Keyboard_Q",
+      "unreal_fkey": "Q",
+      "display": "Q",
+      "renderer": "key",
+      "source_size": [
+        128,
+        128
+      ],
+      "brush_size": [
+        36,
+        36
+      ]
+    },
+    {
+      "device": "Keyboard",
+      "asset_name": "T_UI_Input_Keyboard_W",
+      "unreal_fkey": "W",
+      "display": "W",
+      "renderer": "key",
+      "source_size": [
+        128,
+        128
+      ],
+      "brush_size": [
+        36,
+        36
+      ]
+    },
+    {
+      "device": "Keyboard",
+      "asset_name": "T_UI_Input_Keyboard_E",
+      "unreal_fkey": "E",
+      "display": "E",
+      "renderer": "key",
+      "source_size": [
+        128,
+        128
+      ],
+      "brush_size": [
+        36,
+        36
+      ]
+    },
+    {
+      "device": "Keyboard",
+      "asset_name": "T_UI_Input_Keyboard_R",
+      "unreal_fkey": "R",
+      "display": "R",
+      "renderer": "key",
+      "source_size": [
+        128,
+        128
+      ],
+      "brush_size": [
+        36,
+        36
+      ]
+    },
+    {
+      "device": "Keyboard",
+      "asset_name": "T_UI_Input_Keyboard_T",
+      "unreal_fkey": "T",
+      "display": "T",
+      "renderer": "key",
+      "source_size": [
+        128,
+        128
+      ],
+      "brush_size": [
+        36,
+        36
+      ]
+    },
+    {
+      "device": "Keyboard",
+      "asset_name": "T_UI_Input_Keyboard_Y",
+      "unreal_fkey": "Y",
+      "display": "Y",
+      "renderer": "key",
+      "source_size": [
+        128,
+        128
+      ],
+      "brush_size": [
+        36,
+        36
+      ]
+    },
+    {
+      "device": "Keyboard",
+      "asset_name": "T_UI_Input_Keyboard_U",
+      "unreal_fkey": "U",
+      "display": "U",
+      "renderer": "key",
+      "source_size": [
+        128,
+        128
+      ],
+      "brush_size": [
+        36,
+        36
+      ]
+    },
+    {
+      "device": "Keyboard",
+      "asset_name": "T_UI_Input_Keyboard_I",
+      "unreal_fkey": "I",
+      "display": "I",
+      "renderer": "key",
+      "source_size": [
+        128,
+        128
+      ],
+      "brush_size": [
+        36,
+        36
+      ]
+    },
+    {
+      "device": "Keyboard",
+      "asset_name": "T_UI_Input_Keyboard_O",
+      "unreal_fkey": "O",
+      "display": "O",
+      "renderer": "key",
+      "source_size": [
+        128,
+        128
+      ],
+      "brush_size": [
+        36,
+        36
+      ]
+    },
+    {
+      "device": "Keyboard",
+      "asset_name": "T_UI_Input_Keyboard_P",
+      "unreal_fkey": "P",
+      "display": "P",
+      "renderer": "key",
+      "source_size": [
+        128,
+        128
+      ],
+      "brush_size": [
+        36,
+        36
+      ]
+    },
+    {
+      "device": "Keyboard",
+      "asset_name": "T_UI_Input_Keyboard_LeftBracket",
+      "unreal_fkey": "LeftBracket",
+      "display": "[",
+      "renderer": "key",
+      "source_size": [
+        128,
+        128
+      ],
+      "brush_size": [
+        36,
+        36
+      ]
+    },
+    {
+      "device": "Keyboard",
+      "asset_name": "T_UI_Input_Keyboard_RightBracket",
+      "unreal_fkey": "RightBracket",
+      "display": "]",
+      "renderer": "key",
+      "source_size": [
+        128,
+        128
+      ],
+      "brush_size": [
+        36,
+        36
+      ]
+    },
+    {
+      "device": "Keyboard",
+      "asset_name": "T_UI_Input_Keyboard_Backslash",
+      "unreal_fkey": "Backslash",
+      "display": "\\",
+      "renderer": "key",
+      "source_size": [
+        128,
+        128
+      ],
+      "brush_size": [
+        36,
+        36
+      ]
+    },
+    {
+      "device": "Keyboard",
+      "asset_name": "T_UI_Input_Keyboard_CapsLock",
+      "unreal_fkey": "CapsLock",
+      "display": "CAPS",
+      "renderer": "key",
+      "source_size": [
+        192,
+        96
+      ],
+      "brush_size": [
+        64,
+        32
+      ]
+    },
+    {
+      "device": "Keyboard",
+      "asset_name": "T_UI_Input_Keyboard_A",
+      "unreal_fkey": "A",
+      "display": "A",
+      "renderer": "key",
+      "source_size": [
+        128,
+        128
+      ],
+      "brush_size": [
+        36,
+        36
+      ]
+    },
+    {
+      "device": "Keyboard",
+      "asset_name": "T_UI_Input_Keyboard_S",
+      "unreal_fkey": "S",
+      "display": "S",
+      "renderer": "key",
+      "source_size": [
+        128,
+        128
+      ],
+      "brush_size": [
+        36,
+        36
+      ]
+    },
+    {
+      "device": "Keyboard",
+      "asset_name": "T_UI_Input_Keyboard_D",
+      "unreal_fkey": "D",
+      "display": "D",
+      "renderer": "key",
+      "source_size": [
+        128,
+        128
+      ],
+      "brush_size": [
+        36,
+        36
+      ]
+    },
+    {
+      "device": "Keyboard",
+      "asset_name": "T_UI_Input_Keyboard_F",
+      "unreal_fkey": "F",
+      "display": "F",
+      "renderer": "key",
+      "source_size": [
+        128,
+        128
+      ],
+      "brush_size": [
+        36,
+        36
+      ]
+    },
+    {
+      "device": "Keyboard",
+      "asset_name": "T_UI_Input_Keyboard_G",
+      "unreal_fkey": "G",
+      "display": "G",
+      "renderer": "key",
+      "source_size": [
+        128,
+        128
+      ],
+      "brush_size": [
+        36,
+        36
+      ]
+    },
+    {
+      "device": "Keyboard",
+      "asset_name": "T_UI_Input_Keyboard_H",
+      "unreal_fkey": "H",
+      "display": "H",
+      "renderer": "key",
+      "source_size": [
+        128,
+        128
+      ],
+      "brush_size": [
+        36,
+        36
+      ]
+    },
+    {
+      "device": "Keyboard",
+      "asset_name": "T_UI_Input_Keyboard_J",
+      "unreal_fkey": "J",
+      "display": "J",
+      "renderer": "key",
+      "source_size": [
+        128,
+        128
+      ],
+      "brush_size": [
+        36,
+        36
+      ]
+    },
+    {
+      "device": "Keyboard",
+      "asset_name": "T_UI_Input_Keyboard_K",
+      "unreal_fkey": "K",
+      "display": "K",
+      "renderer": "key",
+      "source_size": [
+        128,
+        128
+      ],
+      "brush_size": [
+        36,
+        36
+      ]
+    },
+    {
+      "device": "Keyboard",
+      "asset_name": "T_UI_Input_Keyboard_L",
+      "unreal_fkey": "L",
+      "display": "L",
+      "renderer": "key",
+      "source_size": [
+        128,
+        128
+      ],
+      "brush_size": [
+        36,
+        36
+      ]
+    },
+    {
+      "device": "Keyboard",
+      "asset_name": "T_UI_Input_Keyboard_Semicolon",
+      "unreal_fkey": "Semicolon",
+      "display": ";",
+      "renderer": "key",
+      "source_size": [
+        128,
+        128
+      ],
+      "brush_size": [
+        36,
+        36
+      ]
+    },
+    {
+      "device": "Keyboard",
+      "asset_name": "T_UI_Input_Keyboard_Apostrophe",
+      "unreal_fkey": "Apostrophe",
+      "display": "'",
+      "renderer": "key",
+      "source_size": [
+        128,
+        128
+      ],
+      "brush_size": [
+        36,
+        36
+      ]
+    },
+    {
+      "device": "Keyboard",
+      "asset_name": "T_UI_Input_Keyboard_Enter",
+      "unreal_fkey": "Enter",
+      "display": "ENTER",
+      "renderer": "key",
+      "source_size": [
+        192,
+        96
+      ],
+      "brush_size": [
+        64,
+        32
+      ]
+    },
+    {
+      "device": "Keyboard",
+      "asset_name": "T_UI_Input_Keyboard_LeftShift",
+      "unreal_fkey": "LeftShift",
+      "display": "SHIFT",
+      "renderer": "key",
+      "source_size": [
+        192,
+        96
+      ],
+      "brush_size": [
+        64,
+        32
+      ]
+    },
+    {
+      "device": "Keyboard",
+      "asset_name": "T_UI_Input_Keyboard_Z",
+      "unreal_fkey": "Z",
+      "display": "Z",
+      "renderer": "key",
+      "source_size": [
+        128,
+        128
+      ],
+      "brush_size": [
+        36,
+        36
+      ]
+    },
+    {
+      "device": "Keyboard",
+      "asset_name": "T_UI_Input_Keyboard_X",
+      "unreal_fkey": "X",
+      "display": "X",
+      "renderer": "key",
+      "source_size": [
+        128,
+        128
+      ],
+      "brush_size": [
+        36,
+        36
+      ]
+    },
+    {
+      "device": "Keyboard",
+      "asset_name": "T_UI_Input_Keyboard_C",
+      "unreal_fkey": "C",
+      "display": "C",
+      "renderer": "key",
+      "source_size": [
+        128,
+        128
+      ],
+      "brush_size": [
+        36,
+        36
+      ]
+    },
+    {
+      "device": "Keyboard",
+      "asset_name": "T_UI_Input_Keyboard_V",
+      "unreal_fkey": "V",
+      "display": "V",
+      "renderer": "key",
+      "source_size": [
+        128,
+        128
+      ],
+      "brush_size": [
+        36,
+        36
+      ]
+    },
+    {
+      "device": "Keyboard",
+      "asset_name": "T_UI_Input_Keyboard_B",
+      "unreal_fkey": "B",
+      "display": "B",
+      "renderer": "key",
+      "source_size": [
+        128,
+        128
+      ],
+      "brush_size": [
+        36,
+        36
+      ]
+    },
+    {
+      "device": "Keyboard",
+      "asset_name": "T_UI_Input_Keyboard_N",
+      "unreal_fkey": "N",
+      "display": "N",
+      "renderer": "key",
+      "source_size": [
+        128,
+        128
+      ],
+      "brush_size": [
+        36,
+        36
+      ]
+    },
+    {
+      "device": "Keyboard",
+      "asset_name": "T_UI_Input_Keyboard_M",
+      "unreal_fkey": "M",
+      "display": "M",
+      "renderer": "key",
+      "source_size": [
+        128,
+        128
+      ],
+      "brush_size": [
+        36,
+        36
+      ]
+    },
+    {
+      "device": "Keyboard",
+      "asset_name": "T_UI_Input_Keyboard_Comma",
+      "unreal_fkey": "Comma",
+      "display": ",",
+      "renderer": "key",
+      "source_size": [
+        128,
+        128
+      ],
+      "brush_size": [
+        36,
+        36
+      ]
+    },
+    {
+      "device": "Keyboard",
+      "asset_name": "T_UI_Input_Keyboard_Period",
+      "unreal_fkey": "Period",
+      "display": ".",
+      "renderer": "key",
+      "source_size": [
+        128,
+        128
+      ],
+      "brush_size": [
+        36,
+        36
+      ]
+    },
+    {
+      "device": "Keyboard",
+      "asset_name": "T_UI_Input_Keyboard_Slash",
+      "unreal_fkey": "Slash",
+      "display": "/",
+      "renderer": "key",
+      "source_size": [
+        128,
+        128
+      ],
+      "brush_size": [
+        36,
+        36
+      ]
+    },
+    {
+      "device": "Keyboard",
+      "asset_name": "T_UI_Input_Keyboard_RightShift",
+      "unreal_fkey": "RightShift",
+      "display": "SHIFT",
+      "renderer": "key",
+      "source_size": [
+        192,
+        96
+      ],
+      "brush_size": [
+        64,
+        32
+      ]
+    },
+    {
+      "device": "Keyboard",
+      "asset_name": "T_UI_Input_Keyboard_LeftCtrl",
+      "unreal_fkey": "LeftControl",
+      "display": "CTRL",
+      "renderer": "key",
+      "source_size": [
+        192,
+        96
+      ],
+      "brush_size": [
+        64,
+        32
+      ]
+    },
+    {
+      "device": "Keyboard",
+      "asset_name": "T_UI_Input_Keyboard_LeftWin",
+      "unreal_fkey": "LeftCommand",
+      "display": "WIN",
+      "renderer": "key",
+      "source_size": [
+        128,
+        128
+      ],
+      "brush_size": [
+        36,
+        36
+      ]
+    },
+    {
+      "device": "Keyboard",
+      "asset_name": "T_UI_Input_Keyboard_LeftAlt",
+      "unreal_fkey": "LeftAlt",
+      "display": "ALT",
+      "renderer": "key",
+      "source_size": [
+        128,
+        128
+      ],
+      "brush_size": [
+        36,
+        36
+      ]
+    },
+    {
+      "device": "Keyboard",
+      "asset_name": "T_UI_Input_Keyboard_Space",
+      "unreal_fkey": "SpaceBar",
+      "display": "SPACE",
+      "renderer": "key",
+      "source_size": [
+        192,
+        96
+      ],
+      "brush_size": [
+        64,
+        32
+      ]
+    },
+    {
+      "device": "Keyboard",
+      "asset_name": "T_UI_Input_Keyboard_RightAlt",
+      "unreal_fkey": "RightAlt",
+      "display": "ALT",
+      "renderer": "key",
+      "source_size": [
+        128,
+        128
+      ],
+      "brush_size": [
+        36,
+        36
+      ]
+    },
+    {
+      "device": "Keyboard",
+      "asset_name": "T_UI_Input_Keyboard_RightWin",
+      "unreal_fkey": "RightCommand",
+      "display": "WIN",
+      "renderer": "key",
+      "source_size": [
+        128,
+        128
+      ],
+      "brush_size": [
+        36,
+        36
+      ]
+    },
+    {
+      "device": "Keyboard",
+      "asset_name": "T_UI_Input_Keyboard_Menu",
+      "unreal_fkey": null,
+      "display": "MENU",
+      "renderer": "key",
+      "source_size": [
+        192,
+        96
+      ],
+      "brush_size": [
+        64,
+        32
+      ],
+      "map_to_controller_data": false,
+      "note": "UE 5.8 InputCore has no keyboard Apps/Menu FKey; display-only glyph."
+    },
+    {
+      "device": "Keyboard",
+      "asset_name": "T_UI_Input_Keyboard_RightCtrl",
+      "unreal_fkey": "RightControl",
+      "display": "CTRL",
+      "renderer": "key",
+      "source_size": [
+        192,
+        96
+      ],
+      "brush_size": [
+        64,
+        32
+      ]
+    },
+    {
+      "device": "Keyboard",
+      "asset_name": "T_UI_Input_Keyboard_Insert",
+      "unreal_fkey": "Insert",
+      "display": "INS",
+      "renderer": "key",
+      "source_size": [
+        128,
+        128
+      ],
+      "brush_size": [
+        36,
+        36
+      ]
+    },
+    {
+      "device": "Keyboard",
+      "asset_name": "T_UI_Input_Keyboard_Home",
+      "unreal_fkey": "Home",
+      "display": "HOME",
+      "renderer": "key",
+      "source_size": [
+        128,
+        128
+      ],
+      "brush_size": [
+        36,
+        36
+      ]
+    },
+    {
+      "device": "Keyboard",
+      "asset_name": "T_UI_Input_Keyboard_PageUp",
+      "unreal_fkey": "PageUp",
+      "display": "PGUP",
+      "renderer": "key",
+      "source_size": [
+        128,
+        128
+      ],
+      "brush_size": [
+        36,
+        36
+      ]
+    },
+    {
+      "device": "Keyboard",
+      "asset_name": "T_UI_Input_Keyboard_Delete",
+      "unreal_fkey": "Delete",
+      "display": "DEL",
+      "renderer": "key",
+      "source_size": [
+        128,
+        128
+      ],
+      "brush_size": [
+        36,
+        36
+      ]
+    },
+    {
+      "device": "Keyboard",
+      "asset_name": "T_UI_Input_Keyboard_End",
+      "unreal_fkey": "End",
+      "display": "END",
+      "renderer": "key",
+      "source_size": [
+        128,
+        128
+      ],
+      "brush_size": [
+        36,
+        36
+      ]
+    },
+    {
+      "device": "Keyboard",
+      "asset_name": "T_UI_Input_Keyboard_PageDown",
+      "unreal_fkey": "PageDown",
+      "display": "PGDN",
+      "renderer": "key",
+      "source_size": [
+        128,
+        128
+      ],
+      "brush_size": [
+        36,
+        36
+      ]
+    },
+    {
+      "device": "Keyboard",
+      "asset_name": "T_UI_Input_Keyboard_ArrowUp",
+      "unreal_fkey": "Up",
+      "display": "",
+      "renderer": "arrow_up",
+      "source_size": [
+        128,
+        128
+      ],
+      "brush_size": [
+        36,
+        36
+      ]
+    },
+    {
+      "device": "Keyboard",
+      "asset_name": "T_UI_Input_Keyboard_ArrowLeft",
+      "unreal_fkey": "Left",
+      "display": "",
+      "renderer": "arrow_left",
+      "source_size": [
+        128,
+        128
+      ],
+      "brush_size": [
+        36,
+        36
+      ]
+    },
+    {
+      "device": "Keyboard",
+      "asset_name": "T_UI_Input_Keyboard_ArrowDown",
+      "unreal_fkey": "Down",
+      "display": "",
+      "renderer": "arrow_down",
+      "source_size": [
+        128,
+        128
+      ],
+      "brush_size": [
+        36,
+        36
+      ]
+    },
+    {
+      "device": "Keyboard",
+      "asset_name": "T_UI_Input_Keyboard_ArrowRight",
+      "unreal_fkey": "Right",
+      "display": "",
+      "renderer": "arrow_right",
+      "source_size": [
+        128,
+        128
+      ],
+      "brush_size": [
+        36,
+        36
+      ]
+    },
+    {
+      "device": "Keyboard",
+      "asset_name": "T_UI_Input_Keyboard_NumpadNumLock",
+      "unreal_fkey": "NumLock",
+      "display": "NUM",
+      "renderer": "key",
+      "source_size": [
+        128,
+        128
+      ],
+      "brush_size": [
+        36,
+        36
+      ]
+    },
+    {
+      "device": "Keyboard",
+      "asset_name": "T_UI_Input_Keyboard_NumpadDivide",
+      "unreal_fkey": "Divide",
+      "display": "/",
+      "renderer": "key",
+      "source_size": [
+        128,
+        128
+      ],
+      "brush_size": [
+        36,
+        36
+      ]
+    },
+    {
+      "device": "Keyboard",
+      "asset_name": "T_UI_Input_Keyboard_NumpadMultiply",
+      "unreal_fkey": "Multiply",
+      "display": "*",
+      "renderer": "key",
+      "source_size": [
+        128,
+        128
+      ],
+      "brush_size": [
+        36,
+        36
+      ]
+    },
+    {
+      "device": "Keyboard",
+      "asset_name": "T_UI_Input_Keyboard_NumpadSubtract",
+      "unreal_fkey": "Subtract",
+      "display": "-",
+      "renderer": "key",
+      "source_size": [
+        128,
+        128
+      ],
+      "brush_size": [
+        36,
+        36
+      ]
+    },
+    {
+      "device": "Keyboard",
+      "asset_name": "T_UI_Input_Keyboard_Numpad7",
+      "unreal_fkey": "NumPadSeven",
+      "display": "7",
+      "renderer": "key",
+      "source_size": [
+        128,
+        128
+      ],
+      "brush_size": [
+        36,
+        36
+      ]
+    },
+    {
+      "device": "Keyboard",
+      "asset_name": "T_UI_Input_Keyboard_Numpad8",
+      "unreal_fkey": "NumPadEight",
+      "display": "8",
+      "renderer": "key",
+      "source_size": [
+        128,
+        128
+      ],
+      "brush_size": [
+        36,
+        36
+      ]
+    },
+    {
+      "device": "Keyboard",
+      "asset_name": "T_UI_Input_Keyboard_Numpad9",
+      "unreal_fkey": "NumPadNine",
+      "display": "9",
+      "renderer": "key",
+      "source_size": [
+        128,
+        128
+      ],
+      "brush_size": [
+        36,
+        36
+      ]
+    },
+    {
+      "device": "Keyboard",
+      "asset_name": "T_UI_Input_Keyboard_NumpadAdd",
+      "unreal_fkey": "Add",
+      "display": "+",
+      "renderer": "key",
+      "source_size": [
+        128,
+        128
+      ],
+      "brush_size": [
+        36,
+        36
+      ]
+    },
+    {
+      "device": "Keyboard",
+      "asset_name": "T_UI_Input_Keyboard_Numpad4",
+      "unreal_fkey": "NumPadFour",
+      "display": "4",
+      "renderer": "key",
+      "source_size": [
+        128,
+        128
+      ],
+      "brush_size": [
+        36,
+        36
+      ]
+    },
+    {
+      "device": "Keyboard",
+      "asset_name": "T_UI_Input_Keyboard_Numpad5",
+      "unreal_fkey": "NumPadFive",
+      "display": "5",
+      "renderer": "key",
+      "source_size": [
+        128,
+        128
+      ],
+      "brush_size": [
+        36,
+        36
+      ]
+    },
+    {
+      "device": "Keyboard",
+      "asset_name": "T_UI_Input_Keyboard_Numpad6",
+      "unreal_fkey": "NumPadSix",
+      "display": "6",
+      "renderer": "key",
+      "source_size": [
+        128,
+        128
+      ],
+      "brush_size": [
+        36,
+        36
+      ]
+    },
+    {
+      "device": "Keyboard",
+      "asset_name": "T_UI_Input_Keyboard_Numpad1",
+      "unreal_fkey": "NumPadOne",
+      "display": "1",
+      "renderer": "key",
+      "source_size": [
+        128,
+        128
+      ],
+      "brush_size": [
+        36,
+        36
+      ]
+    },
+    {
+      "device": "Keyboard",
+      "asset_name": "T_UI_Input_Keyboard_Numpad2",
+      "unreal_fkey": "NumPadTwo",
+      "display": "2",
+      "renderer": "key",
+      "source_size": [
+        128,
+        128
+      ],
+      "brush_size": [
+        36,
+        36
+      ]
+    },
+    {
+      "device": "Keyboard",
+      "asset_name": "T_UI_Input_Keyboard_Numpad3",
+      "unreal_fkey": "NumPadThree",
+      "display": "3",
+      "renderer": "key",
+      "source_size": [
+        128,
+        128
+      ],
+      "brush_size": [
+        36,
+        36
+      ]
+    },
+    {
+      "device": "Keyboard",
+      "asset_name": "T_UI_Input_Keyboard_NumpadEnter",
+      "unreal_fkey": "Enter",
+      "display": "ENTER",
+      "renderer": "key",
+      "source_size": [
+        192,
+        96
+      ],
+      "brush_size": [
+        64,
+        32
+      ],
+      "map_to_controller_data": false,
+      "note": "UE maps main Enter and numpad Enter to the same FKey; display-only duplicate."
+    },
+    {
+      "device": "Keyboard",
+      "asset_name": "T_UI_Input_Keyboard_Numpad0",
+      "unreal_fkey": "NumPadZero",
+      "display": "0",
+      "renderer": "key",
+      "source_size": [
+        192,
+        96
+      ],
+      "brush_size": [
+        64,
+        32
+      ]
+    },
+    {
+      "device": "Keyboard",
+      "asset_name": "T_UI_Input_Keyboard_NumpadDecimal",
+      "unreal_fkey": "Decimal",
+      "display": ".",
+      "renderer": "key",
+      "source_size": [
+        128,
+        128
+      ],
+      "brush_size": [
+        36,
+        36
+      ]
+    },
+    {
+      "device": "Mouse",
+      "asset_name": "T_UI_Input_Mouse_Left",
+      "unreal_fkey": "LeftMouseButton",
+      "display": "LMB",
+      "renderer": "button_left",
+      "source_size": [
+        128,
+        128
+      ],
+      "brush_size": [
+        36,
+        36
+      ]
+    },
+    {
+      "device": "Mouse",
+      "asset_name": "T_UI_Input_Mouse_Right",
+      "unreal_fkey": "RightMouseButton",
+      "display": "RMB",
+      "renderer": "button_right",
+      "source_size": [
+        128,
+        128
+      ],
+      "brush_size": [
+        36,
+        36
+      ]
+    },
+    {
+      "device": "Mouse",
+      "asset_name": "T_UI_Input_Mouse_Middle",
+      "unreal_fkey": "MiddleMouseButton",
+      "display": "MMB",
+      "renderer": "button_middle",
+      "source_size": [
+        128,
+        128
+      ],
+      "brush_size": [
+        36,
+        36
+      ]
+    },
+    {
+      "device": "Mouse",
+      "asset_name": "T_UI_Input_Mouse_ThumbUpper",
+      "unreal_fkey": "ThumbMouseButton",
+      "display": "THUMB 1",
+      "renderer": "thumb_upper",
+      "source_size": [
+        128,
+        128
+      ],
+      "brush_size": [
+        36,
+        36
+      ]
+    },
+    {
+      "device": "Mouse",
+      "asset_name": "T_UI_Input_Mouse_ThumbLower",
+      "unreal_fkey": "ThumbMouseButton2",
+      "display": "THUMB 2",
+      "renderer": "thumb_lower",
+      "source_size": [
+        128,
+        128
+      ],
+      "brush_size": [
+        36,
+        36
+      ]
+    },
+    {
+      "device": "Mouse",
+      "asset_name": "T_UI_Input_Mouse_WheelUp",
+      "unreal_fkey": "MouseScrollUp",
+      "display": "WHEEL UP",
+      "renderer": "wheel_up",
+      "source_size": [
+        128,
+        128
+      ],
+      "brush_size": [
+        36,
+        36
+      ]
+    },
+    {
+      "device": "Mouse",
+      "asset_name": "T_UI_Input_Mouse_WheelDown",
+      "unreal_fkey": "MouseScrollDown",
+      "display": "WHEEL DOWN",
+      "renderer": "wheel_down",
+      "source_size": [
+        128,
+        128
+      ],
+      "brush_size": [
+        36,
+        36
+      ]
+    },
+    {
+      "device": "Mouse",
+      "asset_name": "T_UI_Input_Mouse_WheelAxis",
+      "unreal_fkey": "MouseWheelAxis",
+      "display": "WHEEL",
+      "renderer": "wheel_axis",
+      "source_size": [
+        128,
+        128
+      ],
+      "brush_size": [
+        36,
+        36
+      ]
+    },
+    {
+      "device": "Mouse",
+      "asset_name": "T_UI_Input_Mouse_Move",
+      "unreal_fkey": "Mouse2D",
+      "display": "MOVE",
+      "renderer": "move",
+      "source_size": [
+        128,
+        128
+      ],
+      "brush_size": [
+        36,
+        36
+      ]
+    },
+    {
+      "device": "Mouse",
+      "asset_name": "T_UI_Input_Mouse_X",
+      "unreal_fkey": "MouseX",
+      "display": "MOUSE X",
+      "renderer": "move_x",
+      "source_size": [
+        128,
+        128
+      ],
+      "brush_size": [
+        36,
+        36
+      ]
+    },
+    {
+      "device": "Mouse",
+      "asset_name": "T_UI_Input_Mouse_Y",
+      "unreal_fkey": "MouseY",
+      "display": "MOUSE Y",
+      "renderer": "move_y",
+      "source_size": [
+        128,
+        128
+      ],
+      "brush_size": [
+        36,
+        36
+      ]
+    },
+    {
+      "device": "Xbox",
+      "asset_name": "T_UI_Input_Xbox_A",
+      "unreal_fkey": "Gamepad_FaceButton_Bottom",
+      "display": "A",
+      "renderer": "face",
+      "source_size": [
+        128,
+        128
+      ],
+      "brush_size": [
+        36,
+        36
+      ]
+    },
+    {
+      "device": "Xbox",
+      "asset_name": "T_UI_Input_Xbox_B",
+      "unreal_fkey": "Gamepad_FaceButton_Right",
+      "display": "B",
+      "renderer": "face",
+      "source_size": [
+        128,
+        128
+      ],
+      "brush_size": [
+        36,
+        36
+      ]
+    },
+    {
+      "device": "Xbox",
+      "asset_name": "T_UI_Input_Xbox_X",
+      "unreal_fkey": "Gamepad_FaceButton_Left",
+      "display": "X",
+      "renderer": "face",
+      "source_size": [
+        128,
+        128
+      ],
+      "brush_size": [
+        36,
+        36
+      ]
+    },
+    {
+      "device": "Xbox",
+      "asset_name": "T_UI_Input_Xbox_Y",
+      "unreal_fkey": "Gamepad_FaceButton_Top",
+      "display": "Y",
+      "renderer": "face",
+      "source_size": [
+        128,
+        128
+      ],
+      "brush_size": [
+        36,
+        36
+      ]
+    },
+    {
+      "device": "Xbox",
+      "asset_name": "T_UI_Input_Xbox_DPadUp",
+      "unreal_fkey": "Gamepad_DPad_Up",
+      "display": "UP",
+      "renderer": "dpad_up",
+      "source_size": [
+        128,
+        128
+      ],
+      "brush_size": [
+        36,
+        36
+      ]
+    },
+    {
+      "device": "Xbox",
+      "asset_name": "T_UI_Input_Xbox_DPadDown",
+      "unreal_fkey": "Gamepad_DPad_Down",
+      "display": "DOWN",
+      "renderer": "dpad_down",
+      "source_size": [
+        128,
+        128
+      ],
+      "brush_size": [
+        36,
+        36
+      ]
+    },
+    {
+      "device": "Xbox",
+      "asset_name": "T_UI_Input_Xbox_DPadLeft",
+      "unreal_fkey": "Gamepad_DPad_Left",
+      "display": "LEFT",
+      "renderer": "dpad_left",
+      "source_size": [
+        128,
+        128
+      ],
+      "brush_size": [
+        36,
+        36
+      ]
+    },
+    {
+      "device": "Xbox",
+      "asset_name": "T_UI_Input_Xbox_DPadRight",
+      "unreal_fkey": "Gamepad_DPad_Right",
+      "display": "RIGHT",
+      "renderer": "dpad_right",
+      "source_size": [
+        128,
+        128
+      ],
+      "brush_size": [
+        36,
+        36
+      ]
+    },
+    {
+      "device": "Xbox",
+      "asset_name": "T_UI_Input_Xbox_LB",
+      "unreal_fkey": "Gamepad_LeftShoulder",
+      "display": "LB",
+      "renderer": "shoulder",
+      "source_size": [
+        128,
+        128
+      ],
+      "brush_size": [
+        36,
+        36
+      ]
+    },
+    {
+      "device": "Xbox",
+      "asset_name": "T_UI_Input_Xbox_RB",
+      "unreal_fkey": "Gamepad_RightShoulder",
+      "display": "RB",
+      "renderer": "shoulder",
+      "source_size": [
+        128,
+        128
+      ],
+      "brush_size": [
+        36,
+        36
+      ]
+    },
+    {
+      "device": "Xbox",
+      "asset_name": "T_UI_Input_Xbox_LT",
+      "unreal_fkey": "Gamepad_LeftTrigger",
+      "display": "LT",
+      "renderer": "trigger",
+      "source_size": [
+        128,
+        128
+      ],
+      "brush_size": [
+        36,
+        36
+      ]
+    },
+    {
+      "device": "Xbox",
+      "asset_name": "T_UI_Input_Xbox_RT",
+      "unreal_fkey": "Gamepad_RightTrigger",
+      "display": "RT",
+      "renderer": "trigger",
+      "source_size": [
+        128,
+        128
+      ],
+      "brush_size": [
+        36,
+        36
+      ]
+    },
+    {
+      "device": "Xbox",
+      "asset_name": "T_UI_Input_Xbox_LTAxis",
+      "unreal_fkey": "Gamepad_LeftTriggerAxis",
+      "display": "LT",
+      "renderer": "trigger",
+      "source_size": [
+        128,
+        128
+      ],
+      "brush_size": [
+        36,
+        36
+      ]
+    },
+    {
+      "device": "Xbox",
+      "asset_name": "T_UI_Input_Xbox_RTAxis",
+      "unreal_fkey": "Gamepad_RightTriggerAxis",
+      "display": "RT",
+      "renderer": "trigger",
+      "source_size": [
+        128,
+        128
+      ],
+      "brush_size": [
+        36,
+        36
+      ]
+    },
+    {
+      "device": "Xbox",
+      "asset_name": "T_UI_Input_Xbox_View",
+      "unreal_fkey": "Gamepad_Special_Left",
+      "display": "VIEW",
+      "renderer": "view",
+      "source_size": [
+        128,
+        128
+      ],
+      "brush_size": [
+        36,
+        36
+      ]
+    },
+    {
+      "device": "Xbox",
+      "asset_name": "T_UI_Input_Xbox_Menu",
+      "unreal_fkey": "Gamepad_Special_Right",
+      "display": "MENU",
+      "renderer": "menu",
+      "source_size": [
+        128,
+        128
+      ],
+      "brush_size": [
+        36,
+        36
+      ]
+    },
+    {
+      "device": "Xbox",
+      "asset_name": "T_UI_Input_Xbox_LS",
+      "unreal_fkey": "Gamepad_LeftThumbstick",
+      "display": "LS",
+      "renderer": "stick_click_left",
+      "source_size": [
+        128,
+        128
+      ],
+      "brush_size": [
+        36,
+        36
+      ]
+    },
+    {
+      "device": "Xbox",
+      "asset_name": "T_UI_Input_Xbox_RS",
+      "unreal_fkey": "Gamepad_RightThumbstick",
+      "display": "RS",
+      "renderer": "stick_click_right",
+      "source_size": [
+        128,
+        128
+      ],
+      "brush_size": [
+        36,
+        36
+      ]
+    },
+    {
+      "device": "Xbox",
+      "asset_name": "T_UI_Input_Xbox_LeftStick",
+      "unreal_fkey": "Gamepad_Left2D",
+      "display": "LS",
+      "renderer": "stick_2d",
+      "source_size": [
+        128,
+        128
+      ],
+      "brush_size": [
+        36,
+        36
+      ]
+    },
+    {
+      "device": "Xbox",
+      "asset_name": "T_UI_Input_Xbox_RightStick",
+      "unreal_fkey": "Gamepad_Right2D",
+      "display": "RS",
+      "renderer": "stick_2d",
+      "source_size": [
+        128,
+        128
+      ],
+      "brush_size": [
+        36,
+        36
+      ]
+    },
+    {
+      "device": "Xbox",
+      "asset_name": "T_UI_Input_Xbox_LeftStickUp",
+      "unreal_fkey": "Gamepad_LeftStick_Up",
+      "display": "LS",
+      "renderer": "stick_direction_left_up",
+      "source_size": [
+        128,
+        128
+      ],
+      "brush_size": [
+        36,
+        36
+      ]
+    },
+    {
+      "device": "Xbox",
+      "asset_name": "T_UI_Input_Xbox_LeftStickDown",
+      "unreal_fkey": "Gamepad_LeftStick_Down",
+      "display": "LS",
+      "renderer": "stick_direction_left_down",
+      "source_size": [
+        128,
+        128
+      ],
+      "brush_size": [
+        36,
+        36
+      ]
+    },
+    {
+      "device": "Xbox",
+      "asset_name": "T_UI_Input_Xbox_LeftStickLeft",
+      "unreal_fkey": "Gamepad_LeftStick_Left",
+      "display": "LS",
+      "renderer": "stick_direction_left_left",
+      "source_size": [
+        128,
+        128
+      ],
+      "brush_size": [
+        36,
+        36
+      ]
+    },
+    {
+      "device": "Xbox",
+      "asset_name": "T_UI_Input_Xbox_LeftStickRight",
+      "unreal_fkey": "Gamepad_LeftStick_Right",
+      "display": "LS",
+      "renderer": "stick_direction_left_right",
+      "source_size": [
+        128,
+        128
+      ],
+      "brush_size": [
+        36,
+        36
+      ]
+    },
+    {
+      "device": "Xbox",
+      "asset_name": "T_UI_Input_Xbox_RightStickUp",
+      "unreal_fkey": "Gamepad_RightStick_Up",
+      "display": "RS",
+      "renderer": "stick_direction_right_up",
+      "source_size": [
+        128,
+        128
+      ],
+      "brush_size": [
+        36,
+        36
+      ]
+    },
+    {
+      "device": "Xbox",
+      "asset_name": "T_UI_Input_Xbox_RightStickDown",
+      "unreal_fkey": "Gamepad_RightStick_Down",
+      "display": "RS",
+      "renderer": "stick_direction_right_down",
+      "source_size": [
+        128,
+        128
+      ],
+      "brush_size": [
+        36,
+        36
+      ]
+    },
+    {
+      "device": "Xbox",
+      "asset_name": "T_UI_Input_Xbox_RightStickLeft",
+      "unreal_fkey": "Gamepad_RightStick_Left",
+      "display": "RS",
+      "renderer": "stick_direction_right_left",
+      "source_size": [
+        128,
+        128
+      ],
+      "brush_size": [
+        36,
+        36
+      ]
+    },
+    {
+      "device": "Xbox",
+      "asset_name": "T_UI_Input_Xbox_RightStickRight",
+      "unreal_fkey": "Gamepad_RightStick_Right",
+      "display": "RS",
+      "renderer": "stick_direction_right_right",
+      "source_size": [
+        128,
+        128
+      ],
+      "brush_size": [
+        36,
+        36
+      ]
+    },
+    {
+      "device": "Xbox",
+      "asset_name": "T_UI_Input_Xbox_LeftStickX",
+      "unreal_fkey": "Gamepad_LeftX",
+      "display": "LS X",
+      "renderer": "stick_axis_left_x",
+      "source_size": [
+        128,
+        128
+      ],
+      "brush_size": [
+        36,
+        36
+      ]
+    },
+    {
+      "device": "Xbox",
+      "asset_name": "T_UI_Input_Xbox_LeftStickY",
+      "unreal_fkey": "Gamepad_LeftY",
+      "display": "LS Y",
+      "renderer": "stick_axis_left_y",
+      "source_size": [
+        128,
+        128
+      ],
+      "brush_size": [
+        36,
+        36
+      ]
+    },
+    {
+      "device": "Xbox",
+      "asset_name": "T_UI_Input_Xbox_RightStickX",
+      "unreal_fkey": "Gamepad_RightX",
+      "display": "RS X",
+      "renderer": "stick_axis_right_x",
+      "source_size": [
+        128,
+        128
+      ],
+      "brush_size": [
+        36,
+        36
+      ]
+    },
+    {
+      "device": "Xbox",
+      "asset_name": "T_UI_Input_Xbox_RightStickY",
+      "unreal_fkey": "Gamepad_RightY",
+      "display": "RS Y",
+      "renderer": "stick_axis_right_y",
+      "source_size": [
+        128,
+        128
+      ],
+      "brush_size": [
+        36,
+        36
+      ]
+    }
+  ]
+}
