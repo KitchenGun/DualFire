@@ -12,7 +12,7 @@ public class DualFire : ModuleRules
 
 		PublicDependencyModuleNames.AddRange(new string[] { "Core", "CoreUObject", "Engine", "InputCore", "EnhancedInput", "DataRegistry", "CommonUI", "UMG", "Paper2D" });
 
-		PrivateDependencyModuleNames.AddRange(new string[] { "CommonInput", "Slate", "SlateCore" });
+		PrivateDependencyModuleNames.AddRange(new string[] { "CommonInput", "GameplayTags", "Slate", "SlateCore" });
 
 		// Uncomment if you are using online features
 		// PrivateDependencyModuleNames.Add("OnlineSubsystem");

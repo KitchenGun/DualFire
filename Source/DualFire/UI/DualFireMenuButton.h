@@ -23,6 +23,9 @@ public:
 	UFUNCTION(BlueprintPure, Category = "Menu Button")
 	FText GetLabelText() const { return LabelText; }
 
+	/** Select 입력을 현재 포커스된 버튼의 일반 클릭 경로로 전달한다. */
+	bool ExecuteFocusedSelectAction();
+
 protected:
 	virtual void NativeOnInitialized() override;
 	virtual void NativePreConstruct() override;

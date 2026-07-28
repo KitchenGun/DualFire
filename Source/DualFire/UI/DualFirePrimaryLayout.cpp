@@ -3,10 +3,14 @@
 #include "UI/DualFirePrimaryLayout.h"
 
 #include "DualFire.h"
+#include "Blueprint/UserWidget.h"
 #include "Blueprint/WidgetTree.h"
 #include "CommonActivatableWidget.h"
 #include "Components/Overlay.h"
 #include "Components/OverlaySlot.h"
+#include "Components/SafeZone.h"
+#include "Components/SafeZoneSlot.h"
+#include "Input/CommonBoundActionBar.h"
 #include "Widgets/CommonActivatableWidgetContainer.h"
 
 namespace
@@ -14,6 +18,7 @@ namespace
 const FName GameStackName(TEXT("Stack_Game"));
 const FName MenuStackName(TEXT("Stack_Menu"));
 const FName ModalStackName(TEXT("Stack_Modal"));
+const FName ActionBarName(TEXT("ActionBar"));
 const FName SystemStackName(TEXT("Stack_System"));
 }
 
@@ -30,7 +35,7 @@ void UDualFirePrimaryLayout::NativeOnInitialized()
 	if (!ResolveLayerStacks())
 	{
 		UE_LOG(LogDualFire, Error,
-			TEXT("[UI] Primary layout requires Stack_Game, Stack_Menu, Stack_Modal, and Stack_System."));
+			TEXT("[UI] Primary layout requires Stack_Game, Stack_Menu, Stack_Modal, ActionBar, and Stack_System."));
 	}
 }
 
@@ -123,6 +128,35 @@ void UDualFirePrimaryLayout::BuildDefaultWidgetTree()
 	GameStack = AddFullScreenStack(GameStackName);
 	MenuStack = AddFullScreenStack(MenuStackName);
 	ModalStack = AddFullScreenStack(ModalStackName);
+
+	if (IsValid(ActionBarWidgetClass))
+	{
+		ActionBar = WidgetTree->ConstructWidget<UUserWidget>(ActionBarWidgetClass, ActionBarName);
+	}
+	else
+	{
+		ActionBar = WidgetTree->ConstructWidget<UCommonBoundActionBar>(
+			UCommonBoundActionBar::StaticClass(), ActionBarName);
+	}
+	USafeZone* ActionBarSafeZone = WidgetTree->ConstructWidget<USafeZone>(
+		USafeZone::StaticClass(), TEXT("ActionBarSafeZone"));
+	ActionBarSafeZone->SetSidesToPad(true, true, true, true);
+	UOverlaySlot* ActionBarSafeZoneSlot = RootOverlay->AddChildToOverlay(ActionBarSafeZone);
+	check(ActionBarSafeZoneSlot);
+	ActionBarSafeZoneSlot->SetHorizontalAlignment(HAlign_Fill);
+	ActionBarSafeZoneSlot->SetVerticalAlignment(VAlign_Fill);
+
+	ActionBarSafeZone->SetContent(ActionBar);
+	USafeZoneSlot* ActionBarSlot = CastChecked<USafeZoneSlot>(ActionBar->Slot);
+	ActionBarSlot->SetHorizontalAlignment(HAlign_Right);
+	ActionBarSlot->SetVerticalAlignment(VAlign_Bottom);
+	ActionBarSlot->SetPadding(FMargin(0.0f, 0.0f, 64.0f, 48.0f));
+	ActionBar->SetVisibility(ESlateVisibility::HitTestInvisible);
+	if (UCommonBoundActionBar* NativeActionBar = Cast<UCommonBoundActionBar>(ActionBar))
+	{
+		NativeActionBar->SetDisplayOwningPlayerActionsOnly(true);
+	}
+
 	SystemStack = AddFullScreenStack(SystemStackName);
 }
 
@@ -133,7 +167,9 @@ bool UDualFirePrimaryLayout::ResolveLayerStacks()
 	GameStack = Cast<UCommonActivatableWidgetStack>(WidgetTree->FindWidget(GameStackName));
 	MenuStack = Cast<UCommonActivatableWidgetStack>(WidgetTree->FindWidget(MenuStackName));
 	ModalStack = Cast<UCommonActivatableWidgetStack>(WidgetTree->FindWidget(ModalStackName));
+	ActionBar = WidgetTree->FindWidget(ActionBarName);
 	SystemStack = Cast<UCommonActivatableWidgetStack>(WidgetTree->FindWidget(SystemStackName));
 
-	return IsValid(GameStack) && IsValid(MenuStack) && IsValid(ModalStack) && IsValid(SystemStack);
+	return IsValid(GameStack) && IsValid(MenuStack) && IsValid(ModalStack) &&
+		IsValid(ActionBar) && IsValid(SystemStack);
 }

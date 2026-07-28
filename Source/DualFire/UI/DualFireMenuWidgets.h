@@ -9,6 +9,7 @@
 
 class UTextBlock;
 class UDualFireMenuButton;
+class UInputAction;
 
 /** Menu 레이어에 표시되는 시작 화면이다. */
 UCLASS(BlueprintType, Blueprintable)
@@ -34,8 +35,16 @@ protected:
 	virtual void NativeOnInitialized() override;
 	virtual void NativeOnActivated() override;
 	virtual UWidget* NativeGetDesiredFocusTarget() const override;
+	virtual bool NativeOnHandleBackAction() override;
+
 	UPROPERTY(EditDefaultsOnly, BlueprintReadOnly, Category = "Menu")
 	TSubclassOf<UCommonActivatableWidget> SettingsWidgetClass;
+
+	UPROPERTY(EditDefaultsOnly, BlueprintReadOnly, Category = "Menu")
+	TSubclassOf<UCommonActivatableWidget> ExitConfirmWidgetClass;
+
+	UPROPERTY(EditDefaultsOnly, BlueprintReadOnly, Category = "Input")
+	TObjectPtr<UInputAction> ConfirmInputAction;
 
 	UPROPERTY(EditDefaultsOnly, BlueprintReadOnly, Category = "Menu")
 	FName MissionLevelName = TEXT("/Game/Level/LV_Test");
@@ -80,7 +89,10 @@ protected:
 	virtual void NativeOnInitialized() override;
 	virtual void NativeOnActivated() override;
 	virtual UWidget* NativeGetDesiredFocusTarget() const override;
-	virtual FReply NativeOnPreviewKeyDown(const FGeometry& InGeometry, const FKeyEvent& InKeyEvent) override;
+	virtual bool NativeOnHandleBackAction() override;
+
+	UPROPERTY(EditDefaultsOnly, BlueprintReadOnly, Category = "Input")
+	TObjectPtr<UInputAction> ConfirmInputAction;
 
 	UPROPERTY(BlueprintReadOnly, Category = "Settings|Widgets", meta = (BindWidget))
 	TObjectPtr<UDualFireMenuButton> WindowModeButton;
@@ -104,4 +116,36 @@ private:
 
 	EWindowMode::Type PendingWindowMode = EWindowMode::WindowedFullscreen;
 	bool bPendingVSync = false;
+};
+
+/** 종료 요청을 확인하고 이전 메뉴 포커스를 복원하는 Modal 화면이다. */
+UCLASS(BlueprintType, Blueprintable)
+class DUALFIRE_API UDualFireExitConfirmWidget : public UCommonActivatableWidget
+{
+	GENERATED_BODY()
+
+public:
+	UDualFireExitConfirmWidget();
+
+	virtual TOptional<FUIInputConfig> GetDesiredInputConfig() const override;
+
+	UFUNCTION(BlueprintCallable, Category = "Exit")
+	void ConfirmExit();
+
+	UFUNCTION(BlueprintCallable, Category = "Exit")
+	void CancelExit();
+
+protected:
+	virtual void NativeOnInitialized() override;
+	virtual UWidget* NativeGetDesiredFocusTarget() const override;
+	virtual bool NativeOnHandleBackAction() override;
+
+	UPROPERTY(EditDefaultsOnly, BlueprintReadOnly, Category = "Input")
+	TObjectPtr<UInputAction> ConfirmInputAction;
+
+	UPROPERTY(BlueprintReadOnly, Category = "Exit|Widgets", meta = (BindWidget))
+	TObjectPtr<UDualFireMenuButton> ConfirmButton;
+
+	UPROPERTY(BlueprintReadOnly, Category = "Exit|Widgets", meta = (BindWidget))
+	TObjectPtr<UDualFireMenuButton> CancelButton;
 };

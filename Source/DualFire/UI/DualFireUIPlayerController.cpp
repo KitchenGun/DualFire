@@ -4,6 +4,9 @@
 
 #include "DualFire.h"
 #include "CommonActivatableWidget.h"
+#include "EnhancedInputSubsystems.h"
+#include "Engine/LocalPlayer.h"
+#include "InputMappingContext.h"
 
 ADualFireUIPlayerController::ADualFireUIPlayerController()
 {
@@ -13,12 +16,14 @@ ADualFireUIPlayerController::ADualFireUIPlayerController()
 void ADualFireUIPlayerController::BeginPlay()
 {
 	Super::BeginPlay();
+	AddUIInputMapping();
 	InitializeRootLayout();
 }
 
 void ADualFireUIPlayerController::EndPlay(const EEndPlayReason::Type EndPlayReason)
 {
 	RemoveRootLayout();
+	RemoveUIInputMapping();
 	Super::EndPlay(EndPlayReason);
 }
 
@@ -46,6 +51,46 @@ void ADualFireUIPlayerController::ClearLayer(const EDualFireUILayer Layer)
 	{
 		RootLayout->ClearLayer(Layer);
 	}
+}
+
+void ADualFireUIPlayerController::AddUIInputMapping()
+{
+	if (!IsLocalPlayerController() || !IsValid(UIInputMapping) || bUIInputMappingAdded)
+	{
+		return;
+	}
+
+	ULocalPlayer* LocalPlayer = GetLocalPlayer();
+	UEnhancedInputLocalPlayerSubsystem* InputSubsystem = IsValid(LocalPlayer)
+		? LocalPlayer->GetSubsystem<UEnhancedInputLocalPlayerSubsystem>()
+		: nullptr;
+	if (!IsValid(InputSubsystem))
+	{
+		UE_LOG(LogDualFire, Warning, TEXT("[UI] Enhanced Input subsystem is unavailable."));
+		return;
+	}
+
+	// 화면마다 같은 Mapping Context를 제거하지 않도록 PlayerController가 수명 전체를 소유한다.
+	InputSubsystem->AddMappingContext(UIInputMapping, UIInputMappingPriority);
+	bUIInputMappingAdded = true;
+}
+
+void ADualFireUIPlayerController::RemoveUIInputMapping()
+{
+	if (!bUIInputMappingAdded)
+	{
+		return;
+	}
+
+	if (ULocalPlayer* LocalPlayer = GetLocalPlayer())
+	{
+		if (UEnhancedInputLocalPlayerSubsystem* InputSubsystem =
+			LocalPlayer->GetSubsystem<UEnhancedInputLocalPlayerSubsystem>())
+		{
+			InputSubsystem->RemoveMappingContext(UIInputMapping);
+		}
+	}
+	bUIInputMappingAdded = false;
 }
 
 void ADualFireUIPlayerController::InitializeRootLayout()

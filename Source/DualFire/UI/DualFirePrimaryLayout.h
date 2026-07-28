@@ -8,6 +8,7 @@
 
 class UCommonActivatableWidget;
 class UCommonActivatableWidgetStack;
+class UUserWidget;
 
 UENUM(BlueprintType)
 enum class EDualFireUILayer : uint8
@@ -39,8 +40,14 @@ public:
 	UFUNCTION(BlueprintCallable, Category = "UI|Layout")
 	void ClearLayer(EDualFireUILayer Layer);
 
+	UFUNCTION(BlueprintPure, Category = "UI|Layout")
+	UWidget* GetActionBar() const { return ActionBar; }
+
 protected:
 	virtual void NativeOnInitialized() override;
+
+	UPROPERTY(EditDefaultsOnly, BlueprintReadOnly, Category = "UI|Layout")
+	TSubclassOf<UUserWidget> ActionBarWidgetClass;
 
 private:
 	void BuildDefaultWidgetTree();
@@ -54,6 +61,9 @@ private:
 
 	UPROPERTY(Transient)
 	TObjectPtr<UCommonActivatableWidgetStack> ModalStack;
+
+	UPROPERTY(Transient)
+	TObjectPtr<UWidget> ActionBar;
 
 	UPROPERTY(Transient)
 	TObjectPtr<UCommonActivatableWidgetStack> SystemStack;

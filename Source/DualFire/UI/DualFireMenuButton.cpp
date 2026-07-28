@@ -23,6 +23,20 @@ void UDualFireMenuButton::SetLabelText(const FText& InLabelText)
 	}
 }
 
+bool UDualFireMenuButton::ExecuteFocusedSelectAction()
+{
+	APlayerController* Controller = GetOwningPlayer();
+	const bool bHasFocus = IsValid(Controller) &&
+		(HasUserFocus(Controller) || HasUserFocusedDescendants(Controller));
+	if (!bHasFocus || !GetIsEnabled() || !IsInteractionEnabled())
+	{
+		return false;
+	}
+
+	HandleTriggeringActionCommited();
+	return true;
+}
+
 void UDualFireMenuButton::NativeOnInitialized()
 {
 	Super::NativeOnInitialized();

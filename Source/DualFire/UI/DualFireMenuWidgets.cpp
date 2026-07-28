@@ -6,13 +6,16 @@
 #include "UI/DualFireMenuButton.h"
 #include "UI/DualFireUIPlayerController.h"
 
+#include "Blueprint/WidgetTree.h"
 #include "Components/TextBlock.h"
 #include "Engine/Engine.h"
 #include "GameFramework/GameUserSettings.h"
-#include "InputCoreTypes.h"
+#include "Input/CommonUIInputTypes.h"
+#include "InputAction.h"
 #include "Kismet/GameplayStatics.h"
 #include "Kismet/KismetSystemLibrary.h"
 #include "TimerManager.h"
+#include "Widgets/CommonActivatableWidgetContainer.h"
 
 namespace
 {
@@ -29,11 +32,49 @@ FText WindowModeToText(const EWindowMode::Type WindowMode)
 		return NSLOCTEXT("DualFireUI", "Borderless", "BORDERLESS");
 	}
 }
+
+void RegisterConfirmPrompt(UCommonUserWidget& Widget, const UInputAction* ConfirmInputAction)
+{
+	if (!IsValid(ConfirmInputAction))
+	{
+		UE_LOG(LogDualFire, Warning, TEXT("[UI] ConfirmInputAction is not configured on %s."), *Widget.GetName());
+		return;
+	}
+
+	const TWeakObjectPtr<UCommonUserWidget> WeakWidget(&Widget);
+	FBindUIActionArgs BindArgs(ConfirmInputAction, true, FSimpleDelegate::CreateLambda([WeakWidget]()
+	{
+		UCommonUserWidget* BoundWidget = WeakWidget.Get();
+		if (!IsValid(BoundWidget) || !IsValid(BoundWidget->WidgetTree))
+		{
+			return;
+		}
+
+		TArray<UWidget*> Widgets;
+		BoundWidget->WidgetTree->GetAllWidgets(Widgets);
+		for (UWidget* ChildWidget : Widgets)
+		{
+			UDualFireMenuButton* MenuButton = Cast<UDualFireMenuButton>(ChildWidget);
+			if (IsValid(MenuButton) && MenuButton->ExecuteFocusedSelectAction())
+			{
+				return;
+			}
+		}
+
+		UE_LOG(LogDualFire, Warning, TEXT("[UI] Select input has no focused menu button on %s."),
+			*BoundWidget->GetName());
+	}));
+	BindArgs.OverrideDisplayName = NSLOCTEXT("DualFireUI", "SelectAction", "SELECT");
+	Widget.RegisterUIActionBinding(BindArgs);
+}
 }
 
 UDualFireStartMenuWidget::UDualFireStartMenuWidget()
 {
 	bAutoRestoreFocus = true;
+	bIsBackHandler = true;
+	bIsBackActionDisplayedInActionBar = true;
+	OverrideBackActionDisplayName = NSLOCTEXT("DualFireUI", "BackAction", "BACK");
 }
 
 TOptional<FUIInputConfig> UDualFireStartMenuWidget::GetDesiredInputConfig() const
@@ -53,6 +94,7 @@ void UDualFireStartMenuWidget::NativeOnInitialized()
 	StartMissionButton->OnClicked().AddUObject(this, &ThisClass::StartMission);
 	SettingsButton->OnClicked().AddUObject(this, &ThisClass::OpenSettings);
 	ExitButton->OnClicked().AddUObject(this, &ThisClass::ExitGame);
+	RegisterConfirmPrompt(*this, ConfirmInputAction);
 }
 
 void UDualFireStartMenuWidget::NativeOnActivated()
@@ -70,6 +112,12 @@ void UDualFireStartMenuWidget::NativeOnActivated()
 UWidget* UDualFireStartMenuWidget::NativeGetDesiredFocusTarget() const
 {
 	return StartMissionButton;
+}
+
+bool UDualFireStartMenuWidget::NativeOnHandleBackAction()
+{
+	ExitGame();
+	return true;
 }
 
 void UDualFireStartMenuWidget::ApplyFallbackFocus()
@@ -116,12 +164,38 @@ void UDualFireStartMenuWidget::OpenSettings()
 
 void UDualFireStartMenuWidget::ExitGame()
 {
-	UKismetSystemLibrary::QuitGame(this, GetOwningPlayer(), EQuitPreference::Quit, false);
+	ADualFireUIPlayerController* Controller = Cast<ADualFireUIPlayerController>(GetOwningPlayer());
+	if (!IsValid(Controller) || !IsValid(ExitConfirmWidgetClass))
+	{
+		UE_LOG(LogDualFire, Warning, TEXT("[UI] Exit confirmation screen is not configured."));
+		return;
+	}
+
+	UDualFirePrimaryLayout* RootLayout = Controller->GetRootLayout();
+	UCommonActivatableWidgetStack* ModalStack = IsValid(RootLayout)
+		? RootLayout->GetLayerStack(EDualFireUILayer::Modal)
+		: nullptr;
+	if (!IsValid(ModalStack))
+	{
+		UE_LOG(LogDualFire, Warning, TEXT("[UI] Modal layer is unavailable."));
+		return;
+	}
+
+	// 활성 Modal이 있는 동안에는 같은 확인창을 다시 쌓지 않는다.
+	if (IsValid(ModalStack->GetActiveWidget()))
+	{
+		return;
+	}
+
+	Controller->PushWidgetToLayer(EDualFireUILayer::Modal, ExitConfirmWidgetClass);
 }
 
 UDualFireSettingsWidget::UDualFireSettingsWidget()
 {
 	bAutoRestoreFocus = true;
+	bIsBackHandler = true;
+	bIsBackActionDisplayedInActionBar = true;
+	OverrideBackActionDisplayName = NSLOCTEXT("DualFireUI", "BackAction", "BACK");
 }
 
 TOptional<FUIInputConfig> UDualFireSettingsWidget::GetDesiredInputConfig() const
@@ -143,6 +217,7 @@ void UDualFireSettingsWidget::NativeOnInitialized()
 	VSyncButton->OnClicked().AddUObject(this, &ThisClass::ToggleVSync);
 	ApplyButton->OnClicked().AddUObject(this, &ThisClass::ApplySettings);
 	BackButton->OnClicked().AddUObject(this, &ThisClass::CloseSettings);
+	RegisterConfirmPrompt(*this, ConfirmInputAction);
 }
 
 void UDualFireSettingsWidget::NativeOnActivated()
@@ -177,18 +252,10 @@ void UDualFireSettingsWidget::ApplyFallbackFocus()
 	}
 }
 
-FReply UDualFireSettingsWidget::NativeOnPreviewKeyDown(
-	const FGeometry& InGeometry,
-	const FKeyEvent& InKeyEvent)
+bool UDualFireSettingsWidget::NativeOnHandleBackAction()
 {
-	const FKey Key = InKeyEvent.GetKey();
-	if (Key == EKeys::Escape || Key == EKeys::Gamepad_FaceButton_Right)
-	{
-		CloseSettings();
-		return FReply::Handled();
-	}
-
-	return Super::NativeOnPreviewKeyDown(InGeometry, InKeyEvent);
+	CloseSettings();
+	return true;
 }
 
 void UDualFireSettingsWidget::LoadCurrentSettings()
@@ -262,6 +329,55 @@ void UDualFireSettingsWidget::ApplySettings()
 }
 
 void UDualFireSettingsWidget::CloseSettings()
+{
+	DeactivateWidget();
+}
+
+UDualFireExitConfirmWidget::UDualFireExitConfirmWidget()
+{
+	bAutoRestoreFocus = true;
+	bIsBackHandler = true;
+	bIsBackActionDisplayedInActionBar = true;
+	bIsModal = true;
+	OverrideBackActionDisplayName = NSLOCTEXT("DualFireUI", "BackAction", "BACK");
+}
+
+TOptional<FUIInputConfig> UDualFireExitConfirmWidget::GetDesiredInputConfig() const
+{
+	return FUIInputConfig(ECommonInputMode::Menu, EMouseCaptureMode::NoCapture);
+}
+
+void UDualFireExitConfirmWidget::NativeOnInitialized()
+{
+	Super::NativeOnInitialized();
+
+	if (!ensure(IsValid(ConfirmButton) && IsValid(CancelButton)))
+	{
+		return;
+	}
+
+	ConfirmButton->OnClicked().AddUObject(this, &ThisClass::ConfirmExit);
+	CancelButton->OnClicked().AddUObject(this, &ThisClass::CancelExit);
+	RegisterConfirmPrompt(*this, ConfirmInputAction);
+}
+
+UWidget* UDualFireExitConfirmWidget::NativeGetDesiredFocusTarget() const
+{
+	return CancelButton;
+}
+
+bool UDualFireExitConfirmWidget::NativeOnHandleBackAction()
+{
+	CancelExit();
+	return true;
+}
+
+void UDualFireExitConfirmWidget::ConfirmExit()
+{
+	UKismetSystemLibrary::QuitGame(this, GetOwningPlayer(), EQuitPreference::Quit, false);
+}
+
+void UDualFireExitConfirmWidget::CancelExit()
 {
 	DeactivateWidget();
 }

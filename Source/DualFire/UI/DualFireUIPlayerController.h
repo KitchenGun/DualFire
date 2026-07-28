@@ -8,6 +8,7 @@
 #include "DualFireUIPlayerController.generated.h"
 
 class UCommonActivatableWidget;
+class UInputMappingContext;
 
 /** 로컬 플레이어용 Common UI 루트 레이아웃을 하나만 생성하고 소유한다. */
 UCLASS(BlueprintType, Blueprintable)
@@ -45,10 +46,20 @@ protected:
 	UPROPERTY(EditDefaultsOnly, BlueprintReadOnly, Category = "UI")
 	EDualFireUILayer InitialWidgetLayer = EDualFireUILayer::Menu;
 
+	UPROPERTY(EditDefaultsOnly, BlueprintReadOnly, Category = "UI|Input")
+	TObjectPtr<UInputMappingContext> UIInputMapping;
+
+	UPROPERTY(EditDefaultsOnly, BlueprintReadOnly, Category = "UI|Input")
+	int32 UIInputMappingPriority = 100;
+
 private:
+	void AddUIInputMapping();
+	void RemoveUIInputMapping();
 	void InitializeRootLayout();
 	void RemoveRootLayout();
 
 	UPROPERTY(Transient)
 	TObjectPtr<UDualFirePrimaryLayout> RootLayout;
+
+	bool bUIInputMappingAdded = false;
 };
