@@ -33,6 +33,14 @@ public:
 	UFUNCTION(BlueprintCallable, Category="Loadout")
 	void SetActiveLoadout(const FLoadout& Loadout);
 
+	/** 모든 슬롯과 DataTable 행을 검증한 뒤에만 현재 로드아웃을 변경한다. */
+	UFUNCTION(BlueprintCallable, Category="Loadout")
+	bool TrySetActiveLoadout(const FLoadout& Loadout, FText& OutError, FName& OutInvalidField);
+
+	/** UI와 출격 흐름에서 공통으로 사용하는 전체 로드아웃 검증이다. */
+	UFUNCTION(BlueprintCallable, Category="Loadout")
+	bool ValidateLoadout(const FLoadout& Loadout, FText& OutError, FName& OutInvalidField) const;
+
 	UFUNCTION(BlueprintPure, Category="Loadout")
 	const FLoadout& GetActiveLoadout() const { return ActiveLoadout; }
 
@@ -40,6 +48,12 @@ public:
 
 	UPROPERTY(EditDefaultsOnly, BlueprintReadOnly, Category="Loadout|Data")
 	TObjectPtr<UDataTable> AircraftDataTable;
+
+	UPROPERTY(EditDefaultsOnly, BlueprintReadOnly, Category="Loadout|Data")
+	TObjectPtr<UDataTable> WeaponDataTable;
+
+	UPROPERTY(EditDefaultsOnly, BlueprintReadOnly, Category="Loadout|Data")
+	TObjectPtr<UDataTable> SuperWeaponDataTable;
 
 	UPROPERTY(EditDefaultsOnly, BlueprintReadOnly, Category="Loadout|Data")
 	TObjectPtr<UDataTable> ShieldDataTable;

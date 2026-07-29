@@ -17,6 +17,16 @@ void ULoadoutManagerSubsystem::Initialize(FSubsystemCollectionBase& Collection)
 		AircraftDataTable = LoadObject<UDataTable>(nullptr,
 			TEXT("/Game/Data/Loadout/DT_LoadoutAircrafts.DT_LoadoutAircrafts"));
 	}
+	if (!WeaponDataTable)
+	{
+		WeaponDataTable = LoadObject<UDataTable>(nullptr,
+			TEXT("/Game/Data/Loadout/DT_LoadoutWeapons.DT_LoadoutWeapons"));
+	}
+	if (!SuperWeaponDataTable)
+	{
+		SuperWeaponDataTable = LoadObject<UDataTable>(nullptr,
+			TEXT("/Game/Data/Loadout/DT_LoadoutSuperWeapons.DT_LoadoutSuperWeapons"));
+	}
 	if (!ShieldDataTable)
 	{
 		ShieldDataTable = LoadObject<UDataTable>(nullptr,
@@ -28,6 +38,99 @@ void ULoadoutManagerSubsystem::SetActiveLoadout(const FLoadout& Loadout)
 {
 	ActiveLoadout = Loadout;
 	UE_LOG(LogDualFire, Log, TEXT("[LoadoutManagerSubsystem] 로드아웃 설정 — Aircraft:%s"), *Loadout.AircraftID.ToString());
+}
+
+bool ULoadoutManagerSubsystem::TrySetActiveLoadout(
+	const FLoadout& Loadout,
+	FText& OutError,
+	FName& OutInvalidField)
+{
+	if (!ValidateLoadout(Loadout, OutError, OutInvalidField))
+	{
+		return false;
+	}
+
+	SetActiveLoadout(Loadout);
+	return true;
+}
+
+bool ULoadoutManagerSubsystem::ValidateLoadout(
+	const FLoadout& Loadout,
+	FText& OutError,
+	FName& OutInvalidField) const
+{
+	OutError = FText::GetEmpty();
+	OutInvalidField = NAME_None;
+
+	auto Fail = [&OutError, &OutInvalidField](const FName Field, const FText& Message)
+	{
+		OutInvalidField = Field;
+		OutError = Message;
+		return false;
+	};
+
+	if (Loadout.AircraftID.IsNone())
+	{
+		return Fail(TEXT("Aircraft"), NSLOCTEXT("DualFireLoadout", "AircraftRequired", "SELECT AN AIRCRAFT."));
+	}
+	if (Loadout.PrimaryWeaponID.IsNone())
+	{
+		return Fail(TEXT("PrimaryWeapon"), NSLOCTEXT("DualFireLoadout", "PrimaryRequired", "SELECT A PRIMARY WEAPON."));
+	}
+	if (Loadout.SpecialWeapon1ID.IsNone())
+	{
+		return Fail(TEXT("SpecialWeapon1"), NSLOCTEXT("DualFireLoadout", "Special1Required", "SELECT SPECIAL WEAPON 1."));
+	}
+	if (Loadout.SpecialWeapon2ID.IsNone())
+	{
+		return Fail(TEXT("SpecialWeapon2"), NSLOCTEXT("DualFireLoadout", "Special2Required", "SELECT SPECIAL WEAPON 2."));
+	}
+	if (Loadout.SuperWeaponID.IsNone())
+	{
+		return Fail(TEXT("SuperWeapon"), NSLOCTEXT("DualFireLoadout", "SuperRequired", "SELECT A SUPER WEAPON."));
+	}
+	if (Loadout.ShieldID.IsNone())
+	{
+		return Fail(TEXT("Shield"), NSLOCTEXT("DualFireLoadout", "ShieldRequired", "SELECT A SHIELD."));
+	}
+
+	FAircraftRow AircraftRow;
+	if (!ULoadoutDataLibrary::FindAircraftRow(AircraftDataTable, Loadout.AircraftID, AircraftRow))
+	{
+		return Fail(TEXT("Aircraft"), NSLOCTEXT("DualFireLoadout", "AircraftInvalid", "THE SELECTED AIRCRAFT IS UNAVAILABLE."));
+	}
+
+	auto ValidateWeapon = [this, &Fail](const FName Field, const FName WeaponID, const ELoadoutSlot Slot)
+	{
+		FWeaponRow WeaponRow;
+		if (!ULoadoutDataLibrary::FindWeaponRow(WeaponDataTable, WeaponID, WeaponRow) ||
+			!ULoadoutDataLibrary::IsWeaponCategoryCompatible(Slot, WeaponRow.Category))
+		{
+			return Fail(Field, NSLOCTEXT("DualFireLoadout", "WeaponInvalid", "THE SELECTED WEAPON IS UNAVAILABLE FOR THIS SLOT."));
+		}
+		return true;
+	};
+
+	if (!ValidateWeapon(TEXT("PrimaryWeapon"), Loadout.PrimaryWeaponID, ELoadoutSlot::PrimaryWeapon) ||
+		!ValidateWeapon(TEXT("SpecialWeapon1"), Loadout.SpecialWeapon1ID, ELoadoutSlot::SpecialWeapon1) ||
+		!ValidateWeapon(TEXT("SpecialWeapon2"), Loadout.SpecialWeapon2ID, ELoadoutSlot::SpecialWeapon2))
+	{
+		return false;
+	}
+
+	FSuperWeaponRow SuperWeaponRow;
+	if (!ULoadoutDataLibrary::FindSuperWeaponRow(SuperWeaponDataTable, Loadout.SuperWeaponID, SuperWeaponRow))
+	{
+		return Fail(TEXT("SuperWeapon"), NSLOCTEXT("DualFireLoadout", "SuperInvalid", "THE SELECTED SUPER WEAPON IS UNAVAILABLE."));
+	}
+
+	FShieldRow ShieldRow;
+	if (!ULoadoutDataLibrary::FindShieldRow(ShieldDataTable, Loadout.ShieldID, ShieldRow))
+	{
+		return Fail(TEXT("Shield"), NSLOCTEXT("DualFireLoadout", "ShieldInvalid", "THE SELECTED SHIELD IS UNAVAILABLE."));
+	}
+
+	return true;
 }
 
 bool ULoadoutManagerSubsystem::ApplyToPlayer(ADualFirePlayerPawn* Pawn)
