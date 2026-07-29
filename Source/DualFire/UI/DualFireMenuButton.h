@@ -23,6 +23,9 @@ public:
 	UFUNCTION(BlueprintPure, Category = "Menu Button")
 	FText GetLabelText() const { return LabelText; }
 
+	/** 포커스와 선택 상태를 연동할지 설정한다. 탭 버튼은 클릭 또는 액션 입력으로만 선택해야 하므로 끌 수 있다. */
+	void SetSelectUponFocusEnabled(bool bEnabled);
+
 	/** Select 입력을 현재 포커스된 버튼의 일반 클릭 경로로 전달한다. */
 	bool ExecuteFocusedSelectAction();
 
@@ -40,4 +43,6 @@ protected:
 
 private:
 	void HandleFocusLost();
+
+	bool bSelectUponFocusEnabled = true;
 };

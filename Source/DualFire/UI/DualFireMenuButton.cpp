@@ -10,8 +10,14 @@ UDualFireMenuButton::UDualFireMenuButton()
 {
 	Style = UDualFireMenuButtonStyle::StaticClass();
 	SetIsSelectable(true);
-	SetShouldSelectUponReceivingFocus(true);
+	SetSelectUponFocusEnabled(true);
 	SetIsInteractableWhenSelected(true);
+}
+
+void UDualFireMenuButton::SetSelectUponFocusEnabled(const bool bEnabled)
+{
+	bSelectUponFocusEnabled = bEnabled;
+	SetShouldSelectUponReceivingFocus(bEnabled);
 }
 
 void UDualFireMenuButton::SetLabelText(const FText& InLabelText)
@@ -55,7 +61,7 @@ void UDualFireMenuButton::NativeOnHovered()
 	Super::NativeOnHovered();
 
 	// 마우스 탐색도 Common UI의 단일 선택 상태를 사용하도록 포커스를 동기화한다.
-	if (GetIsEnabled())
+	if (bSelectUponFocusEnabled && GetIsEnabled())
 	{
 		if (APlayerController* Controller = GetOwningPlayer())
 		{
@@ -80,5 +86,8 @@ void UDualFireMenuButton::NativeOnCurrentTextStyleChanged()
 void UDualFireMenuButton::HandleFocusLost()
 {
 	// 포커스 표현에 Selected 상태를 사용하므로 이탈 시 선택 상태를 남기지 않는다.
-	ClearSelection();
+	if (bSelectUponFocusEnabled)
+	{
+		ClearSelection();
+	}
 }

@@ -43,11 +43,11 @@ protected:
 	UPROPERTY(EditDefaultsOnly, BlueprintReadOnly, Category = "Menu")
 	TSubclassOf<UCommonActivatableWidget> ExitConfirmWidgetClass;
 
+	UPROPERTY(EditDefaultsOnly, BlueprintReadOnly, Category = "Menu")
+	TSubclassOf<UCommonActivatableWidget> HangarWidgetClass;
+
 	UPROPERTY(EditDefaultsOnly, BlueprintReadOnly, Category = "Input")
 	TObjectPtr<UInputAction> ConfirmInputAction;
-
-	UPROPERTY(EditDefaultsOnly, BlueprintReadOnly, Category = "Menu")
-	FName MissionLevelName = TEXT("/Game/Level/LV_Test");
 
 	UPROPERTY(BlueprintReadOnly, Category = "Menu|Widgets", meta = (BindWidget))
 	TObjectPtr<UDualFireMenuButton> StartMissionButton;

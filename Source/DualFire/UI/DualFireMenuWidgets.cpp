@@ -12,7 +12,6 @@
 #include "GameFramework/GameUserSettings.h"
 #include "Input/CommonUIInputTypes.h"
 #include "InputAction.h"
-#include "Kismet/GameplayStatics.h"
 #include "Kismet/KismetSystemLibrary.h"
 #include "TimerManager.h"
 #include "Widgets/CommonActivatableWidgetContainer.h"
@@ -136,18 +135,17 @@ void UDualFireStartMenuWidget::ApplyFallbackFocus()
 
 void UDualFireStartMenuWidget::StartMission()
 {
-	if (MissionLevelName.IsNone())
+	ADualFireUIPlayerController* Controller = Cast<ADualFireUIPlayerController>(GetOwningPlayer());
+	if (!IsValid(Controller) || !IsValid(HangarWidgetClass))
 	{
-		UE_LOG(LogDualFire, Error, TEXT("[UI] MissionLevelName is not assigned."));
+		UE_LOG(LogDualFire, Warning, TEXT("[UI] Hangar screen is not configured."));
 		return;
 	}
 
-	if (IsValid(StartMissionButton))
+	if (!IsValid(Controller->PushWidgetToLayer(EDualFireUILayer::Menu, HangarWidgetClass)))
 	{
-		StartMissionButton->SetIsEnabled(false);
+		UE_LOG(LogDualFire, Error, TEXT("[UI] Failed to open the hangar screen."));
 	}
-	UE_LOG(LogDualFire, Log, TEXT("[UI] Opening mission level: %s"), *MissionLevelName.ToString());
-	UGameplayStatics::OpenLevel(this, MissionLevelName);
 }
 
 void UDualFireStartMenuWidget::OpenSettings()
