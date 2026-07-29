@@ -1,0 +1,7 @@
+name: ui_hangar
+version: 1
+outputs:
+  - path: output/textures/T_UI_Hangar_ItemPlaceholder.png
+    type: texture2d
+    size: [128, 128]
+    usage: missing hangar item icon
