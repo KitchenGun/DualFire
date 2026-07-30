@@ -3,7 +3,6 @@
 #include "UI/DualFireResultPlayerController.h"
 
 #include "DualFire.h"
-#include "CommonActivatableWidget.h"
 #include "Engine/GameInstance.h"
 #include "GameInstance/DualFireMissionResultSubsystem.h"
 #include "InputMappingContext.h"
@@ -15,9 +14,6 @@ ADualFireResultPlayerController::ADualFireResultPlayerController()
 	RootLayoutClass = nullptr;
 	MissionResultWidgetClass = TSoftClassPtr<UDualFireMissionResultWidget>(
 		FSoftClassPath(TEXT("/Game/Blueprint/UI/Screen/WBP_MissionResult.WBP_MissionResult_C")));
-	MissionResultBackgroundClass = TSoftClassPtr<UCommonActivatableWidget>(
-		FSoftClassPath(TEXT(
-			"/Game/Blueprint/UI/Screen/WBP_MissionResultBackground.WBP_MissionResultBackground_C")));
 }
 
 void ADualFireResultPlayerController::BeginPlay()
@@ -47,15 +43,6 @@ void ADualFireResultPlayerController::BeginPlay()
 	if (!IsValid(ResultSubsystem) || !ResultSubsystem->HasPendingResult())
 	{
 		UE_LOG(LogDualFire, Error, TEXT("[UI] 표시할 미션 결과 데이터가 없어 로비로 복귀"));
-		OpenLobbyWhenResultIsMissing();
-		return;
-	}
-
-	TSubclassOf<UCommonActivatableWidget> BackgroundClass =
-		MissionResultBackgroundClass.LoadSynchronous();
-	if (!IsValid(PushWidgetToLayer(EDualFireUILayer::Game, BackgroundClass)))
-	{
-		UE_LOG(LogDualFire, Error, TEXT("[UI] 미션 결과 전체 화면 배경 Push 실패"));
 		OpenLobbyWhenResultIsMissing();
 		return;
 	}

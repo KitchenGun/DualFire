@@ -2,7 +2,6 @@ import unreal
 
 
 SCREEN_PATH = "/Game/Blueprint/UI/Screen/WBP_MissionResult"
-BACKGROUND_PATH = "/Game/Blueprint/UI/Screen/WBP_MissionResultBackground"
 ROW_PATH = "/Game/Blueprint/UI/Components/WBP_MissionResultMetricRow"
 UMG_TOOLSET = unreal.get_default_object(unreal.UMGToolSet)
 
@@ -48,9 +47,9 @@ def set_text(text_widget, value, size):
     set_font_size(text_widget, size)
 
 
-def add_widget(blueprint, widget_class, name, parent=None):
+def add_widget(blueprint, widget_class, name, parent=None, child_index=-1):
     info = UMG_TOOLSET.call_method(
-        "AddWidget", (blueprint, widget_class, name, parent, -1)
+        "AddWidget", (blueprint, widget_class, name, parent, child_index)
     )
     if info.widget is None:
         raise RuntimeError(f"Failed to add widget: {name}")
@@ -168,50 +167,90 @@ def build_result_screen(blueprint):
     unlock_text.set_visibility(unreal.SlateVisibility.COLLAPSED)
 
 
-def build_result_background(blueprint):
-    if UMG_TOOLSET.call_method("GetWidgets", (blueprint,)).info.widget_count > 0:
-        return
-
-    root, _ = add_widget(blueprint, unreal.CanvasPanel, "ResultBackgroundRoot")
-    background = add_full_screen(
-        blueprint, root, unreal.Image, "ResultFullscreenBackground"
-    )
-    background.set_brush_from_texture(
-        load_required("/Game/UI/Textures/Result/T_UI_Result_Background"), True
-    )
-    background.set_visibility(unreal.SlateVisibility.HIT_TEST_INVISIBLE)
-
-
 def ensure_result_screen_scaling(blueprint):
     tree = UMG_TOOLSET.call_method("GetWidgets", (blueprint,))
     root_info = next((info for info in tree.widgets if info.parent is None), None)
     if root_info is None or root_info.widget is None:
         raise RuntimeError("Result screen root widget was not found")
 
-    if isinstance(root_info.widget, unreal.ScaleBox):
-        return
-    if not isinstance(root_info.widget, unreal.CanvasPanel):
+    if isinstance(root_info.widget, unreal.CanvasPanel):
+        size_wrappers = UMG_TOOLSET.call_method(
+            "WrapWidgets", (blueprint, [root_info.widget], unreal.SizeBox)
+        )
+        if len(size_wrappers) != 1 or size_wrappers[0].widget is None:
+            raise RuntimeError("Failed to add the 1920x1080 reference SizeBox")
+        reference_size = size_wrappers[0].widget
+        reference_size.set_width_override(1920.0)
+        reference_size.set_height_override(1080.0)
+
+        scale_wrappers = UMG_TOOLSET.call_method(
+            "WrapWidgets", (blueprint, [reference_size], unreal.ScaleBox)
+        )
+        if len(scale_wrappers) != 1 or scale_wrappers[0].widget is None:
+            raise RuntimeError("Failed to add the result screen ScaleBox")
+        content_scale = scale_wrappers[0].widget
+    elif isinstance(root_info.widget, unreal.ScaleBox):
+        content_scale = root_info.widget
+    elif isinstance(root_info.widget, unreal.Overlay):
+        content_scale = next(
+            (
+                info.widget
+                for info in tree.widgets
+                if info.parent == root_info.widget
+                and isinstance(info.widget, unreal.ScaleBox)
+            ),
+            None,
+        )
+        if content_scale is None:
+            raise RuntimeError("Result screen Overlay has no content ScaleBox")
+    else:
         raise RuntimeError(
             f"Unexpected result screen root: {root_info.widget.get_class().get_name()}"
         )
 
-    size_wrappers = UMG_TOOLSET.call_method(
-        "WrapWidgets", (blueprint, [root_info.widget], unreal.SizeBox)
-    )
-    if len(size_wrappers) != 1 or size_wrappers[0].widget is None:
-        raise RuntimeError("Failed to add the 1920x1080 reference SizeBox")
-    reference_size = size_wrappers[0].widget
-    reference_size.set_width_override(1920.0)
-    reference_size.set_height_override(1080.0)
+    content_scale.set_editor_property("stretch", unreal.Stretch.SCALE_TO_FIT)
 
-    scale_wrappers = UMG_TOOLSET.call_method(
-        "WrapWidgets", (blueprint, [reference_size], unreal.ScaleBox)
+    tree = UMG_TOOLSET.call_method("GetWidgets", (blueprint,))
+    root_info = next((info for info in tree.widgets if info.parent is None), None)
+    if isinstance(root_info.widget, unreal.ScaleBox):
+        overlay_wrappers = UMG_TOOLSET.call_method(
+            "WrapWidgets", (blueprint, [root_info.widget], unreal.Overlay)
+        )
+        if len(overlay_wrappers) != 1 or overlay_wrappers[0].widget is None:
+            raise RuntimeError("Failed to add the result screen root Overlay")
+        root_overlay = overlay_wrappers[0].widget
+        UMG_TOOLSET.call_method(
+            "RenameWidget", (blueprint, root_overlay, "ResultRootOverlay")
+        )
+    elif isinstance(root_info.widget, unreal.Overlay):
+        root_overlay = root_info.widget
+    else:
+        raise RuntimeError("Result screen root migration failed")
+
+    tree = UMG_TOOLSET.call_method("GetWidgets", (blueprint,))
+    backgrounds = [
+        info
+        for info in tree.widgets
+        if info.widget is not None and info.widget.get_name() == "ResultBackground"
+    ]
+    root_background = next(
+        (info.widget for info in backgrounds if info.parent == root_overlay), None
     )
-    if len(scale_wrappers) != 1 or scale_wrappers[0].widget is None:
-        raise RuntimeError("Failed to add the result screen ScaleBox")
-    scale_wrappers[0].widget.set_editor_property(
-        "stretch", unreal.Stretch.SCALE_TO_FIT
+    for info in backgrounds:
+        if info.widget != root_background:
+            UMG_TOOLSET.call_method("RemoveWidget", (blueprint, info.widget))
+
+    if root_background is None:
+        root_background, slot = add_widget(
+            blueprint, unreal.Image, "ResultBackground", root_overlay, 0
+        )
+        slot.set_horizontal_alignment(unreal.HorizontalAlignment.H_ALIGN_FILL)
+        slot.set_vertical_alignment(unreal.VerticalAlignment.V_ALIGN_FILL)
+
+    root_background.set_brush_from_texture(
+        load_required("/Game/UI/Textures/Result/T_UI_Result_Background"), True
     )
+    root_background.set_visibility(unreal.SlateVisibility.HIT_TEST_INVISIBLE)
 
 
 def compile_and_save(blueprint):
@@ -222,8 +261,7 @@ def compile_and_save(blueprint):
 
 row_parent = unreal.load_class(None, "/Script/DualFire.DualFireMissionResultMetricRowWidget")
 screen_parent = unreal.load_class(None, "/Script/DualFire.DualFireMissionResultWidget")
-background_parent = unreal.load_class(None, "/Script/CommonUI.CommonActivatableWidget")
-if row_parent is None or screen_parent is None or background_parent is None:
+if row_parent is None or screen_parent is None:
     raise RuntimeError("Mission result native widget classes are not available")
 
 row_blueprint = create_widget_blueprint(ROW_PATH, row_parent)
@@ -234,10 +272,6 @@ screen_blueprint = create_widget_blueprint(SCREEN_PATH, screen_parent)
 build_result_screen(screen_blueprint)
 ensure_result_screen_scaling(screen_blueprint)
 compile_and_save(screen_blueprint)
-
-background_blueprint = create_widget_blueprint(BACKGROUND_PATH, background_parent)
-build_result_background(background_blueprint)
-compile_and_save(background_blueprint)
 
 screen_cdo = unreal.get_default_object(screen_blueprint.generated_class())
 screen_cdo.set_editor_property("confirm_input_action", load_required("/Game/Input/UI/IA_UI_Confirm"))
@@ -251,10 +285,6 @@ unreal.EditorAssetLibrary.save_loaded_asset(screen_blueprint, only_if_is_dirty=F
 
 row_description = UMG_TOOLSET.call_method("GetWidgetDescription", (row_blueprint, None, -1))
 screen_description = UMG_TOOLSET.call_method("GetWidgetDescription", (screen_blueprint, None, -1))
-background_description = UMG_TOOLSET.call_method(
-    "GetWidgetDescription", (background_blueprint, None, -1)
-)
 unreal.log(f"[DualFire] Metric row tree\n{row_description.description}")
 unreal.log(f"[DualFire] Result screen tree\n{screen_description.description}")
-unreal.log(f"[DualFire] Result background tree\n{background_description.description}")
 unreal.log("[DualFire] Mission result Widget Blueprints created")

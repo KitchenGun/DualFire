@@ -6,7 +6,6 @@
 #include "Components/Image.h"
 #include "Components/ProgressBar.h"
 #include "Components/VerticalBox.h"
-#include "Components/Widget.h"
 #include "Engine/GameInstance.h"
 #include "GameInstance/DualFireMissionResultSubsystem.h"
 #include "Input/CommonUIInputTypes.h"
@@ -59,12 +58,6 @@ TOptional<FUIInputConfig> UDualFireMissionResultWidget::GetDesiredInputConfig() 
 void UDualFireMissionResultWidget::NativeOnInitialized()
 {
 	Super::NativeOnInitialized();
-
-	// 배경은 Game 레이어에서 화면을 채우고, 이 위젯은 16:9 정보 배치만 담당한다.
-	if (UWidget* EmbeddedBackground = GetWidgetFromName(TEXT("ResultBackground")))
-	{
-		EmbeddedBackground->SetVisibility(ESlateVisibility::Collapsed);
-	}
 
 	if (IsValid(ConfirmInputAction))
 	{
