@@ -2,6 +2,7 @@ import unreal
 
 
 SCREEN_PATH = "/Game/Blueprint/UI/Screen/WBP_MissionResult"
+BACKGROUND_PATH = "/Game/Blueprint/UI/Screen/WBP_MissionResultBackground"
 ROW_PATH = "/Game/Blueprint/UI/Components/WBP_MissionResultMetricRow"
 UMG_TOOLSET = unreal.get_default_object(unreal.UMGToolSet)
 
@@ -167,6 +168,20 @@ def build_result_screen(blueprint):
     unlock_text.set_visibility(unreal.SlateVisibility.COLLAPSED)
 
 
+def build_result_background(blueprint):
+    if UMG_TOOLSET.call_method("GetWidgets", (blueprint,)).info.widget_count > 0:
+        return
+
+    root, _ = add_widget(blueprint, unreal.CanvasPanel, "ResultBackgroundRoot")
+    background = add_full_screen(
+        blueprint, root, unreal.Image, "ResultFullscreenBackground"
+    )
+    background.set_brush_from_texture(
+        load_required("/Game/UI/Textures/Result/T_UI_Result_Background"), True
+    )
+    background.set_visibility(unreal.SlateVisibility.HIT_TEST_INVISIBLE)
+
+
 def ensure_result_screen_scaling(blueprint):
     tree = UMG_TOOLSET.call_method("GetWidgets", (blueprint,))
     root_info = next((info for info in tree.widgets if info.parent is None), None)
@@ -207,7 +222,8 @@ def compile_and_save(blueprint):
 
 row_parent = unreal.load_class(None, "/Script/DualFire.DualFireMissionResultMetricRowWidget")
 screen_parent = unreal.load_class(None, "/Script/DualFire.DualFireMissionResultWidget")
-if row_parent is None or screen_parent is None:
+background_parent = unreal.load_class(None, "/Script/CommonUI.CommonActivatableWidget")
+if row_parent is None or screen_parent is None or background_parent is None:
     raise RuntimeError("Mission result native widget classes are not available")
 
 row_blueprint = create_widget_blueprint(ROW_PATH, row_parent)
@@ -218,6 +234,10 @@ screen_blueprint = create_widget_blueprint(SCREEN_PATH, screen_parent)
 build_result_screen(screen_blueprint)
 ensure_result_screen_scaling(screen_blueprint)
 compile_and_save(screen_blueprint)
+
+background_blueprint = create_widget_blueprint(BACKGROUND_PATH, background_parent)
+build_result_background(background_blueprint)
+compile_and_save(background_blueprint)
 
 screen_cdo = unreal.get_default_object(screen_blueprint.generated_class())
 screen_cdo.set_editor_property("confirm_input_action", load_required("/Game/Input/UI/IA_UI_Confirm"))
@@ -231,6 +251,10 @@ unreal.EditorAssetLibrary.save_loaded_asset(screen_blueprint, only_if_is_dirty=F
 
 row_description = UMG_TOOLSET.call_method("GetWidgetDescription", (row_blueprint, None, -1))
 screen_description = UMG_TOOLSET.call_method("GetWidgetDescription", (screen_blueprint, None, -1))
+background_description = UMG_TOOLSET.call_method(
+    "GetWidgetDescription", (background_blueprint, None, -1)
+)
 unreal.log(f"[DualFire] Metric row tree\n{row_description.description}")
 unreal.log(f"[DualFire] Result screen tree\n{screen_description.description}")
+unreal.log(f"[DualFire] Result background tree\n{background_description.description}")
 unreal.log("[DualFire] Mission result Widget Blueprints created")

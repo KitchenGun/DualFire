@@ -7,6 +7,7 @@
 #include "DualFireResultPlayerController.generated.h"
 
 class UDualFireMissionResultWidget;
+class UCommonActivatableWidget;
 
 /** 결과 레벨의 Common UI 루트와 결과 화면을 생성한다. */
 UCLASS()
@@ -22,6 +23,9 @@ protected:
 
 	UPROPERTY(EditDefaultsOnly, BlueprintReadOnly, Category="Mission Result")
 	TSoftClassPtr<UDualFireMissionResultWidget> MissionResultWidgetClass;
+
+	UPROPERTY(EditDefaultsOnly, BlueprintReadOnly, Category="Mission Result")
+	TSoftClassPtr<UCommonActivatableWidget> MissionResultBackgroundClass;
 
 private:
 	void OpenLobbyWhenResultIsMissing();
