@@ -1,0 +1,4 @@
+interface:
+  display_name: "Explain DualFire Change"
+  short_description: "Explain Unreal changes with evidence"
+  default_prompt: "Use $explain-dualfire-change to explain this DualFire change with verified evidence."

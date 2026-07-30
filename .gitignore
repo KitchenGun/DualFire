@@ -49,6 +49,8 @@ DualFire/DerivedDataCache/
 /ArtPipeline/assets/**/input/
 /ArtPipeline/assets/**/work/
 /ArtPipeline/assets/**/output/preview/
+/.agents/**/__pycache__/
+/.agents/**/*.pyc
 
 # Compiled source
 *.pdb
