@@ -146,6 +146,10 @@ public:
 	UFUNCTION(BlueprintPure, Category="Stage")
 	float GetElapsedTime() const { return ElapsedTime; }
 
+	/** 에셋 기본값을 바꾸지 않고 PIE에서 빠른 종료 흐름을 검증한다. */
+	UFUNCTION(BlueprintCallable, Category="Stage|Debug")
+	bool SetEliteTriggerTimeForPIE(float InTriggerTime);
+
 	UFUNCTION(BlueprintPure, Category="Stage|Result")
 	int32 GetAirEnemiesSpawned() const { return AirEnemiesSpawned; }
 

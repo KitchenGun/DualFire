@@ -8,6 +8,7 @@
 #include "Stage/StageController.h"
 #include "Loadout/LoadoutManagerSubsystem.h"
 #include "Core/LoadoutDataLibrary.h"
+#include "UI/DualFireMissionPlayerController.h"
 
 #include "GameFramework/PlayerController.h"
 #include "Kismet/GameplayStatics.h"
@@ -72,6 +73,7 @@ ADualFireGameModeBase::ADualFireGameModeBase()
     // ── 기본 폰 클래스 ─────────────────────────────────────────────────────────
     // BP_DualFireGameModeBase에서 BP_DualFirePlayerPawn으로 오버라이드 권장
     DefaultPawnClass = ADualFirePlayerPawn::StaticClass();
+	PlayerControllerClass = ADualFireMissionPlayerController::StaticClass();
 }
 
 void ADualFireGameModeBase::InitGame(const FString& MapName, const FString& Options, FString& ErrorMessage)

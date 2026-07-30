@@ -86,6 +86,20 @@ void AStageController::Tick(float DeltaTime)
 	}
 }
 
+bool AStageController::SetEliteTriggerTimeForPIE(float InTriggerTime)
+{
+#if WITH_EDITOR
+	if (GetWorld() && GetWorld()->WorldType == EWorldType::PIE &&
+		CurrentState == EStageState::Timeline)
+	{
+		EliteTriggerTime = FMath::Max(InTriggerTime, 0.1f);
+		return true;
+	}
+#endif
+
+	return false;
+}
+
 // ── 내부 초기화 ───────────────────────────────────────────────────────────────
 
 void AStageController::BuildActiveWaves()
