@@ -1,0 +1,131 @@
+{
+  "version": 1,
+  "textures": [
+    {
+      "asset_name": "T_UI_Result_Background",
+      "source": "assets/ui_result/output/textures/T_UI_Result_Background.png",
+      "size": [
+        1920,
+        1080
+      ],
+      "mode": "RGB",
+      "unreal_destination": "/Game/UI/Textures/Result",
+      "texture_group": "UI",
+      "mip_gen_settings": "NoMipmaps",
+      "never_stream": true,
+      "srgb": true
+    },
+    {
+      "asset_name": "T_UI_Result_EvaluationRow",
+      "source": "assets/ui_result/output/textures/T_UI_Result_EvaluationRow.png",
+      "size": [
+        1024,
+        112
+      ],
+      "mode": "RGBA",
+      "unreal_destination": "/Game/UI/Textures/Result",
+      "texture_group": "UI",
+      "mip_gen_settings": "NoMipmaps",
+      "never_stream": true,
+      "srgb": true
+    },
+    {
+      "asset_name": "T_UI_Result_RankPanel",
+      "source": "assets/ui_result/output/textures/T_UI_Result_RankPanel.png",
+      "size": [
+        512,
+        640
+      ],
+      "mode": "RGBA",
+      "unreal_destination": "/Game/UI/Textures/Result",
+      "texture_group": "UI",
+      "mip_gen_settings": "NoMipmaps",
+      "never_stream": true,
+      "srgb": true
+    },
+    {
+      "asset_name": "T_UI_Result_UnlockPanel",
+      "source": "assets/ui_result/output/textures/T_UI_Result_UnlockPanel.png",
+      "size": [
+        768,
+        112
+      ],
+      "mode": "RGBA",
+      "unreal_destination": "/Game/UI/Textures/Result",
+      "texture_group": "UI",
+      "mip_gen_settings": "NoMipmaps",
+      "never_stream": true,
+      "srgb": true
+    },
+    {
+      "asset_name": "T_UI_Result_Rank_S",
+      "source": "assets/ui_result/output/textures/T_UI_Result_Rank_S.png",
+      "size": [
+        512,
+        512
+      ],
+      "mode": "RGBA",
+      "unreal_destination": "/Game/UI/Textures/Result",
+      "texture_group": "UI",
+      "mip_gen_settings": "NoMipmaps",
+      "never_stream": true,
+      "srgb": true
+    },
+    {
+      "asset_name": "T_UI_Result_Rank_A",
+      "source": "assets/ui_result/output/textures/T_UI_Result_Rank_A.png",
+      "size": [
+        512,
+        512
+      ],
+      "mode": "RGBA",
+      "unreal_destination": "/Game/UI/Textures/Result",
+      "texture_group": "UI",
+      "mip_gen_settings": "NoMipmaps",
+      "never_stream": true,
+      "srgb": true
+    },
+    {
+      "asset_name": "T_UI_Result_Rank_B",
+      "source": "assets/ui_result/output/textures/T_UI_Result_Rank_B.png",
+      "size": [
+        512,
+        512
+      ],
+      "mode": "RGBA",
+      "unreal_destination": "/Game/UI/Textures/Result",
+      "texture_group": "UI",
+      "mip_gen_settings": "NoMipmaps",
+      "never_stream": true,
+      "srgb": true
+    },
+    {
+      "asset_name": "T_UI_Result_Rank_C",
+      "source": "assets/ui_result/output/textures/T_UI_Result_Rank_C.png",
+      "size": [
+        512,
+        512
+      ],
+      "mode": "RGBA",
+      "unreal_destination": "/Game/UI/Textures/Result",
+      "texture_group": "UI",
+      "mip_gen_settings": "NoMipmaps",
+      "never_stream": true,
+      "srgb": true
+    },
+    {
+      "asset_name": "T_UI_Result_Rank_D",
+      "source": "assets/ui_result/output/textures/T_UI_Result_Rank_D.png",
+      "size": [
+        512,
+        512
+      ],
+      "mode": "RGBA",
+      "unreal_destination": "/Game/UI/Textures/Result",
+      "texture_group": "UI",
+      "mip_gen_settings": "NoMipmaps",
+      "never_stream": true,
+      "srgb": true
+    }
+  ]
+}
