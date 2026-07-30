@@ -7,9 +7,11 @@
 #include "Player/DualFirePlayerPawn.h"
 #include "Stage/StageController.h"
 #include "Loadout/LoadoutManagerSubsystem.h"
+#include "GameInstance/DualFireMissionResultSubsystem.h"
 #include "Core/LoadoutDataLibrary.h"
 #include "UI/DualFireMissionPlayerController.h"
 
+#include "Engine/GameInstance.h"
 #include "GameFramework/PlayerController.h"
 #include "Kismet/GameplayStatics.h"
 
@@ -231,6 +233,14 @@ void ADualFireGameModeBase::EndMission(EMissionResult Result)
     }
     MissionResult = Result;
 	BuildMissionResultData(Result);
+	if (UGameInstance* GameInstance = GetGameInstance())
+	{
+		if (UDualFireMissionResultSubsystem* ResultSubsystem =
+			GameInstance->GetSubsystem<UDualFireMissionResultSubsystem>())
+		{
+			ResultSubsystem->StoreResult(MissionResultData);
+		}
+	}
 
     const TCHAR* ResultText = (Result == EMissionResult::Cleared) ? TEXT("CLEARED") : TEXT("FAILED");
 

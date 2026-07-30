@@ -3,28 +3,25 @@
 #pragma once
 
 #include "CoreMinimal.h"
-#include "UI/DualFireUIPlayerController.h"
+#include "GameFramework/PlayerController.h"
 #include "Core/DualFireTypes.h"
 #include "DualFireMissionPlayerController.generated.h"
 
-class UDualFireMissionResultWidget;
-
 UCLASS()
-class DUALFIRE_API ADualFireMissionPlayerController : public ADualFireUIPlayerController
+class DUALFIRE_API ADualFireMissionPlayerController : public APlayerController
 {
 	GENERATED_BODY()
-
-public:
-	ADualFireMissionPlayerController();
 
 protected:
 	virtual void BeginPlay() override;
 	virtual void EndPlay(const EEndPlayReason::Type EndPlayReason) override;
 
 	UPROPERTY(EditDefaultsOnly, BlueprintReadOnly, Category="Mission Result")
-	TSoftClassPtr<UDualFireMissionResultWidget> MissionResultWidgetClass;
+	FName ResultLevelName = TEXT("/Game/Level/LV_Result");
 
 private:
 	UFUNCTION()
 	void HandleMissionEnded(EMissionResult Result);
+
+	bool bResultTravelStarted = false;
 };
