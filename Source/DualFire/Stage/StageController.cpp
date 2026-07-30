@@ -1,6 +1,7 @@
 // Copyright DualFire. All Rights Reserved.
 
 #include "Stage/StageController.h"
+#include "Stage/DualFirePrototypeBossCube.h"
 #include "Core/ActorPoolSubsystem.h"
 #include "Enemy/EnemyBase.h"
 #include "Enemy/EnemyAIComponent.h"
@@ -26,6 +27,7 @@ AStageController::AStageController()
 {
 	PrimaryActorTick.bCanEverTick = true;
 	PrimaryActorTick.bStartWithTickEnabled = false; // BeginPlay에서 활성화
+	PrototypeBossClass = ADualFirePrototypeBossCube::StaticClass();
 }
 
 void AStageController::BeginPlay()
@@ -57,6 +59,14 @@ void AStageController::EndPlay(const EEndPlayReason::Type EndPlayReason)
 		GetWorld()->GetTimerManager().ClearTimer(Handle);
 	}
 	SequenceSpawnTimerHandles.Reset();
+	GetWorld()->GetTimerManager().ClearTimer(PrototypeBossArrivalTimeoutHandle);
+
+	if (IsValid(ActivePrototypeBoss))
+	{
+		ActivePrototypeBoss->OnDestinationReached.RemoveAll(this);
+		ActivePrototypeBoss->Destroy();
+		ActivePrototypeBoss = nullptr;
+	}
 
 	Super::EndPlay(EndPlayReason);
 }
@@ -68,10 +78,11 @@ void AStageController::Tick(float DeltaTime)
 	if (CurrentState == EStageState::Timeline)
 	{
 		TickTimeline(DeltaTime);
-	}
-	if (CurrentState != EStageState::Ended)
-	{
 		TickEnemyAI(DeltaTime);
+	}
+	else if (CurrentState == EStageState::EliteCombat)
+	{
+		ElapsedTime += DeltaTime;
 	}
 }
 
@@ -230,17 +241,13 @@ void AStageController::SetState(EStageState NewState)
 	switch (NewState)
 	{
 	case EStageState::EliteCombat:
-		// TODO: 엘리트 구현 전까지 80초 도달을 임시 클리어로 처리한다.
-		if (ADualFireGameModeBase* GM = Cast<ADualFireGameModeBase>(UGameplayStatics::GetGameMode(this)))
-		{
-			GM->OnMissionClear();
-		}
-		SetState(EStageState::Ended);
+		BeginPrototypeBossSequence();
 		break;
 
 	case EStageState::Ended:
 		SetActorTickEnabled(false);
 		GetWorld()->GetTimerManager().ClearTimer(EliteTimeLimitHandle);
+		GetWorld()->GetTimerManager().ClearTimer(PrototypeBossArrivalTimeoutHandle);
 		for (FTimerHandle& Handle : SequenceSpawnTimerHandles)
 		{
 			GetWorld()->GetTimerManager().ClearTimer(Handle);
@@ -251,6 +258,107 @@ void AStageController::SetState(EStageState NewState)
 
 	default:
 		break;
+	}
+}
+
+void AStageController::BeginPrototypeBossSequence()
+{
+	StopCombatForPrototypeBoss();
+
+	AStageCameraActor* Camera = GetStageCamera();
+	if (!IsValid(Camera) || !IsValid(PrototypeBossClass))
+	{
+		UE_LOG(LogDualFire, Error, TEXT("[Stage] 프로토타입 보스 생성 조건이 유효하지 않음"));
+		HandlePrototypeBossArrivalTimeout();
+		return;
+	}
+
+	const FBox2D Bounds = Camera->GetPlayableBounds();
+	const float CenterY = FMath::Lerp(Bounds.Min.Y, Bounds.Max.Y, 0.5f);
+	const FVector StartLocation(Bounds.Max.X + PrototypeBossSpawnOffset, CenterY, 0.0f);
+	const FVector Destination(
+		FMath::Lerp(Bounds.Max.X, Bounds.Min.X, PrototypeBossDestinationRatio),
+		CenterY,
+		0.0f);
+
+	FActorSpawnParameters Params;
+	Params.SpawnCollisionHandlingOverride = ESpawnActorCollisionHandlingMethod::AlwaysSpawn;
+	ActivePrototypeBoss = GetWorld()->SpawnActor<ADualFirePrototypeBossCube>(
+		PrototypeBossClass, StartLocation, FRotator::ZeroRotator, Params);
+
+	if (!IsValid(ActivePrototypeBoss))
+	{
+		UE_LOG(LogDualFire, Error, TEXT("[Stage] 프로토타입 보스 Cube 생성 실패"));
+		HandlePrototypeBossArrivalTimeout();
+		return;
+	}
+
+	ActivePrototypeBoss->OnDestinationReached.AddUObject(
+		this, &AStageController::HandlePrototypeBossDestinationReached);
+	ActivePrototypeBoss->StartDescent(
+		StartLocation, Destination, PrototypeBossDescentDuration);
+
+	GetWorld()->GetTimerManager().SetTimer(
+		PrototypeBossArrivalTimeoutHandle,
+		this,
+		&AStageController::HandlePrototypeBossArrivalTimeout,
+		PrototypeBossArrivalTimeout,
+		false);
+
+	UE_LOG(LogDualFire, Log, TEXT("[Stage] 프로토타입 보스 Cube 등장 시작"));
+}
+
+void AStageController::StopCombatForPrototypeBoss()
+{
+	if (AStageCameraActor* Camera = GetStageCamera())
+	{
+		Camera->SetPaused(true);
+	}
+
+	for (FTimerHandle& Handle : SequenceSpawnTimerHandles)
+	{
+		GetWorld()->GetTimerManager().ClearTimer(Handle);
+	}
+	SequenceSpawnTimerHandles.Reset();
+
+	for (UEnemyAIComponent* AI : ActiveEnemyAIComponents)
+	{
+		if (IsValid(AI))
+		{
+			AI->StopAttackTimer();
+		}
+	}
+}
+
+void AStageController::HandlePrototypeBossDestinationReached()
+{
+	if (CurrentState != EStageState::EliteCombat)
+	{
+		return;
+	}
+
+	GetWorld()->GetTimerManager().ClearTimer(PrototypeBossArrivalTimeoutHandle);
+	UE_LOG(LogDualFire, Log, TEXT("[Stage] 프로토타입 보스 Cube 도착 -> 미션 클리어"));
+
+	SetState(EStageState::Ended);
+	if (ADualFireGameModeBase* GM = Cast<ADualFireGameModeBase>(UGameplayStatics::GetGameMode(this)))
+	{
+		GM->OnMissionClear();
+	}
+}
+
+void AStageController::HandlePrototypeBossArrivalTimeout()
+{
+	if (CurrentState != EStageState::EliteCombat)
+	{
+		return;
+	}
+
+	UE_LOG(LogDualFire, Error, TEXT("[Stage] 프로토타입 보스 Cube 도착 실패 -> 미션 실패"));
+	SetState(EStageState::Ended);
+	if (ADualFireGameModeBase* GM = Cast<ADualFireGameModeBase>(UGameplayStatics::GetGameMode(this)))
+	{
+		GM->OnMissionFail();
 	}
 }
 

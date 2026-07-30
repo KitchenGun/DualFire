@@ -9,6 +9,7 @@
 #include "StageController.generated.h"
 
 class AEnemyBase;
+class ADualFirePrototypeBossCube;
 class AStageCameraActor;
 class ABaseProjectile;
 class APawn;
@@ -64,6 +65,23 @@ public:
 	/** EliteCombat 제한 시간(초). 이 시간 내에 처리 못하면 EliteCombat → Ended (실패) */
 	UPROPERTY(EditDefaultsOnly, BlueprintReadWrite, Category="Stage", meta=(ClampMin="1.0"))
 	float EliteTimeLimit = 60.0f;
+
+	/** 프로토타입 보스가 화면 안으로 내려오는 시간 */
+	UPROPERTY(EditDefaultsOnly, BlueprintReadWrite, Category="Stage|Prototype Boss", meta=(ClampMin="0.1"))
+	float PrototypeBossDescentDuration = 3.0f;
+
+	/** 도착 이벤트가 오지 않을 때 미션을 실패시키는 제한 시간 */
+	UPROPERTY(EditDefaultsOnly, BlueprintReadWrite, Category="Stage|Prototype Boss", meta=(ClampMin="0.1"))
+	float PrototypeBossArrivalTimeout = 5.0f;
+
+	UPROPERTY(EditDefaultsOnly, BlueprintReadWrite, Category="Stage|Prototype Boss", meta=(ClampMin="0.0"))
+	float PrototypeBossSpawnOffset = 270.0f;
+
+	UPROPERTY(EditDefaultsOnly, BlueprintReadWrite, Category="Stage|Prototype Boss", meta=(ClampMin="0.0", ClampMax="1.0"))
+	float PrototypeBossDestinationRatio = 0.33f;
+
+	UPROPERTY(EditDefaultsOnly, BlueprintReadOnly, Category="Stage|Prototype Boss")
+	TSubclassOf<ADualFirePrototypeBossCube> PrototypeBossClass;
 
 	UPROPERTY(EditDefaultsOnly, BlueprintReadWrite, Category="Stage|Data")
 	FName StageID = TEXT("STAGE_TEST");
@@ -140,11 +158,15 @@ private:
 
 	/** EliteCombat 제한 시간 타이머 핸들 */
 	FTimerHandle EliteTimeLimitHandle;
+	FTimerHandle PrototypeBossArrivalTimeoutHandle;
 
 	TArray<FTimerHandle> SequenceSpawnTimerHandles;
 
 	UPROPERTY()
 	TArray<TObjectPtr<UEnemyAIComponent>> ActiveEnemyAIComponents;
+
+	UPROPERTY()
+	TObjectPtr<ADualFirePrototypeBossCube> ActivePrototypeBoss;
 
 	TWeakObjectPtr<APawn> CachedPlayerPawn;
 	FVector CachedPlayerLocation = FVector::ZeroVector;
@@ -176,6 +198,10 @@ private:
 
 	/** 엘리트 제한 시간 만료 콜백 → Ended(실패) */
 	void OnEliteTimeLimitExpired();
+	void BeginPrototypeBossSequence();
+	void StopCombatForPrototypeBoss();
+	void HandlePrototypeBossDestinationReached();
+	void HandlePrototypeBossArrivalTimeout();
 
 	void PrewarmPools();
 	bool FindEnemyRow(FName EnemyID, FEnemyRow& OutEnemyRow) const;
