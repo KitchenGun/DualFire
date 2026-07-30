@@ -203,6 +203,8 @@ void AStageController::SpawnWaveSequential(FWaveRow Wave, int32 AlreadySpawned)
 			}
 			RegisterEnemyAI(AI);
 		}
+
+		RecordEnemySpawned(Enemy->GetEnemyAttributes_Implementation());
 	}
 
 	const int32 NextCount = AlreadySpawned + 1;
@@ -464,6 +466,18 @@ void AStageController::RegisterEnemyAI(UEnemyAIComponent* AIComponent)
 void AStageController::UnregisterEnemyAI(UEnemyAIComponent* AIComponent)
 {
 	ActiveEnemyAIComponents.RemoveSingleSwap(AIComponent);
+}
+
+void AStageController::RecordEnemySpawned(const FEnemyAttribute& Attribute)
+{
+	AirEnemiesSpawned += Attribute.HasAir() ? 1 : 0;
+	GroundEnemiesSpawned += Attribute.HasGround() ? 1 : 0;
+}
+
+void AStageController::NotifyEnemyDefeated(const FEnemyAttribute& Attribute)
+{
+	AirEnemiesDefeated += Attribute.HasAir() ? 1 : 0;
+	GroundEnemiesDefeated += Attribute.HasGround() ? 1 : 0;
 }
 
 void AStageController::PrewarmPools()

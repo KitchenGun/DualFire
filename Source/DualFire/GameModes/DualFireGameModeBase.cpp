@@ -12,6 +12,61 @@
 #include "GameFramework/PlayerController.h"
 #include "Kismet/GameplayStatics.h"
 
+namespace
+{
+	int32 RankToScore(EDualFireMissionRank Rank)
+	{
+		switch (Rank)
+		{
+		case EDualFireMissionRank::S: return 4;
+		case EDualFireMissionRank::A: return 3;
+		case EDualFireMissionRank::B: return 2;
+		case EDualFireMissionRank::C: return 1;
+		case EDualFireMissionRank::D: return 0;
+		default: return 0;
+		}
+	}
+
+	EDualFireMissionRank ScoreToRank(int32 Score)
+	{
+		switch (FMath::Clamp(Score, 0, 4))
+		{
+		case 4: return EDualFireMissionRank::S;
+		case 3: return EDualFireMissionRank::A;
+		case 2: return EDualFireMissionRank::B;
+		case 1: return EDualFireMissionRank::C;
+		default: return EDualFireMissionRank::D;
+		}
+	}
+
+	EDualFireMissionRank RankKillRate(float Rate)
+	{
+		if (Rate >= 1.0f) return EDualFireMissionRank::S;
+		if (Rate >= 0.85f) return EDualFireMissionRank::A;
+		if (Rate >= 0.70f) return EDualFireMissionRank::B;
+		if (Rate >= 0.50f) return EDualFireMissionRank::C;
+		return EDualFireMissionRank::D;
+	}
+
+	EDualFireMissionRank RankHits(int32 Count)
+	{
+		if (Count == 0) return EDualFireMissionRank::S;
+		if (Count <= 3) return EDualFireMissionRank::A;
+		if (Count <= 6) return EDualFireMissionRank::B;
+		if (Count <= 10) return EDualFireMissionRank::C;
+		return EDualFireMissionRank::D;
+	}
+
+	EDualFireMissionRank RankDeaths(int32 Count)
+	{
+		if (Count == 0) return EDualFireMissionRank::S;
+		if (Count <= 1) return EDualFireMissionRank::A;
+		if (Count <= 2) return EDualFireMissionRank::B;
+		if (Count <= 3) return EDualFireMissionRank::C;
+		return EDualFireMissionRank::D;
+	}
+}
+
 ADualFireGameModeBase::ADualFireGameModeBase()
 {
     // ── 기본 폰 클래스 ─────────────────────────────────────────────────────────
@@ -173,6 +228,7 @@ void ADualFireGameModeBase::EndMission(EMissionResult Result)
         return;
     }
     MissionResult = Result;
+	BuildMissionResultData(Result);
 
     const TCHAR* ResultText = (Result == EMissionResult::Cleared) ? TEXT("CLEARED") : TEXT("FAILED");
 
@@ -193,4 +249,107 @@ void ADualFireGameModeBase::EndMission(EMissionResult Result)
     }
 
     OnMissionEnded.Broadcast(Result);
+}
+
+void ADualFireGameModeBase::BuildMissionResultData(EMissionResult Result)
+{
+	MissionResultData = FDualFireMissionResultData();
+	MissionResultData.Result = Result;
+	MissionResultData.MissionCode = MissionCode;
+	MissionResultData.MissionName = MissionDisplayName;
+	MissionResultData.Difficulty = DifficultyDisplayName;
+
+	if (IsValid(ActiveStageController))
+	{
+		MissionResultData.StageID = ActiveStageController->StageID;
+		MissionResultData.ElapsedTime = ActiveStageController->GetElapsedTime();
+	}
+
+	if (Result != EMissionResult::Cleared)
+	{
+		return;
+	}
+
+	FDualFireMissionMetricResult ScoreMetric;
+	ScoreMetric.Metric = EDualFireMissionMetric::Score;
+	ScoreMetric.DisplayName = FText::FromString(TEXT("SCORE"));
+	ScoreMetric.DisplayValue = FText::FromString(TEXT("N/A"));
+	MissionResultData.Metrics.Add(ScoreMetric);
+
+	int32 WeightedScore = 0;
+	int32 TotalWeight = 0;
+	const auto AddKillMetric = [this, &WeightedScore, &TotalWeight](
+		EDualFireMissionMetric Metric,
+		const TCHAR* Label,
+		int32 Defeated,
+		int32 Spawned)
+	{
+		FDualFireMissionMetricResult MetricResult;
+		MetricResult.Metric = Metric;
+		MetricResult.DisplayName = FText::FromString(Label);
+		MetricResult.bApplicable = Spawned > 0;
+
+		if (MetricResult.bApplicable)
+		{
+			const int32 ClampedDefeated = FMath::Clamp(Defeated, 0, Spawned);
+			MetricResult.Progress = static_cast<float>(ClampedDefeated) / static_cast<float>(Spawned);
+			MetricResult.Rank = RankKillRate(MetricResult.Progress);
+			MetricResult.DisplayValue = FText::FromString(FString::Printf(
+				TEXT("%d / %d  (%d%%)"),
+				ClampedDefeated,
+				Spawned,
+				FMath::RoundToInt(MetricResult.Progress * 100.0f)));
+			WeightedScore += RankToScore(MetricResult.Rank) * 2;
+			TotalWeight += 2;
+		}
+		else
+		{
+			MetricResult.DisplayValue = FText::FromString(TEXT("N/A"));
+			MetricResult.Rank = EDualFireMissionRank::NotApplicable;
+		}
+
+		MissionResultData.Metrics.Add(MetricResult);
+	};
+
+	AddKillMetric(
+		EDualFireMissionMetric::AirTargets,
+		TEXT("AIR TARGETS"),
+		ActiveStageController ? ActiveStageController->GetAirEnemiesDefeated() : 0,
+		ActiveStageController ? ActiveStageController->GetAirEnemiesSpawned() : 0);
+	AddKillMetric(
+		EDualFireMissionMetric::GroundTargets,
+		TEXT("GROUND TARGETS"),
+		ActiveStageController ? ActiveStageController->GetGroundEnemiesDefeated() : 0,
+		ActiveStageController ? ActiveStageController->GetGroundEnemiesSpawned() : 0);
+
+	const ADualFirePlayerPawn* PlayerPawn = Cast<ADualFirePlayerPawn>(
+		UGameplayStatics::GetPlayerPawn(this, 0));
+	const int32 HitCount = IsValid(PlayerPawn) ? PlayerPawn->GetMissionHitCount() : 0;
+	const int32 DeathCount = IsValid(PlayerPawn) ? PlayerPawn->GetMissionDeathCount() : 0;
+
+	FDualFireMissionMetricResult HitMetric;
+	HitMetric.Metric = EDualFireMissionMetric::HitsTaken;
+	HitMetric.DisplayName = FText::FromString(TEXT("HITS TAKEN"));
+	HitMetric.DisplayValue = FText::AsNumber(HitCount);
+	HitMetric.Rank = RankHits(HitCount);
+	HitMetric.Progress = static_cast<float>(RankToScore(HitMetric.Rank)) / 4.0f;
+	HitMetric.bApplicable = true;
+	MissionResultData.Metrics.Add(HitMetric);
+	WeightedScore += RankToScore(HitMetric.Rank);
+	TotalWeight += 1;
+
+	FDualFireMissionMetricResult DeathMetric;
+	DeathMetric.Metric = EDualFireMissionMetric::Deaths;
+	DeathMetric.DisplayName = FText::FromString(TEXT("DEATHS"));
+	DeathMetric.DisplayValue = FText::AsNumber(DeathCount);
+	DeathMetric.Rank = RankDeaths(DeathCount);
+	DeathMetric.Progress = static_cast<float>(RankToScore(DeathMetric.Rank)) / 4.0f;
+	DeathMetric.bApplicable = true;
+	MissionResultData.Metrics.Add(DeathMetric);
+	WeightedScore += RankToScore(DeathMetric.Rank);
+	TotalWeight += 1;
+
+	MissionResultData.OverallRank = TotalWeight > 0
+		? ScoreToRank(FMath::RoundToInt(static_cast<float>(WeightedScore) / TotalWeight))
+		: EDualFireMissionRank::NotApplicable;
 }

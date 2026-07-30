@@ -76,6 +76,11 @@ void ADualFirePlayerPawn::BeginPlay()
     if (IsValid(HealthComp))
     {
         HealthComp->OnDeath.AddDynamic(this, &ADualFirePlayerPawn::OnPlayerFinalDeath);
+		HealthComp->OnRespawn.AddDynamic(this, &ADualFirePlayerPawn::OnPlayerRespawn);
+		HealthComp->OnHealthChanged.AddDynamic(this, &ADualFirePlayerPawn::OnMissionHealthChanged);
+		HealthComp->OnShieldChanged.AddDynamic(this, &ADualFirePlayerPawn::OnMissionShieldChanged);
+		LastRecordedHealth = HealthComp->CurrentHealth;
+		LastRecordedShield = HealthComp->CurrentShield;
     }
 
     SetupInputMappingContext();
@@ -351,6 +356,7 @@ void ADualFirePlayerPawn::DF_Kill()
 
 void ADualFirePlayerPawn::OnPlayerFinalDeath()
 {
+	++MissionDeathCount;
     UE_LOG(LogDualFire, Warning, TEXT("[Player] 최종 사망 → 미션 실패 요청"));
 
     if (ADualFireGameModeBase* GameMode =
@@ -358,6 +364,29 @@ void ADualFirePlayerPawn::OnPlayerFinalDeath()
     {
         GameMode->OnMissionFail();
     }
+}
+
+void ADualFirePlayerPawn::OnPlayerRespawn()
+{
+	++MissionDeathCount;
+}
+
+void ADualFirePlayerPawn::OnMissionHealthChanged(int32 CurrentHealth, int32 /*MaxHealth*/)
+{
+	if (CurrentHealth < LastRecordedHealth)
+	{
+		++MissionHitCount;
+	}
+	LastRecordedHealth = CurrentHealth;
+}
+
+void ADualFirePlayerPawn::OnMissionShieldChanged(int32 CurrentShield, int32 /*MaxShield*/)
+{
+	if (CurrentShield < LastRecordedShield)
+	{
+		++MissionHitCount;
+	}
+	LastRecordedShield = CurrentShield;
 }
 
 // ── 내부 헬퍼 ────────────────────────────────────────────────────────────────

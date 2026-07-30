@@ -157,6 +157,12 @@ public:
     UFUNCTION(Exec)
     void DF_Kill();
 
+	UFUNCTION(BlueprintPure, Category="Mission Result")
+	int32 GetMissionHitCount() const { return MissionHitCount; }
+
+	UFUNCTION(BlueprintPure, Category="Mission Result")
+	int32 GetMissionDeathCount() const { return MissionDeathCount; }
+
 protected:
     // ── Enhanced Input 핸들러 ────────────────────────────────────────────────
 
@@ -199,7 +205,21 @@ protected:
     UFUNCTION()
     void OnPlayerFinalDeath();
 
+	UFUNCTION()
+	void OnPlayerRespawn();
+
+	UFUNCTION()
+	void OnMissionHealthChanged(int32 CurrentHealth, int32 MaxHealth);
+
+	UFUNCTION()
+	void OnMissionShieldChanged(int32 CurrentShield, int32 MaxShield);
+
 private:
+	int32 MissionHitCount = 0;
+	int32 MissionDeathCount = 0;
+	int32 LastRecordedHealth = 0;
+	int32 LastRecordedShield = 0;
+
     /** 좌우 입력 세기를 15/30/45도 뱅킹 포즈로 변환한다. */
     void UpdateAircraftBankPose(float HorizontalInput);
 

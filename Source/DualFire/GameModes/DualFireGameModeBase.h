@@ -6,6 +6,7 @@
 #include "GameFramework/GameModeBase.h"
 #include "Core/DualFireTypes.h"
 #include "Core/DualFireDataTypes.h"
+#include "Core/DualFireMissionResultTypes.h"
 #include "DualFireGameModeBase.generated.h"
 
 // Forward declarations — 헤더 인클루드 최소화
@@ -104,6 +105,18 @@ public:
     UFUNCTION(BlueprintPure, Category="Mission")
     EMissionResult GetMissionResult() const { return MissionResult; }
 
+	UFUNCTION(BlueprintPure, Category="Mission")
+	const FDualFireMissionResultData& GetMissionResultData() const { return MissionResultData; }
+
+	UPROPERTY(EditDefaultsOnly, BlueprintReadOnly, Category="Mission|Result")
+	FText MissionCode = FText::FromString(TEXT("MISSION 01"));
+
+	UPROPERTY(EditDefaultsOnly, BlueprintReadOnly, Category="Mission|Result")
+	FText MissionDisplayName = FText::FromString(TEXT("CHARGE ASSAULT"));
+
+	UPROPERTY(EditDefaultsOnly, BlueprintReadOnly, Category="Mission|Result")
+	FText DifficultyDisplayName = FText::FromString(TEXT("NORMAL"));
+
     /** 미션 종료 시 발생. HUD 결과 화면·연출 구독용 */
     UPROPERTY(BlueprintAssignable, Category="Mission")
     FOnMissionEnded OnMissionEnded;
@@ -120,6 +133,10 @@ private:
     // 현재 미션 결과 (중복 종료 방지용)
     EMissionResult MissionResult = EMissionResult::None;
 
+	UPROPERTY()
+	FDualFireMissionResultData MissionResultData;
+
     /** 미션 종료 공통 처리 — 결과 확정, 입력 잠금, 리포트 출력, 델리게이트 */
     void EndMission(EMissionResult Result);
+	void BuildMissionResultData(EMissionResult Result);
 };

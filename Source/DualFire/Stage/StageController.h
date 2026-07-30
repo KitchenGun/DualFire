@@ -146,8 +146,21 @@ public:
 	UFUNCTION(BlueprintPure, Category="Stage")
 	float GetElapsedTime() const { return ElapsedTime; }
 
+	UFUNCTION(BlueprintPure, Category="Stage|Result")
+	int32 GetAirEnemiesSpawned() const { return AirEnemiesSpawned; }
+
+	UFUNCTION(BlueprintPure, Category="Stage|Result")
+	int32 GetAirEnemiesDefeated() const { return AirEnemiesDefeated; }
+
+	UFUNCTION(BlueprintPure, Category="Stage|Result")
+	int32 GetGroundEnemiesSpawned() const { return GroundEnemiesSpawned; }
+
+	UFUNCTION(BlueprintPure, Category="Stage|Result")
+	int32 GetGroundEnemiesDefeated() const { return GroundEnemiesDefeated; }
+
 	void RegisterEnemyAI(UEnemyAIComponent* AIComponent);
 	void UnregisterEnemyAI(UEnemyAIComponent* AIComponent);
+	void NotifyEnemyDefeated(const FEnemyAttribute& Attribute);
 
 private:
 	/** TriggerTime 오름차순으로 정렬된 실행 대상 웨이브 목록 */
@@ -171,6 +184,10 @@ private:
 	TWeakObjectPtr<APawn> CachedPlayerPawn;
 	FVector CachedPlayerLocation = FVector::ZeroVector;
 	bool bHasCachedPlayerLocation = false;
+	int32 AirEnemiesSpawned = 0;
+	int32 AirEnemiesDefeated = 0;
+	int32 GroundEnemiesSpawned = 0;
+	int32 GroundEnemiesDefeated = 0;
 
 	/** ActiveWaves를 구성하고 TriggerTime 기준 정렬 (BeginPlay) */
 	void BuildActiveWaves();
@@ -208,6 +225,7 @@ private:
 	void TickEnemyAI(float DeltaTime);
 	FVector GetCachedPlayerLocation();
 	void CachePlayerPawn(APawn* NewPawn);
+	void RecordEnemySpawned(const FEnemyAttribute& Attribute);
 
 	UFUNCTION()
 	void HandlePossessedPawnChanged(APawn* OldPawn, APawn* NewPawn);

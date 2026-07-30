@@ -101,6 +101,13 @@ void AEnemyBase::InitFromEnemyRow(const FEnemyRow& Row)
 void AEnemyBase::OnEnemyDeath()
 {
 	UE_LOG(LogDualFire, Log, TEXT("[Enemy] %s 격파"), *GetName());
+	if (ADualFireGameModeBase* GM = Cast<ADualFireGameModeBase>(UGameplayStatics::GetGameMode(this)))
+	{
+		if (AStageController* StageController = GM->GetStageController())
+		{
+			StageController->NotifyEnemyDefeated(EnemyAttribute);
+		}
+	}
 	ReturnToPoolOrDestroy();
 }
 
