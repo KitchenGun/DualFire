@@ -6,10 +6,7 @@
 #include "CommonActivatableWidget.h"
 #include "EnhancedInputSubsystems.h"
 #include "Engine/LocalPlayer.h"
-#include "Framework/Application/NavigationConfig.h"
-#include "Framework/Application/SlateApplication.h"
 #include "InputMappingContext.h"
-#include "InputCoreTypes.h"
 
 ADualFireUIPlayerController::ADualFireUIPlayerController()
 {
@@ -20,42 +17,14 @@ void ADualFireUIPlayerController::BeginPlay()
 {
 	Super::BeginPlay();
 	AddUIInputMapping();
-	AddMenuNavigationKeys();
 	InitializeRootLayout();
 }
 
 void ADualFireUIPlayerController::EndPlay(const EEndPlayReason::Type EndPlayReason)
 {
 	RemoveRootLayout();
-	RemoveMenuNavigationKeys();
 	RemoveUIInputMapping();
 	Super::EndPlay(EndPlayReason);
-}
-
-void ADualFireUIPlayerController::AddMenuNavigationKeys()
-{
-	if (bMenuNavigationKeysAdded || !FSlateApplication::IsInitialized())
-	{
-		return;
-	}
-
-	TSharedRef<FNavigationConfig> NavigationConfig = FSlateApplication::Get().GetNavigationConfig();
-	NavigationConfig->KeyEventRules.Add(EKeys::W, EUINavigation::Up);
-	NavigationConfig->KeyEventRules.Add(EKeys::S, EUINavigation::Down);
-	bMenuNavigationKeysAdded = true;
-}
-
-void ADualFireUIPlayerController::RemoveMenuNavigationKeys()
-{
-	if (!bMenuNavigationKeysAdded || !FSlateApplication::IsInitialized())
-	{
-		return;
-	}
-
-	TSharedRef<FNavigationConfig> NavigationConfig = FSlateApplication::Get().GetNavigationConfig();
-	NavigationConfig->KeyEventRules.Remove(EKeys::W);
-	NavigationConfig->KeyEventRules.Remove(EKeys::S);
-	bMenuNavigationKeysAdded = false;
 }
 
 UCommonActivatableWidget* ADualFireUIPlayerController::PushWidgetToLayer(

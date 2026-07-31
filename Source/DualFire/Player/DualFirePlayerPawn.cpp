@@ -15,7 +15,6 @@
 #include "PaperFlipbookComponent.h"
 
 #include "EnhancedInputComponent.h"
-#include "EnhancedInputSubsystems.h"
 #include "InputMappingContext.h"
 #include "InputAction.h"
 
@@ -47,7 +46,6 @@ ADualFirePlayerPawn::ADualFirePlayerPawn()
     HitboxComp->SetupAttachment(SceneRoot);
     HitboxComp->InitSphereRadius(12.f);
     HitboxComp->SetCollisionProfileName(DualFireProfile::PlayerPawn);
-    // OnComponentBeginOverlap 바인딩은 BeginPlay에서 (CDO 단계에서 AddDynamic 불가)
 
     // ── MovementComp ─────────────────────────────────────────────────────────
     // UpdatedComponent를 SceneRoot로 설정해 XY 평면 이동 대상을 루트로 지정
@@ -60,6 +58,7 @@ ADualFirePlayerPawn::ADualFirePlayerPawn()
     // ── HealthComp ────────────────────────────────────────────────────────────
     HealthComp = CreateDefaultSubobject<UHealthComponent>(TEXT("HealthComp"));
     HealthComp->bUseLife = true;   // 플레이어는 잔여 기체/리스폰 사용
+    HealthComp->bBindToActorDamage = true;
 }
 
 // ── APawn 오버라이드 ──────────────────────────────────────────────────────────
@@ -67,10 +66,6 @@ ADualFirePlayerPawn::ADualFirePlayerPawn()
 void ADualFirePlayerPawn::BeginPlay()
 {
     Super::BeginPlay();
-
-    // 동적 델리게이트 바인딩 — BeginPlay에서만 가능 (UFUNCTION 리플렉션 필요)
-    HitboxComp->OnComponentBeginOverlap.AddDynamic(
-        this, &ADualFirePlayerPawn::OnHitboxOverlapBegin);
 
     // 최종 사망(잔여 기체 소진) → 미션 실패 연결
     if (IsValid(HealthComp))
@@ -82,8 +77,6 @@ void ADualFirePlayerPawn::BeginPlay()
 		LastRecordedHealth = HealthComp->CurrentHealth;
 		LastRecordedShield = HealthComp->CurrentShield;
     }
-
-    SetupInputMappingContext();
 }
 
 void ADualFirePlayerPawn::SetupPlayerInputComponent(UInputComponent* PlayerInputComponent)
@@ -270,29 +263,6 @@ void ADualFirePlayerPawn::OnFireSpecial2Input(const FInputActionValue& Value)
     }
 }
 
-// ── 히트박스 오버랩 ───────────────────────────────────────────────────────────
-
-void ADualFirePlayerPawn::OnHitboxOverlapBegin(
-    UPrimitiveComponent* OverlappedComp,
-    AActor*              OtherActor,
-    UPrimitiveComponent* OtherComp,
-    int32                OtherBodyIndex,
-    bool                 bFromSweep,
-    const FHitResult&    SweepResult)
-{
-    // EnemyBullet 채널(ECC_GameTraceChannel2)이 아닌 오버랩은 무시
-    if (!IsValid(OtherComp) ||
-        OtherComp->GetCollisionObjectType() != DualFireChannel::EnemyBullet)
-    {
-        return;
-    }
-
-    if (IsValid(HealthComp))
-    {
-        HealthComp->ApplyDamage(1);
-    }
-}
-
 // ── 이동 제어 위임 ────────────────────────────────────────────────────────────
 
 void ADualFirePlayerPawn::SetSpeedMultiplier(float InMultiplier)
@@ -389,32 +359,15 @@ void ADualFirePlayerPawn::OnMissionShieldChanged(int32 CurrentShield, int32 /*Ma
 	LastRecordedShield = CurrentShield;
 }
 
-// ── 내부 헬퍼 ────────────────────────────────────────────────────────────────
-
-void ADualFirePlayerPawn::SetupInputMappingContext()
+UInputMappingContext* ADualFirePlayerPawn::ResolveInputMappingContext() const
 {
-    APlayerController* PC = Cast<APlayerController>(GetController());
-    if (!IsValid(PC))
+    UInputMappingContext* MappingContext = IMC_Player.LoadSynchronous();
+    if (!IsValid(MappingContext))
     {
-        return;
-    }
-
-    UEnhancedInputLocalPlayerSubsystem* Subsystem =
-        ULocalPlayer::GetSubsystem<UEnhancedInputLocalPlayerSubsystem>(PC->GetLocalPlayer());
-    if (!IsValid(Subsystem))
-    {
-        return;
-    }
-
-    // TSoftObjectPtr → 동기 로드 (BeginPlay 1회성, IMC 에셋은 경량이므로 허용)
-    if (UInputMappingContext* IMC = IMC_Player.LoadSynchronous())
-    {
-        Subsystem->AddMappingContext(IMC, InputMappingPriority);
-    }
-    else
-    {
-        UE_LOG(LogTemp, Warning,
+        UE_LOG(LogDualFire, Warning,
             TEXT("ADualFirePlayerPawn: IMC_Player 에셋이 할당되지 않았습니다. "
                  "BP_DualFirePlayerPawn Details > Input > IMC_Player를 설정하세요."));
     }
+
+    return MappingContext;
 }

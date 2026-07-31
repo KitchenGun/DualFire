@@ -87,7 +87,7 @@ public:
     virtual UPawnMovementComponent* GetMovementComponent() const override;
 
     // ── Enhanced Input 에셋 참조 ─────────────────────────────────────────────
-    // TSoftObjectPtr: 패키징 크기 절약. BeginPlay/SetupInput에서 LoadSynchronous() 사용.
+    // TSoftObjectPtr: 패키징 크기 절약. MissionPlayerController가 빙의 시 로드한다.
     // BP_DualFirePlayerPawn의 Details 패널에서 에셋 직접 할당.
 
     UPROPERTY(EditDefaultsOnly, BlueprintReadOnly, Category="Input")
@@ -112,6 +112,11 @@ public:
     UPROPERTY(EditDefaultsOnly, BlueprintReadOnly, Category="Input",
         meta=(ClampMin="0"))
     int32 InputMappingPriority = 1;
+
+    /** MissionPlayerController가 수명주기를 관리할 gameplay IMC를 해석한다. */
+    UInputMappingContext* ResolveInputMappingContext() const;
+
+    int32 GetInputMappingPriority() const { return InputMappingPriority; }
 
     // ── 이동 제어 위임 ───────────────────────────────────────────────────────
 
@@ -181,21 +186,6 @@ protected:
     /** 특수무장 슬롯 2 발사 (Triggered=연사) */
     void OnFireSpecial2Input(const FInputActionValue& Value);
 
-    // ── 히트박스 오버랩 ──────────────────────────────────────────────────────
-
-    /**
-     * HitboxComp의 OnComponentBeginOverlap 콜백.
-     * UFUNCTION 필수 — AddDynamic 바인딩이 리플렉션을 요구함
-     */
-    UFUNCTION()
-    void OnHitboxOverlapBegin(
-        UPrimitiveComponent* OverlappedComp,
-        AActor*              OtherActor,
-        UPrimitiveComponent* OtherComp,
-        int32                OtherBodyIndex,
-        bool                 bFromSweep,
-        const FHitResult&    SweepResult);
-
     // ── 사망 처리 ────────────────────────────────────────────────────────────
 
     /**
@@ -223,6 +213,4 @@ private:
     /** 좌우 입력 세기를 15/30/45도 뱅킹 포즈로 변환한다. */
     void UpdateAircraftBankPose(float HorizontalInput);
 
-    /** IMC를 로드해 LocalPlayer Subsystem에 등록. BeginPlay에서 1회 호출 */
-    void SetupInputMappingContext();
 };

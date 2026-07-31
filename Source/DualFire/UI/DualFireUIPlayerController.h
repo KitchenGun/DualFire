@@ -55,8 +55,6 @@ protected:
 private:
 	void AddUIInputMapping();
 	void RemoveUIInputMapping();
-	void AddMenuNavigationKeys();
-	void RemoveMenuNavigationKeys();
 	void InitializeRootLayout();
 	void RemoveRootLayout();
 
@@ -64,5 +62,4 @@ private:
 	TObjectPtr<UDualFirePrimaryLayout> RootLayout;
 
 	bool bUIInputMappingAdded = false;
-	bool bMenuNavigationKeysAdded = false;
 };

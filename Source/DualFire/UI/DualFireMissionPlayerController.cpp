@@ -5,7 +5,11 @@
 #include "DualFire.h"
 #include "GameInstance/DualFireMissionResultSubsystem.h"
 #include "GameModes/DualFireGameModeBase.h"
+#include "Player/DualFirePlayerPawn.h"
+#include "EnhancedInputSubsystems.h"
 #include "Engine/GameInstance.h"
+#include "Engine/LocalPlayer.h"
+#include "InputMappingContext.h"
 #include "Kismet/GameplayStatics.h"
 
 void ADualFireMissionPlayerController::BeginPlay()
@@ -16,16 +20,80 @@ void ADualFireMissionPlayerController::BeginPlay()
 	{
 		GameMode->OnMissionEnded.AddDynamic(this, &ThisClass::HandleMissionEnded);
 	}
+
+	AddGameplayInputMapping(GetPawn());
 }
 
 void ADualFireMissionPlayerController::EndPlay(const EEndPlayReason::Type EndPlayReason)
 {
+	RemoveGameplayInputMapping();
+
 	if (ADualFireGameModeBase* GameMode = GetWorld()->GetAuthGameMode<ADualFireGameModeBase>())
 	{
 		GameMode->OnMissionEnded.RemoveDynamic(this, &ThisClass::HandleMissionEnded);
 	}
 
 	Super::EndPlay(EndPlayReason);
+}
+
+void ADualFireMissionPlayerController::OnPossess(APawn* InPawn)
+{
+	Super::OnPossess(InPawn);
+	RemoveGameplayInputMapping();
+	AddGameplayInputMapping(InPawn);
+}
+
+void ADualFireMissionPlayerController::OnUnPossess()
+{
+	RemoveGameplayInputMapping();
+	Super::OnUnPossess();
+}
+
+void ADualFireMissionPlayerController::AddGameplayInputMapping(APawn* InPawn)
+{
+	if (bGameplayInputMappingAdded || !IsLocalPlayerController())
+	{
+		return;
+	}
+
+	const ADualFirePlayerPawn* PlayerPawn = Cast<ADualFirePlayerPawn>(InPawn);
+	ULocalPlayer* LocalPlayer = GetLocalPlayer();
+	if (!IsValid(PlayerPawn) || !IsValid(LocalPlayer))
+	{
+		return;
+	}
+
+	UEnhancedInputLocalPlayerSubsystem* InputSubsystem =
+		LocalPlayer->GetSubsystem<UEnhancedInputLocalPlayerSubsystem>();
+	UInputMappingContext* MappingContext = PlayerPawn->ResolveInputMappingContext();
+	if (!IsValid(InputSubsystem) || !IsValid(MappingContext))
+	{
+		return;
+	}
+
+	InputSubsystem->AddMappingContext(MappingContext, PlayerPawn->GetInputMappingPriority());
+	ActiveGameplayInputMapping = MappingContext;
+	bGameplayInputMappingAdded = true;
+}
+
+void ADualFireMissionPlayerController::RemoveGameplayInputMapping()
+{
+	if (!bGameplayInputMappingAdded)
+	{
+		return;
+	}
+
+	if (ULocalPlayer* LocalPlayer = GetLocalPlayer())
+	{
+		if (UEnhancedInputLocalPlayerSubsystem* InputSubsystem =
+			LocalPlayer->GetSubsystem<UEnhancedInputLocalPlayerSubsystem>())
+		{
+			InputSubsystem->RemoveMappingContext(ActiveGameplayInputMapping);
+		}
+	}
+
+	ActiveGameplayInputMapping = nullptr;
+	bGameplayInputMappingAdded = false;
 }
 
 void ADualFireMissionPlayerController::HandleMissionEnded(EMissionResult /*Result*/)

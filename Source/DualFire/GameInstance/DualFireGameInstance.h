@@ -4,6 +4,7 @@
 
 #include "CoreMinimal.h"
 #include "Engine/GameInstance.h"
+#include "Types/SlateEnums.h"
 #include "DualFireGameInstance.generated.h"
 
 /**
@@ -19,4 +20,11 @@ class DUALFIRE_API UDualFireGameInstance : public UGameInstance
 public:
 	virtual void Init() override;
 	virtual void Shutdown() override;
+
+private:
+	bool bMenuNavigationInstalled = false;
+	bool bHadWNavigationRule = false;
+	bool bHadSNavigationRule = false;
+	EUINavigation PreviousWNavigation = EUINavigation::Invalid;
+	EUINavigation PreviousSNavigation = EUINavigation::Invalid;
 };
