@@ -37,7 +37,7 @@ public:
 
     /**
      * 컨트롤러가 빙의할 Pawn 클래스를 결정.
-     * LoadoutManagerSubsystem.ActiveLoadout에 선택된 AircraftRow.AircraftClass가 있으면
+     * LoadoutManagerSubsystem의 검증된 ActiveLoadout에 AircraftRow.AircraftClass가 있으면
      * 그 BP 클래스를 사용하고, 없으면 기본 DefaultPawnClass로 폴백.
      */
     virtual UClass* GetDefaultPawnClassForController_Implementation(AController* InController) override;
@@ -45,7 +45,7 @@ public:
     // ── 테스트용 로드아웃 (격납고 UI 부재 시 폴백) ───────────────────────────────────
 
     /**
-     * 격납고 레벨 등에서 LoadoutManagerSubsystem.SetActiveLoadout()을 미리 호출하고 넘어온 게
+     * 격납고 레벨 등에서 LoadoutManagerSubsystem.TrySetActiveLoadout()을 미리 호출하고 넘어온 게
      * 아닐 때(= ActiveLoadout이 비어있을 때)만 사용되는 테스트용 기본 로드아웃.
      * BP 디테일 패널에서 각 슬롯을 데이터테이블 행 드롭다운으로 선택해 구성한다.
      * 격납고가 이미 선택해서 넘어온 경우는 절대 덮어쓰지 않는다 (InitGame 참고).

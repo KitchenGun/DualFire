@@ -96,13 +96,34 @@ void ADualFireGameModeBase::InitGame(const FString& MapName, const FString& Opti
         return;
     }
 
-    // 격납고 등 외부에서 이미 SetActiveLoadout()을 호출하고 넘어온 경우는 덮어쓰지 않는다.
-    if (!LM->GetActiveLoadout().AircraftID.IsNone())
+    FText LoadoutError;
+    FName InvalidField;
+
+    // 격납고 선택값은 TestLoadout보다 항상 우선한다. 무효해도 조용히 대체하지 않는다.
+    if (LM->HasActiveLoadout())
     {
+        if (!LM->ValidateLoadout(LM->GetActiveLoadout(), LoadoutError, InvalidField))
+        {
+            UE_LOG(LogDualFire, Error,
+                TEXT("[GameMode] InitGame: 선택 로드아웃 무효 — Field:%s Error:%s"),
+                *InvalidField.ToString(),
+                *LoadoutError.ToString());
+        }
         return;
     }
 
-    LM->SetActiveLoadout(ULoadoutDataLibrary::MakeLoadoutFromRowHandles(TestLoadout));
+    if (!LM->TrySetActiveLoadout(
+        ULoadoutDataLibrary::MakeLoadoutFromRowHandles(TestLoadout),
+        LoadoutError,
+        InvalidField))
+    {
+        UE_LOG(LogDualFire, Error,
+            TEXT("[GameMode] InitGame: TestLoadout 검증 실패 — Field:%s Error:%s"),
+            *InvalidField.ToString(),
+            *LoadoutError.ToString());
+        return;
+    }
+
     UE_LOG(LogDualFire, Log, TEXT("[GameMode] InitGame: 외부 로드아웃 없음 — TestLoadout으로 폴백"));
 }
 
@@ -173,21 +194,31 @@ void ADualFireGameModeBase::StartMission()
 {
     // ── 1. LoadoutManager → PlayerPawn 주입 ──────────────────────────────────
     UGameInstance* GI = UGameplayStatics::GetGameInstance(this);
-    if (IsValid(GI))
+    if (!IsValid(GI))
     {
-        ULoadoutManagerSubsystem* LM = GI->GetSubsystem<ULoadoutManagerSubsystem>();
-        ADualFirePlayerPawn* Pawn = Cast<ADualFirePlayerPawn>(
-            UGameplayStatics::GetPlayerPawn(this, 0));
+        UE_LOG(LogDualFire, Error, TEXT("[GameMode] StartMission: GameInstance 없음 — 미션 시작 차단"));
+        return;
+    }
 
-        if (IsValid(LM) && IsValid(Pawn))
-        {
-            LM->ApplyToPlayer(Pawn);
-        }
-        else
-        {
-            UE_LOG(LogDualFire, Warning,
-                TEXT("[GameMode] StartMission: LoadoutManager 또는 PlayerPawn 없음 — 기본값으로 진행"));
-        }
+    ULoadoutManagerSubsystem* LM = GI->GetSubsystem<ULoadoutManagerSubsystem>();
+    ADualFirePlayerPawn* Pawn = Cast<ADualFirePlayerPawn>(
+        UGameplayStatics::GetPlayerPawn(this, 0));
+    if (!IsValid(LM) || !IsValid(Pawn))
+    {
+        UE_LOG(LogDualFire, Error,
+            TEXT("[GameMode] StartMission: LoadoutManager 또는 PlayerPawn 없음 — 미션 시작 차단"));
+        return;
+    }
+
+    FText LoadoutError;
+    FName InvalidField;
+    if (!LM->TryApplyActiveLoadout(Pawn, LoadoutError, InvalidField))
+    {
+        UE_LOG(LogDualFire, Error,
+            TEXT("[GameMode] StartMission: 로드아웃 적용 실패 — Field:%s Error:%s"),
+            *InvalidField.ToString(),
+            *LoadoutError.ToString());
+        return;
     }
 
     // ── 2. StageController 스폰 ───────────────────────────────────────────────

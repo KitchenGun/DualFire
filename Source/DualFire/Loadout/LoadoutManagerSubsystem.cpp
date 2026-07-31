@@ -8,6 +8,20 @@
 #include "DualFire.h"
 #include "PaperFlipbook.h"
 
+namespace
+{
+	bool IsValidProjectileClass(const FWeaponRow& WeaponRow)
+	{
+		if (WeaponRow.ProjectileClass.IsNull())
+		{
+			return false;
+		}
+
+		UClass* ProjectileClass = WeaponRow.ProjectileClass.LoadSynchronous();
+		return IsValid(ProjectileClass) && ProjectileClass->IsChildOf(ABaseProjectile::StaticClass());
+	}
+}
+
 void ULoadoutManagerSubsystem::Initialize(FSubsystemCollectionBase& Collection)
 {
 	Super::Initialize(Collection);
@@ -34,9 +48,10 @@ void ULoadoutManagerSubsystem::Initialize(FSubsystemCollectionBase& Collection)
 	}
 }
 
-void ULoadoutManagerSubsystem::SetActiveLoadout(const FLoadout& Loadout)
+void ULoadoutManagerSubsystem::CommitActiveLoadout(const FLoadout& Loadout)
 {
 	ActiveLoadout = Loadout;
+	bHasActiveLoadout = true;
 	UE_LOG(LogDualFire, Log, TEXT("[LoadoutManagerSubsystem] 로드아웃 설정 — Aircraft:%s"), *Loadout.AircraftID.ToString());
 }
 
@@ -50,7 +65,7 @@ bool ULoadoutManagerSubsystem::TrySetActiveLoadout(
 		return false;
 	}
 
-	SetActiveLoadout(Loadout);
+	CommitActiveLoadout(Loadout);
 	return true;
 }
 
@@ -95,7 +110,12 @@ bool ULoadoutManagerSubsystem::ValidateLoadout(
 	}
 
 	FAircraftRow AircraftRow;
-	if (!ULoadoutDataLibrary::FindAircraftRow(AircraftDataTable, Loadout.AircraftID, AircraftRow))
+	if (!ULoadoutDataLibrary::FindAircraftRow(AircraftDataTable, Loadout.AircraftID, AircraftRow) ||
+		AircraftRow.MaxHealth < 1 ||
+		AircraftRow.AircraftClass.IsNull() ||
+		!IsValid(AircraftRow.AircraftClass.LoadSynchronous()) ||
+		AircraftRow.BankFlipbook.IsNull() ||
+		!IsValid(AircraftRow.BankFlipbook.LoadSynchronous()))
 	{
 		return Fail(TEXT("Aircraft"), NSLOCTEXT("DualFireLoadout", "AircraftInvalid", "THE SELECTED AIRCRAFT IS UNAVAILABLE."));
 	}
@@ -104,7 +124,11 @@ bool ULoadoutManagerSubsystem::ValidateLoadout(
 	{
 		FWeaponRow WeaponRow;
 		if (!ULoadoutDataLibrary::FindWeaponRow(WeaponDataTable, WeaponID, WeaponRow) ||
-			!ULoadoutDataLibrary::IsWeaponCategoryCompatible(Slot, WeaponRow.Category))
+			!ULoadoutDataLibrary::IsWeaponCategoryCompatible(Slot, WeaponRow.Category) ||
+			WeaponRow.FireRate <= 0.f ||
+			WeaponRow.ProjectileSpeed <= 0.f ||
+			WeaponRow.AttributeArray.IsEmpty() ||
+			!IsValidProjectileClass(WeaponRow))
 		{
 			return Fail(Field, NSLOCTEXT("DualFireLoadout", "WeaponInvalid", "THE SELECTED WEAPON IS UNAVAILABLE FOR THIS SLOT."));
 		}
@@ -125,7 +149,10 @@ bool ULoadoutManagerSubsystem::ValidateLoadout(
 	}
 
 	FShieldRow ShieldRow;
-	if (!ULoadoutDataLibrary::FindShieldRow(ShieldDataTable, Loadout.ShieldID, ShieldRow))
+	if (!ULoadoutDataLibrary::FindShieldRow(ShieldDataTable, Loadout.ShieldID, ShieldRow) ||
+		ShieldRow.MaxShield < 0 ||
+		ShieldRow.ShieldRecoveryDuration <= 0.f ||
+		ShieldRow.BreakInvincibilityDuration < 0.f)
 	{
 		return Fail(TEXT("Shield"), NSLOCTEXT("DualFireLoadout", "ShieldInvalid", "THE SELECTED SHIELD IS UNAVAILABLE."));
 	}
@@ -133,59 +160,83 @@ bool ULoadoutManagerSubsystem::ValidateLoadout(
 	return true;
 }
 
-bool ULoadoutManagerSubsystem::ApplyToPlayer(ADualFirePlayerPawn* Pawn)
+bool ULoadoutManagerSubsystem::TryApplyActiveLoadout(
+	ADualFirePlayerPawn* Pawn,
+	FText& OutError,
+	FName& OutInvalidField)
 {
+	OutError = FText::GetEmpty();
+	OutInvalidField = NAME_None;
+
+	auto Fail = [&OutError, &OutInvalidField](const FName Field, const FText& Message)
+	{
+		OutInvalidField = Field;
+		OutError = Message;
+		return false;
+	};
+
+	if (!bHasActiveLoadout)
+	{
+		return Fail(TEXT("Loadout"), NSLOCTEXT("DualFireLoadout", "LoadoutMissing", "NO ACTIVE LOADOUT IS AVAILABLE."));
+	}
+
+	if (!ValidateLoadout(ActiveLoadout, OutError, OutInvalidField))
+	{
+		return false;
+	}
+
 	if (!IsValid(Pawn))
 	{
-		UE_LOG(LogDualFire, Warning, TEXT("[LoadoutManagerSubsystem] ApplyToPlayer: Pawn이 유효하지 않음"));
-		return false;
+		return Fail(TEXT("Pawn"), NSLOCTEXT("DualFireLoadout", "PawnInvalid", "THE PLAYER PAWN IS UNAVAILABLE."));
 	}
 
-	// ── 무장 적용 ─────────────────────────────────────────────────────────────
 	UWeaponComponent* WeaponComp = Pawn->GetWeaponComp();
-	if (IsValid(WeaponComp))
+	UHealthComponent* HealthComp = Pawn->GetHealthComp();
+	if (!IsValid(WeaponComp) || !IsValid(HealthComp))
 	{
-		WeaponComp->ApplyLoadout(ActiveLoadout);
+		return Fail(TEXT("Pawn"), NSLOCTEXT("DualFireLoadout", "PawnComponentsInvalid", "THE PLAYER LOADOUT COMPONENTS ARE UNAVAILABLE."));
 	}
 
-	// ── HP / Shield 적용 ──────────────────────────────────────────────────────
-	UHealthComponent* HealthComp = Pawn->GetHealthComp();
-	if (!IsValid(HealthComp))
+	FAircraftRow AircraftRow;
+	FShieldRow ShieldRow;
+	FWeaponRow PrimaryWeaponRow;
+	FWeaponRow SpecialWeapon1Row;
+	FWeaponRow SpecialWeapon2Row;
+	if (!ULoadoutDataLibrary::FindAircraftRow(AircraftDataTable, ActiveLoadout.AircraftID, AircraftRow) ||
+		!ULoadoutDataLibrary::FindShieldRow(ShieldDataTable, ActiveLoadout.ShieldID, ShieldRow) ||
+		!ULoadoutDataLibrary::FindWeaponRow(WeaponDataTable, ActiveLoadout.PrimaryWeaponID, PrimaryWeaponRow) ||
+		!ULoadoutDataLibrary::FindWeaponRow(WeaponDataTable, ActiveLoadout.SpecialWeapon1ID, SpecialWeapon1Row) ||
+		!ULoadoutDataLibrary::FindWeaponRow(WeaponDataTable, ActiveLoadout.SpecialWeapon2ID, SpecialWeapon2Row))
 	{
-		UE_LOG(LogDualFire, Warning, TEXT("[LoadoutManagerSubsystem] HealthComponent 없음"));
+		return Fail(TEXT("Loadout"), NSLOCTEXT("DualFireLoadout", "LoadoutResolveFailed", "THE ACTIVE LOADOUT COULD NOT BE RESOLVED."));
+	}
+
+	UPaperFlipbook* BankFlipbook = AircraftRow.BankFlipbook.LoadSynchronous();
+	if (!IsValid(BankFlipbook))
+	{
+		return Fail(TEXT("Aircraft"), NSLOCTEXT("DualFireLoadout", "AircraftVisualInvalid", "THE AIRCRAFT VISUAL IS UNAVAILABLE."));
+	}
+
+	if (!WeaponComp->TryApplyResolvedLoadout(
+		ActiveLoadout,
+		PrimaryWeaponRow,
+		SpecialWeapon1Row,
+		SpecialWeapon2Row,
+		OutError,
+		OutInvalidField))
+	{
 		return false;
 	}
 
-	// AircraftRow에서 외형과 MaxHealth 조회 (없으면 현재 값 유지)
-	int32 MaxHealth = HealthComp->MaxHealth;
-	FAircraftRow AircraftRow;
-	if (ULoadoutDataLibrary::FindAircraftRow(AircraftDataTable, ActiveLoadout.AircraftID, AircraftRow))
-	{
-		Pawn->ApplyAircraftVisual(AircraftRow.BankFlipbook.LoadSynchronous());
-		MaxHealth = FMath::Max(AircraftRow.MaxHealth, 1);
-	}
-	else
-	{
-		UE_LOG(LogDualFire, Warning,
-			TEXT("[LoadoutManagerSubsystem] 기체 행을 찾지 못함 — Aircraft:%s"),
-			*ActiveLoadout.AircraftID.ToString());
-	}
-
-	// ShieldRow에서 Shield 파라미터 조회 (없으면 기본값)
-	int32 MaxShield = 0;
-	float ShieldRecoveryDuration = 5.0f;
-	float BreakInvincibilityDuration = 0.5f;
-
-	FShieldRow ShieldRow;
-	if (ULoadoutDataLibrary::FindShieldRow(ShieldDataTable, ActiveLoadout.ShieldID, ShieldRow))
-	{
-		MaxShield                  = FMath::Max(ShieldRow.MaxShield, 0);
-		ShieldRecoveryDuration     = FMath::Max(ShieldRow.ShieldRecoveryDuration, 0.1f);
-		BreakInvincibilityDuration = FMath::Max(ShieldRow.BreakInvincibilityDuration, 0.0f);
-	}
-
+	const int32 MaxHealth = AircraftRow.MaxHealth;
+	const int32 MaxShield = ShieldRow.MaxShield;
+	Pawn->ApplyAircraftVisual(BankFlipbook);
 	HealthComp->bUseShield = (MaxShield > 0);
-	HealthComp->InitFromData(MaxHealth, MaxShield, ShieldRecoveryDuration, BreakInvincibilityDuration);
+	HealthComp->InitFromData(
+		MaxHealth,
+		MaxShield,
+		ShieldRow.ShieldRecoveryDuration,
+		ShieldRow.BreakInvincibilityDuration);
 
 	UE_LOG(LogDualFire, Log, TEXT("[LoadoutManagerSubsystem] 적용 완료 — HP:%d, Shield:%d"), MaxHealth, MaxShield);
 	return true;
@@ -193,6 +244,11 @@ bool ULoadoutManagerSubsystem::ApplyToPlayer(ADualFirePlayerPawn* Pawn)
 
 TSubclassOf<ADualFirePlayerPawn> ULoadoutManagerSubsystem::ResolveAircraftClass() const
 {
+	if (!bHasActiveLoadout)
+	{
+		return nullptr;
+	}
+
 	FAircraftRow AircraftRow;
 	if (!ULoadoutDataLibrary::FindAircraftRow(AircraftDataTable, ActiveLoadout.AircraftID, AircraftRow))
 	{

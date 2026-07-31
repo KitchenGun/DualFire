@@ -14,11 +14,9 @@ class UDataTable;
  * 현재 로드아웃을 보관하고 플레이어에게 주입하는 GameInstance 서브시스템.
  *
  * 사용 흐름:
- *   1. UI(로드아웃 선택 화면)에서 SetActiveLoadout() 호출
- *   2. GameMode.StartMission()에서 ApplyToPlayer() 호출
+ *   1. UI(로드아웃 선택 화면)에서 TrySetActiveLoadout() 호출
+ *   2. GameMode.StartMission()에서 TryApplyActiveLoadout() 호출
  *   3. WeaponComponent + HealthComponent 초기화 완료
- *
- * DataTable 없는 테스트 모드에서도 동작 (AircraftRow/ShieldRow 없으면 기본값 사용).
  */
 UCLASS()
 class DUALFIRE_API ULoadoutManagerSubsystem : public UGameInstanceSubsystem
@@ -30,9 +28,6 @@ public:
 
 	// ── 로드아웃 관리 ─────────────────────────────────────────────────────────
 
-	UFUNCTION(BlueprintCallable, Category="Loadout")
-	void SetActiveLoadout(const FLoadout& Loadout);
-
 	/** 모든 슬롯과 DataTable 행을 검증한 뒤에만 현재 로드아웃을 변경한다. */
 	UFUNCTION(BlueprintCallable, Category="Loadout")
 	bool TrySetActiveLoadout(const FLoadout& Loadout, FText& OutError, FName& OutInvalidField);
@@ -43,6 +38,9 @@ public:
 
 	UFUNCTION(BlueprintPure, Category="Loadout")
 	const FLoadout& GetActiveLoadout() const { return ActiveLoadout; }
+
+	UFUNCTION(BlueprintPure, Category="Loadout")
+	bool HasActiveLoadout() const { return bHasActiveLoadout; }
 
 	// ── DataTable 참조 (생성자에서 자동 할당, 에디터에서 오버라이드 가능) ────────
 
@@ -61,12 +59,12 @@ public:
 	// ── 적용 ─────────────────────────────────────────────────────────────────
 
 	/**
-	 * ActiveLoadout을 Pawn에 적용.
-	 *  - WeaponComponent: ApplyLoadout()
+	 * ActiveLoadout을 검증하고 Pawn에 원자적으로 적용.
+	 *  - WeaponComponent: 해석된 세 무장 행 적용
 	 *  - HealthComponent: AircraftRow(MaxHealth) + ShieldRow(Shield파라미터) → InitFromData()
 	 */
 	UFUNCTION(BlueprintCallable, Category="Loadout")
-	bool ApplyToPlayer(ADualFirePlayerPawn* Pawn);
+	bool TryApplyActiveLoadout(ADualFirePlayerPawn* Pawn, FText& OutError, FName& OutInvalidField);
 
 	/**
 	 * ActiveLoadout.AircraftID로 AircraftRow를 조회해 스폰할 Pawn 클래스를 반환.
@@ -77,7 +75,11 @@ public:
 	TSubclassOf<ADualFirePlayerPawn> ResolveAircraftClass() const;
 
 private:
-	/** 현재 선택된 로드아웃. SetActiveLoadout로 설정, ApplyToPlayer로 주입 */
+	void CommitActiveLoadout(const FLoadout& Loadout);
+
+	/** 현재 선택된 로드아웃. 검증 성공 후에만 CommitActiveLoadout으로 설정 */
 	UPROPERTY()
 	FLoadout ActiveLoadout;
+
+	bool bHasActiveLoadout = false;
 };

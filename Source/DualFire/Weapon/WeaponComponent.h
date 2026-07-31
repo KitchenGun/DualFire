@@ -8,8 +8,6 @@
 #include "Weapon/Projectile/BaseProjectile.h"
 #include "WeaponComponent.generated.h"
 
-class UDataTable;
-
 struct FWeaponSlotState
 {
 	ELoadoutSlot Slot = ELoadoutSlot::PrimaryWeapon;
@@ -41,40 +39,20 @@ class DUALFIRE_API UWeaponComponent : public UActorComponent
 public:
 	UWeaponComponent();
 
-	virtual void BeginPlay() override;
-
-	UPROPERTY(EditDefaultsOnly, BlueprintReadOnly, Category="Weapon|Data")
-	TObjectPtr<UDataTable> WeaponDataTable;
-
-	UPROPERTY(EditDefaultsOnly, BlueprintReadWrite, Category="Weapon|Loadout")
-	FLoadout DefaultLoadout;
-
 	UPROPERTY(VisibleInstanceOnly, BlueprintReadOnly, Category="Weapon|Loadout")
 	FLoadout ActiveLoadout;
-
-	UPROPERTY(EditDefaultsOnly, BlueprintReadOnly, Category="Weapon|Legacy")
-	TSubclassOf<ABaseProjectile> GroundProjectileClass;
-
-	UPROPERTY(EditDefaultsOnly, BlueprintReadOnly, Category="Weapon|Legacy")
-	TSubclassOf<ABaseProjectile> AirProjectileClass;
-
-	UPROPERTY(EditDefaultsOnly, BlueprintReadOnly, Category="Weapon|Legacy")
-	TSubclassOf<ABaseProjectile> UniversalProjectileClass;
-
-	UPROPERTY(EditDefaultsOnly, BlueprintReadWrite, Category="Weapon|Legacy", meta=(ClampMin="0.05"))
-	float GroundFireCooldown = 0.25f;
-
-	UPROPERTY(EditDefaultsOnly, BlueprintReadWrite, Category="Weapon|Legacy", meta=(ClampMin="0.05"))
-	float AirFireCooldown = 0.25f;
-
-	UPROPERTY(EditDefaultsOnly, BlueprintReadWrite, Category="Weapon|Legacy", meta=(ClampMin="0.05"))
-	float UniversalFireCooldown = 0.15f;
 
 	UPROPERTY(EditDefaultsOnly, BlueprintReadWrite, Category="Weapon")
 	FVector MuzzleOffset = FVector(50.f, 0.f, 0.f);
 
-	UFUNCTION(BlueprintCallable, Category="Weapon|Loadout")
-	bool ApplyLoadout(const FLoadout& Loadout);
+	/** LoadoutManager가 해석한 세 행을 전부 검증한 뒤 슬롯 상태를 원자적으로 교체한다. */
+	bool TryApplyResolvedLoadout(
+		const FLoadout& Loadout,
+		const FWeaponRow& PrimaryWeaponRow,
+		const FWeaponRow& SpecialWeapon1Row,
+		const FWeaponRow& SpecialWeapon2Row,
+		FText& OutError,
+		FName& OutInvalidField);
 
 	UFUNCTION(BlueprintCallable, Category="Weapon|Loadout")
 	void FireLoadoutSlot(ELoadoutSlot Slot);
@@ -111,10 +89,15 @@ private:
 	FWeaponSlotState* GetWeaponSlotState(ELoadoutSlot Slot);
 	const FWeaponSlotState* GetWeaponSlotState(ELoadoutSlot Slot) const;
 
-	bool EquipWeaponSlot(ELoadoutSlot Slot, FName WeaponID, TSubclassOf<ABaseProjectile> LegacyProjectileClass);
-	bool ResolveWeaponRow(FName WeaponID, FWeaponRow& OutWeaponRow) const;
-	bool BuildDefaultTestWeaponRow(FName WeaponID, FWeaponRow& OutWeaponRow) const;
-	TSubclassOf<ABaseProjectile> ResolveProjectileClass(const FWeaponRow& WeaponRow, TSubclassOf<ABaseProjectile> LegacyProjectileClass) const;
+	bool BuildWeaponSlotState(
+		ELoadoutSlot Slot,
+		FName Field,
+		FName WeaponID,
+		const FWeaponRow& WeaponRow,
+		FWeaponSlotState& OutState,
+		FText& OutError,
+		FName& OutInvalidField) const;
+	void ClearActiveCooldowns();
 	float GetCooldownFromFireRate(float FireRate) const;
 	void OnLoadoutSlotCooldownExpired(ELoadoutSlot Slot);
 };
