@@ -47,6 +47,12 @@ void AEnemyBase::BeginPlay()
 	HealthComp->InitFromData(MaxHealth, 0, 1.0f, 0.0f);
 }
 
+void AEnemyBase::EndPlay(const EEndPlayReason::Type EndPlayReason)
+{
+	UnregisterFromStageController();
+	Super::EndPlay(EndPlayReason);
+}
+
 void AEnemyBase::OnAcquiredFromPool_Implementation()
 {
 	SetActorHiddenInGame(false);
@@ -60,7 +66,6 @@ void AEnemyBase::OnAcquiredFromPool_Implementation()
 	{
 		AIComp->ResetRuntimeState();
 	}
-	RegisterWithStageController();
 }
 
 void AEnemyBase::OnReleasedToPool_Implementation()
@@ -77,25 +82,26 @@ void AEnemyBase::OnReleasedToPool_Implementation()
 	}
 }
 
-void AEnemyBase::InitFromEnemyRow(const FEnemyRow& Row)
+bool AEnemyBase::InitFromEnemyRow(const FEnemyRow& Row)
 {
-	MaxHealth = FMath::Max(1, Row.MaxHealth);
+	if (!IsValid(Mesh) || !IsValid(HealthComp) || !IsValid(AIComp) ||
+		Row.MaxHealth < 1 || Row.Mesh.IsNull())
+	{
+		return false;
+	}
+
+	USkeletalMesh* LoadedMesh = Row.Mesh.LoadSynchronous();
+	if (!IsValid(LoadedMesh))
+	{
+		return false;
+	}
+
+	MaxHealth = Row.MaxHealth;
 	EnemyAttribute = Row.Attribute;
-
-	if (USkeletalMesh* LoadedMesh = Row.Mesh.LoadSynchronous())
-	{
-		Mesh->SetSkeletalMesh(LoadedMesh);
-	}
-
-	if (HealthComp)
-	{
-		HealthComp->InitFromData(MaxHealth, 0, 1.0f, 0.0f);
-	}
-
-	if (AIComp)
-	{
-		AIComp->InitFromEnemyRow(Row);
-	}
+	Mesh->SetSkeletalMesh(LoadedMesh);
+	HealthComp->InitFromData(MaxHealth, 0, 1.0f, 0.0f);
+	AIComp->InitFromEnemyRow(Row);
+	return true;
 }
 
 void AEnemyBase::OnEnemyDeath()
@@ -105,27 +111,18 @@ void AEnemyBase::OnEnemyDeath()
 	{
 		if (AStageController* StageController = GM->GetStageController())
 		{
-			StageController->NotifyEnemyDefeated(EnemyAttribute);
+			StageController->NotifyEnemyDefeated(this);
 		}
 	}
 	ReturnToPoolOrDestroy();
 }
 
-void AEnemyBase::RegisterWithStageController()
-{
-	ADualFireGameModeBase* GM = Cast<ADualFireGameModeBase>(UGameplayStatics::GetGameMode(this));
-	if (IsValid(GM) && IsValid(GM->GetStageController()) && IsValid(AIComp))
-	{
-		GM->GetStageController()->RegisterEnemyAI(AIComp);
-	}
-}
-
 void AEnemyBase::UnregisterFromStageController()
 {
 	ADualFireGameModeBase* GM = Cast<ADualFireGameModeBase>(UGameplayStatics::GetGameMode(this));
-	if (IsValid(GM) && IsValid(GM->GetStageController()) && IsValid(AIComp))
+	if (IsValid(GM) && IsValid(GM->GetStageController()))
 	{
-		GM->GetStageController()->UnregisterEnemyAI(AIComp);
+		GM->GetStageController()->UnregisterEnemy(this);
 	}
 }
 

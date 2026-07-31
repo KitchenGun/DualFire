@@ -12,6 +12,7 @@
 
 #include "Engine/DataTable.h"
 #include "Engine/World.h"
+#include "EngineUtils.h"
 #include "GameFramework/PlayerController.h"
 #include "TimerManager.h"
 #include "Kismet/GameplayStatics.h"
@@ -40,6 +41,7 @@ void AStageController::BeginPlay()
 		PC->OnPossessedPawnChanged.AddDynamic(this, &AStageController::HandlePossessedPawnChanged);
 	}
 
+	RegisterPlacedEnemies();
 	PrewarmPools();
 	BuildActiveWaves();
 	SetState(EStageState::Timeline);
@@ -67,6 +69,9 @@ void AStageController::EndPlay(const EEndPlayReason::Type EndPlayReason)
 		ActivePrototypeBoss->Destroy();
 		ActivePrototypeBoss = nullptr;
 	}
+
+	ActiveEnemyAIComponents.Reset();
+	ActiveEnemies.Reset();
 
 	Super::EndPlay(EndPlayReason);
 }
@@ -181,44 +186,59 @@ void AStageController::SpawnWaveSequential(FWaveRow Wave, int32 AlreadySpawned)
 		return;
 	}
 
-	const FVector SpawnLoc = ResolveSpawnAnchor(Wave.SpawnAnchor, Wave.SpawnOffset);
-	FActorSpawnParameters Params;
-	Params.SpawnCollisionHandlingOverride = ESpawnActorCollisionHandlingMethod::AlwaysSpawn;
-
-	AEnemyBase* Enemy = nullptr;
-	if (UActorPoolSubsystem* Pool = GetWorld()->GetSubsystem<UActorPoolSubsystem>())
+	FEnemyRow EnemyRow;
+	if (!FindEnemyRow(Wave.EnemyID, EnemyRow))
 	{
-		Enemy = Cast<AEnemyBase>(
-			Pool->AcquireActor(EnemyClass, FTransform(EnemyFacingRotation, SpawnLoc)));
+		UE_LOG(LogDualFire, Warning, TEXT("[Stage] EnemyID '%s' 데이터 없음 — 스폰 생략"),
+			*Wave.EnemyID.ToString());
 	}
 	else
 	{
-		Enemy = GetWorld()->SpawnActor<AEnemyBase>(EnemyClass, SpawnLoc, EnemyFacingRotation, Params);
-	}
+		const FVector SpawnLoc = ResolveSpawnAnchor(Wave.SpawnAnchor, Wave.SpawnOffset);
+		FActorSpawnParameters Params;
+		Params.SpawnCollisionHandlingOverride = ESpawnActorCollisionHandlingMethod::AlwaysSpawn;
 
-	if (IsValid(Enemy))
-	{
-		FEnemyRow EnemyRow;
-		if (FindEnemyRow(Wave.EnemyID, EnemyRow))
+		UActorPoolSubsystem* Pool = GetWorld()->GetSubsystem<UActorPoolSubsystem>();
+		AEnemyBase* Enemy = nullptr;
+		if (IsValid(Pool))
 		{
-			Enemy->InitFromEnemyRow(EnemyRow);
+			Enemy = Cast<AEnemyBase>(
+				Pool->AcquireActor(EnemyClass, FTransform(EnemyFacingRotation, SpawnLoc)));
 		}
 		else
 		{
-			UE_LOG(LogDualFire, Warning, TEXT("[Stage] EnemyID '%s' 데이터 없음 — BP 기본값 사용"),
-				*Wave.EnemyID.ToString());
+			Enemy = GetWorld()->SpawnActor<AEnemyBase>(EnemyClass, SpawnLoc, EnemyFacingRotation, Params);
 		}
 
-		if (UEnemyAIComponent* AI = Enemy->GetAIComponent())
+		if (IsValid(Enemy))
 		{
-			if (!IsValid(AI->ProjectileClass) && IsValid(EnemyProjectileClass))
+			if (!Enemy->InitFromEnemyRow(EnemyRow))
 			{
-				AI->ProjectileClass = EnemyProjectileClass;
+				UE_LOG(LogDualFire, Warning,
+					TEXT("[Stage] EnemyID '%s' 초기화 실패 — 등록 없이 반환"),
+					*Wave.EnemyID.ToString());
+				if (IsValid(Pool))
+				{
+					Pool->ReleaseActor(Enemy);
+				}
+				else
+				{
+					Enemy->Destroy();
+				}
 			}
-			RegisterEnemyAI(AI);
-		}
+			else
+			{
+				if (UEnemyAIComponent* AI = Enemy->GetAIComponent())
+				{
+					if (!IsValid(AI->ProjectileClass) && IsValid(EnemyProjectileClass))
+					{
+						AI->ProjectileClass = EnemyProjectileClass;
+					}
+				}
 
-		RecordEnemySpawned(Enemy->GetEnemyAttributes_Implementation());
+				RegisterEnemy(Enemy);
+			}
+		}
 	}
 
 	const int32 NextCount = AlreadySpawned + 1;
@@ -469,17 +489,33 @@ AStageCameraActor* AStageController::GetStageCamera() const
 	return nullptr;
 }
 
-void AStageController::RegisterEnemyAI(UEnemyAIComponent* AIComponent)
+void AStageController::RegisterEnemy(AEnemyBase* Enemy)
 {
-	if (IsValid(AIComponent))
+	if (!IsValid(Enemy) || ActiveEnemies.Contains(Enemy))
 	{
-		ActiveEnemyAIComponents.AddUnique(AIComponent);
+		return;
+	}
+
+	ActiveEnemies.Add(Enemy);
+	if (UEnemyAIComponent* AIComponent = Enemy->GetAIComponent())
+	{
+		ActiveEnemyAIComponents.Add(AIComponent);
+	}
+
+	if (Enemy->CountsTowardMissionMetrics())
+	{
+		RecordEnemySpawned(Enemy->GetEnemyAttributes_Implementation());
 	}
 }
 
-void AStageController::UnregisterEnemyAI(UEnemyAIComponent* AIComponent)
+void AStageController::UnregisterEnemy(AEnemyBase* Enemy)
 {
-	ActiveEnemyAIComponents.RemoveSingleSwap(AIComponent);
+	if (!IsValid(Enemy) || ActiveEnemies.Remove(Enemy) == 0)
+	{
+		return;
+	}
+
+	ActiveEnemyAIComponents.RemoveSingleSwap(Enemy->GetAIComponent());
 }
 
 void AStageController::RecordEnemySpawned(const FEnemyAttribute& Attribute)
@@ -488,10 +524,34 @@ void AStageController::RecordEnemySpawned(const FEnemyAttribute& Attribute)
 	GroundEnemiesSpawned += Attribute.HasGround() ? 1 : 0;
 }
 
-void AStageController::NotifyEnemyDefeated(const FEnemyAttribute& Attribute)
+void AStageController::NotifyEnemyDefeated(AEnemyBase* Enemy)
 {
+	if (!IsValid(Enemy) || !ActiveEnemies.Contains(Enemy) || !Enemy->CountsTowardMissionMetrics())
+	{
+		return;
+	}
+
+	const FEnemyAttribute Attribute = Enemy->GetEnemyAttributes_Implementation();
 	AirEnemiesDefeated += Attribute.HasAir() ? 1 : 0;
 	GroundEnemiesDefeated += Attribute.HasGround() ? 1 : 0;
+}
+
+void AStageController::RegisterPlacedEnemies()
+{
+	UWorld* World = GetWorld();
+	if (!IsValid(World))
+	{
+		return;
+	}
+
+	for (TActorIterator<AEnemyBase> It(World); It; ++It)
+	{
+		AEnemyBase* Enemy = *It;
+		if (IsValid(Enemy) && !Enemy->IsHidden() && Enemy->GetActorEnableCollision())
+		{
+			RegisterEnemy(Enemy);
+		}
+	}
 }
 
 void AStageController::PrewarmPools()

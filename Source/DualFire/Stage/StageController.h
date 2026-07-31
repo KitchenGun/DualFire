@@ -162,9 +162,9 @@ public:
 	UFUNCTION(BlueprintPure, Category="Stage|Result")
 	int32 GetGroundEnemiesDefeated() const { return GroundEnemiesDefeated; }
 
-	void RegisterEnemyAI(UEnemyAIComponent* AIComponent);
-	void UnregisterEnemyAI(UEnemyAIComponent* AIComponent);
-	void NotifyEnemyDefeated(const FEnemyAttribute& Attribute);
+	void RegisterEnemy(AEnemyBase* Enemy);
+	void UnregisterEnemy(AEnemyBase* Enemy);
+	void NotifyEnemyDefeated(AEnemyBase* Enemy);
 
 private:
 	/** TriggerTime 오름차순으로 정렬된 실행 대상 웨이브 목록 */
@@ -181,6 +181,9 @@ private:
 
 	UPROPERTY()
 	TArray<TObjectPtr<UEnemyAIComponent>> ActiveEnemyAIComponents;
+
+	UPROPERTY()
+	TSet<TObjectPtr<AEnemyBase>> ActiveEnemies;
 
 	UPROPERTY()
 	TObjectPtr<ADualFirePrototypeBossCube> ActivePrototypeBoss;
@@ -225,6 +228,7 @@ private:
 	void HandlePrototypeBossArrivalTimeout();
 
 	void PrewarmPools();
+	void RegisterPlacedEnemies();
 	bool FindEnemyRow(FName EnemyID, FEnemyRow& OutEnemyRow) const;
 	void TickEnemyAI(float DeltaTime);
 	FVector GetCachedPlayerLocation();

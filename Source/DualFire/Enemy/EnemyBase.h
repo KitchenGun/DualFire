@@ -48,6 +48,7 @@ public:
 	AEnemyBase();
 
 	virtual void BeginPlay() override;
+	virtual void EndPlay(const EEndPlayReason::Type EndPlayReason) override;
 	virtual void OnAcquiredFromPool_Implementation() override;
 	virtual void OnReleasedToPool_Implementation() override;
 
@@ -56,13 +57,18 @@ public:
 	int32 MaxHealth = 3;
 
 	/** 이 적의 Ground/Air 속성. 플레이어 탄 매칭에 사용 */
-	UPROPERTY(EditDefaultsOnly, BlueprintReadOnly, Category="Enemy")
+	UPROPERTY(EditAnywhere, BlueprintReadOnly, Category="Enemy")
 	FEnemyAttribute EnemyAttribute;
 
+	/** false인 진단용 적은 공통 사망 경로를 사용하되 미션 통계에서는 제외한다. */
+	UPROPERTY(EditDefaultsOnly, BlueprintReadOnly, Category="Enemy|Mission Result")
+	bool bCountsTowardMissionMetrics = true;
+
 	UFUNCTION(BlueprintCallable, Category="Enemy")
-	void InitFromEnemyRow(const FEnemyRow& Row);
+	bool InitFromEnemyRow(const FEnemyRow& Row);
 
 	UEnemyAIComponent* GetAIComponent() const { return AIComp; }
+	bool CountsTowardMissionMetrics() const { return bCountsTowardMissionMetrics; }
 
 	// ── IEnemyAttributeInterface ──────────────────────────────────────────────
 
@@ -83,7 +89,6 @@ private:
 	UFUNCTION()
 	void OnEnemyDeath();
 
-	void RegisterWithStageController();
 	void UnregisterFromStageController();
 	void ReturnToPoolOrDestroy();
 };
