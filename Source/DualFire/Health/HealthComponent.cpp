@@ -254,10 +254,11 @@ void UHealthComponent::TickShieldRecovery(float DeltaTime)
 {
 	ShieldRecoveryAccumulator += DeltaTime;
 
-	if (ShieldRecoveryAccumulator >= ShieldRecoveryDuration)
+	const int32 ElapsedIntervals = FMath::FloorToInt(ShieldRecoveryAccumulator / ShieldRecoveryDuration);
+	if (ElapsedIntervals > 0)
 	{
-		ShieldRecoveryAccumulator -= ShieldRecoveryDuration;
-		CurrentShield = FMath::Min(CurrentShield + 1, MaxShield);
+		ShieldRecoveryAccumulator -= ElapsedIntervals * ShieldRecoveryDuration;
+		CurrentShield = FMath::Min(CurrentShield + ElapsedIntervals, MaxShield);
 		OnShieldChanged.Broadcast(CurrentShield, MaxShield);
 
 		if (CurrentShield >= MaxShield)
