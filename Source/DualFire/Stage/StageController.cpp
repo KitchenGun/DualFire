@@ -70,7 +70,6 @@ void AStageController::EndPlay(const EEndPlayReason::Type EndPlayReason)
 		ActivePrototypeBoss = nullptr;
 	}
 
-	ActiveEnemyAIComponents.Reset();
 	ActiveEnemies.Reset();
 
 	Super::EndPlay(EndPlayReason);
@@ -353,9 +352,9 @@ void AStageController::StopCombatForPrototypeBoss()
 	}
 	SequenceSpawnTimerHandles.Reset();
 
-	for (UEnemyAIComponent* AI : ActiveEnemyAIComponents)
+	for (AEnemyBase* Enemy : ActiveEnemies)
 	{
-		if (IsValid(AI))
+		if (UEnemyAIComponent* AI = IsValid(Enemy) ? Enemy->GetAIComponent() : nullptr; IsValid(AI))
 		{
 			AI->StopAttackTimer();
 		}
@@ -464,11 +463,7 @@ void AStageController::RegisterEnemy(AEnemyBase* Enemy)
 		return;
 	}
 
-	ActiveEnemies.Add(Enemy);
-	if (UEnemyAIComponent* AIComponent = Enemy->GetAIComponent())
-	{
-		ActiveEnemyAIComponents.Add(AIComponent);
-	}
+	ActiveEnemies.AddUnique(Enemy);
 
 	if (Enemy->CountsTowardMissionMetrics())
 	{
@@ -478,12 +473,10 @@ void AStageController::RegisterEnemy(AEnemyBase* Enemy)
 
 void AStageController::UnregisterEnemy(AEnemyBase* Enemy)
 {
-	if (!IsValid(Enemy) || ActiveEnemies.Remove(Enemy) == 0)
+	if (!IsValid(Enemy) || ActiveEnemies.RemoveSingleSwap(Enemy) == 0)
 	{
 		return;
 	}
-
-	ActiveEnemyAIComponents.RemoveSingleSwap(Enemy->GetAIComponent());
 }
 
 void AStageController::RecordEnemySpawned(const FEnemyAttribute& Attribute)
@@ -592,16 +585,19 @@ void AStageController::TickEnemyAI(float DeltaTime)
 	const FVector PlayerLocation = GetCachedPlayerLocation();
 	const bool bPlayerLocationValid = bHasCachedPlayerLocation;
 
-	for (int32 Index = ActiveEnemyAIComponents.Num() - 1; Index >= 0; --Index)
+	for (int32 Index = ActiveEnemies.Num() - 1; Index >= 0; --Index)
 	{
-		UEnemyAIComponent* AI = ActiveEnemyAIComponents[Index];
-		if (!IsValid(AI) || !IsValid(AI->GetOwner()) || AI->GetOwner()->IsHidden())
+		AEnemyBase* Enemy = ActiveEnemies[Index];
+		if (!IsValid(Enemy) || Enemy->IsHidden())
 		{
-			ActiveEnemyAIComponents.RemoveAtSwap(Index);
+			ActiveEnemies.RemoveAtSwap(Index);
 			continue;
 		}
 
-		AI->UpdateAI(DeltaTime, Bounds, PlayerLocation, bPlayerLocationValid);
+		if (UEnemyAIComponent* AI = Enemy->GetAIComponent(); IsValid(AI))
+		{
+			AI->UpdateAI(DeltaTime, Bounds, PlayerLocation, bPlayerLocationValid);
+		}
 	}
 }
 

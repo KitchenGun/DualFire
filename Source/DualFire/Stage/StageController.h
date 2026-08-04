@@ -14,7 +14,6 @@ class AStageCameraActor;
 class ABaseProjectile;
 class APawn;
 class UDataTable;
-class UEnemyAIComponent;
 
 DECLARE_DYNAMIC_MULTICAST_DELEGATE_OneParam(FOnStageStateChanged, EStageState, NewState);
 
@@ -170,10 +169,7 @@ private:
 	TArray<FTimerHandle> SequenceSpawnTimerHandles;
 
 	UPROPERTY()
-	TArray<TObjectPtr<UEnemyAIComponent>> ActiveEnemyAIComponents;
-
-	UPROPERTY()
-	TSet<TObjectPtr<AEnemyBase>> ActiveEnemies;
+	TArray<TObjectPtr<AEnemyBase>> ActiveEnemies;
 
 	UPROPERTY()
 	TObjectPtr<ADualFirePrototypeBossCube> ActivePrototypeBoss;
