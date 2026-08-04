@@ -8,11 +8,9 @@
 #include "DualFireDataTypes.generated.h"
 
 class USkeletalMesh;
-class UStaticMesh;
 class UTexture2D;
 class UPaperFlipbook;
 class ABaseProjectile;
-class UMaterialInterface;
 class ADualFirePlayerPawn;
 
 namespace DualFireLoadout
@@ -72,14 +70,6 @@ struct DUALFIRE_API FWeaponRow : public FTableRowBase
 	/** 기체 기준 탄환 발사 지점 오프셋 */
 	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Weapon")
 	FVector MuzzleOffset = FVector::ZeroVector;
-
-	/** 탄환 외형 StaticMesh (공용 메시. 무기별 구분은 ProjectileMaterial 교체로 처리) */
-	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Weapon")
-	TSoftObjectPtr<UStaticMesh> ProjectileMesh;
-
-	/** 탄환에 적용할 머티리얼. 속성(지상/공중) 식별 및 무기별 외형 차별화를 머티리얼 교체로 처리 */
-	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Weapon")
-	TSoftObjectPtr<UMaterialInterface> ProjectileMaterial;
 
 	/** 로드아웃 UI에 표시할 무기 아이콘 */
 	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Weapon")
