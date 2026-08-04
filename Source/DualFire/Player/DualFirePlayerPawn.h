@@ -36,8 +36,7 @@ enum class EAircraftBankPose : uint8
  * APawn 기반, UDualFireMovementComponent로 XY 평면 이동.
  * Enhanced Input → AddMovementInput → MovementComp->ConsumeInputVector 흐름.
  * 비주얼: UPaperFlipbookComponent (AircraftVisual), 충돌: USphereComponent (HitboxComp)
- *
- * 미구현: HP/잔여 기체, 사격 (BulletClass 스텁 프로퍼티만 보유)
+ * HealthComponent가 피해·리스폰을, WeaponComponent가 로드아웃 발사를 담당한다.
  */
 UCLASS(BlueprintType, Blueprintable)
 class DUALFIRE_API ADualFirePlayerPawn : public APawn

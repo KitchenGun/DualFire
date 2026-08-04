@@ -19,9 +19,6 @@ struct FEnemyRow;
  * 최소 적 액터.
  * HealthComponent로 HP를 관리하고, EnemyAIComponent가 이동/공격을 담당한다.
  * IEnemyAttributeInterface를 구현해 플레이어 탄 속성 매칭에 참여한다.
- *
- * 현재 구현: Linear 이동 + Single 공격.
- * 잔여 기체/GameMode 연결은 다음 청크.
  */
 UCLASS(BlueprintType, Blueprintable)
 class DUALFIRE_API AEnemyBase : public AActor, public IEnemyAttributeInterface, public IPoolableActor

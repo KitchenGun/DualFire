@@ -40,8 +40,6 @@ DECLARE_DYNAMIC_MULTICAST_DELEGATE(FOnDeath);
  *   bUseShield          — 보호막 흡수 레이어 사용 여부
  *   bUseInvincibility   — 피격 후 무적 / 보호막 파괴 무적 사용 여부
  *   bBindToActorDamage  — true 시 BeginPlay에서 OnTakeAnyDamage 자동 구독
- *
- * 사망(OnDeath) / 잔여 기체(Life) / 리스폰은 다음 청크에서 추가.
  */
 UCLASS(ClassGroup=Health, meta=(BlueprintSpawnableComponent))
 class DUALFIRE_API UHealthComponent : public UActorComponent
@@ -74,7 +72,7 @@ public:
 	UPROPERTY(EditDefaultsOnly, BlueprintReadOnly, Category="Health", meta=(ClampMin="1"))
 	int32 MaxHealth = 5;
 
-	/** 현재 체력. 0에 도달하면 사망(다음 청크 처리). 런타임 전용 — 에디터 수정 불가 */
+	/** 현재 체력. 0에 도달하면 잔여 기체 또는 최종 사망을 처리한다. 런타임 전용 */
 	UPROPERTY(VisibleInstanceOnly, BlueprintReadOnly, Category="Health")
 	int32 CurrentHealth = 5;
 
@@ -163,7 +161,7 @@ public:
 	/**
 	 * 데미지 적용 진입점.
 	 * Shield → HP 순으로 흡수. 무적 중이면 무시. 최소 1 데미지 보장.
-	 * HP가 0에 도달하면 0으로 클램프 + 로그 출력 (사망 처리는 다음 청크).
+	 * HP가 0에 도달하면 잔여 기체가 있을 때 리스폰하고, 없으면 OnDeath를 발생시킨다.
 	 */
 	UFUNCTION(BlueprintCallable, Category="Health")
 	void ApplyDamage(int32 Damage);

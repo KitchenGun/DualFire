@@ -26,8 +26,6 @@ DECLARE_DYNAMIC_MULTICAST_DELEGATE_OneParam(FOnStageStateChanged, EStageState, N
  *   - Tick 기반 웨이브 트리거 (TriggerTime 오름차순)
  *   - ESpawnAnchor → 월드 좌표 변환 (StageCameraActor GetPlayableBounds 이용)
  *   - DataTable 없을 때 TestWaves 하드코딩 배열로 대체
- *
- * 미구현: GameMode.OnMissionFail/Clear 연결 (다음 청크)
  */
 UCLASS(BlueprintType, Blueprintable)
 class DUALFIRE_API AStageController : public AActor
@@ -108,7 +106,7 @@ public:
 
 	/**
 	 * true: TestWaves 하드코딩 배열 사용.
-	 * false: WaveDataTable + StageID 조합으로 DataTable 조회 (미구현).
+	 * false: WaveDataTable + StageID 조합으로 DataTable 조회.
 	 */
 	UPROPERTY(EditDefaultsOnly, BlueprintReadWrite, Category="Stage|Debug")
 	bool bUseTestWaves = true;

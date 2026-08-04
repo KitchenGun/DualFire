@@ -163,7 +163,7 @@ private:
 		bool                 bFromSweep,
 		const FHitResult&    SweepResult);
 
-	/** 탄환 속성 배열 중 하나라도 적 속성과 일치하는지 확인. 적 시스템 미구현 시 true 반환. */
+	/** 탄환 속성 배열 중 하나라도 적 속성과 일치하는지 확인. 속성 인터페이스가 없으면 true. */
 	bool CheckAttributeMatch(AActor* OtherActor) const;
 
 	/** 관통 탄환이 같은 적에게 반복 피격되지 않도록 캐싱 */

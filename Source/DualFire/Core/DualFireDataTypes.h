@@ -288,30 +288,6 @@ struct DUALFIRE_API FAircraftRow : public FTableRowBase
 };
 
 USTRUCT(BlueprintType)
-struct DUALFIRE_API FStageRow : public FTableRowBase
-{
-	GENERATED_BODY()
-
-	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Stage")
-	FName StageID = NAME_None;
-
-	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Stage")
-	FText DisplayName;
-
-	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Stage")
-	float ScrollSpeed = 0.0f;
-
-	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Stage", meta = (ClampMin = "0.0"))
-	float EliteTriggerTime = 80.0f;
-
-	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Stage")
-	FName EliteEnemyID = NAME_None;
-
-	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Stage", meta = (ClampMin = "0.0"))
-	float EliteTimeLimit = 60.0f;
-};
-
-USTRUCT(BlueprintType)
 struct DUALFIRE_API FWaveRow : public FTableRowBase
 {
 	GENERATED_BODY()

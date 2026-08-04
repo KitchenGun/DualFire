@@ -15,14 +15,6 @@ enum class EDualFireAttribute : uint8
 };
 
 UENUM(BlueprintType)
-enum class EWeaponType : uint8
-{
-	Ground    UMETA(DisplayName = "Ground"),
-	Air       UMETA(DisplayName = "Air"),
-	Universal UMETA(DisplayName = "Universal"),
-};
-
-UENUM(BlueprintType)
 enum class EWeaponCategory : uint8
 {
 	Primary UMETA(DisplayName = "Primary"),
@@ -104,15 +96,6 @@ enum class EEnemyAttackPattern : uint8
 	Single  UMETA(DisplayName = "Single"),
 	Spread3 UMETA(DisplayName = "Spread 3"),
 	Rotate3 UMETA(DisplayName = "Rotate 3"),
-};
-
-UENUM(BlueprintType)
-enum class EAttributeVisualStyle : uint8
-{
-	ColorOnly               UMETA(DisplayName = "Color Only"),
-	ColorAndShape           UMETA(DisplayName = "Color + Shape"),
-	ColorShapeAndShadow     UMETA(DisplayName = "Color + Shape + Shadow"),
-	ColorShapeAndLayer      UMETA(DisplayName = "Color + Shape + Position Layer"),
 };
 
 /** Enemy-side attribute flags. Mixed enemies set both bGround and bAir. */
