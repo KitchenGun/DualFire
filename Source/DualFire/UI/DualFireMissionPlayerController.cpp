@@ -51,7 +51,7 @@ void ADualFireMissionPlayerController::OnUnPossess()
 
 void ADualFireMissionPlayerController::AddGameplayInputMapping(APawn* InPawn)
 {
-	if (bGameplayInputMappingAdded || !IsLocalPlayerController())
+	if (IsValid(ActiveGameplayInputMapping) || !IsLocalPlayerController())
 	{
 		return;
 	}
@@ -73,12 +73,13 @@ void ADualFireMissionPlayerController::AddGameplayInputMapping(APawn* InPawn)
 
 	InputSubsystem->AddMappingContext(MappingContext, PlayerPawn->GetInputMappingPriority());
 	ActiveGameplayInputMapping = MappingContext;
-	bGameplayInputMappingAdded = true;
 }
 
 void ADualFireMissionPlayerController::RemoveGameplayInputMapping()
 {
-	if (!bGameplayInputMappingAdded)
+	UInputMappingContext* MappingContext = ActiveGameplayInputMapping;
+	ActiveGameplayInputMapping = nullptr;
+	if (!IsValid(MappingContext))
 	{
 		return;
 	}
@@ -88,12 +89,9 @@ void ADualFireMissionPlayerController::RemoveGameplayInputMapping()
 		if (UEnhancedInputLocalPlayerSubsystem* InputSubsystem =
 			LocalPlayer->GetSubsystem<UEnhancedInputLocalPlayerSubsystem>())
 		{
-			InputSubsystem->RemoveMappingContext(ActiveGameplayInputMapping);
+			InputSubsystem->RemoveMappingContext(MappingContext);
 		}
 	}
-
-	ActiveGameplayInputMapping = nullptr;
-	bGameplayInputMappingAdded = false;
 }
 
 void ADualFireMissionPlayerController::HandleMissionEnded(EMissionResult /*Result*/)

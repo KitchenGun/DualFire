@@ -33,6 +33,5 @@ private:
 	UPROPERTY(Transient)
 	TObjectPtr<UInputMappingContext> ActiveGameplayInputMapping;
 
-	bool bGameplayInputMappingAdded = false;
 	bool bResultTravelStarted = false;
 };
