@@ -40,13 +40,6 @@ enum class ELoadoutSlot : uint8
 };
 
 UENUM(BlueprintType)
-enum class EFireMode : uint8
-{
-	Auto       UMETA(DisplayName = "Auto"),
-	SingleShot UMETA(DisplayName = "Single Shot"),
-};
-
-UENUM(BlueprintType)
 enum class EHitBehavior : uint8
 {
 	Destroy          UMETA(DisplayName = "Destroy"),

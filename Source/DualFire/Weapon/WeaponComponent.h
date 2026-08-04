@@ -16,8 +16,6 @@ struct FWeaponSlotState
 	TSubclassOf<ABaseProjectile> ProjectileClass;
 	FTimerHandle CooldownHandle;
 	bool bCooldownActive = false;
-	// SingleShot 미구현 폴백 경고를 슬롯당 1회로 제한 (Triggered 연사로 인한 로그 스팸 방지)
-	bool bSingleShotWarningLogged = false;
 
 	void Reset(ELoadoutSlot InSlot)
 	{
@@ -27,7 +25,6 @@ struct FWeaponSlotState
 		ProjectileClass = nullptr;
 		CooldownHandle.Invalidate();
 		bCooldownActive = false;
-		bSingleShotWarningLogged = false;
 	}
 };
 
@@ -69,25 +66,12 @@ public:
 	UFUNCTION(BlueprintCallable, Category="Weapon")
 	void FireSpecial2();
 
-	UFUNCTION(BlueprintPure, Category="Weapon|Loadout")
-	bool CanFireLoadoutSlot(ELoadoutSlot Slot) const;
-
-	UFUNCTION(BlueprintPure, Category="Weapon")
-	bool CanFirePrimary() const;
-
-	UFUNCTION(BlueprintPure, Category="Weapon")
-	bool CanFireSpecial1() const;
-
-	UFUNCTION(BlueprintPure, Category="Weapon")
-	bool CanFireSpecial2() const;
-
 private:
 	FWeaponSlotState PrimaryWeaponSlot;
 	FWeaponSlotState SpecialWeapon1Slot;
 	FWeaponSlotState SpecialWeapon2Slot;
 
 	FWeaponSlotState* GetWeaponSlotState(ELoadoutSlot Slot);
-	const FWeaponSlotState* GetWeaponSlotState(ELoadoutSlot Slot) const;
 
 	bool BuildWeaponSlotState(
 		ELoadoutSlot Slot,
@@ -98,6 +82,5 @@ private:
 		FText& OutError,
 		FName& OutInvalidField) const;
 	void ClearActiveCooldowns();
-	float GetCooldownFromFireRate(float FireRate) const;
 	void OnLoadoutSlotCooldownExpired(ELoadoutSlot Slot);
 };

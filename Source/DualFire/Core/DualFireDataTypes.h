@@ -57,10 +57,6 @@ struct DUALFIRE_API FWeaponRow : public FTableRowBase
 	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Weapon", meta = (ClampMin = "0.001"))
 	float FireRate = 1.0f;
 
-	/** 발사 방식. Auto=홀드 시 자동 연사, SingleShot=클릭당 1발 */
-	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Weapon")
-	EFireMode FireMode = EFireMode::Auto;
-
 	/** 탄환 이동 속도 */
 	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Weapon", meta = (ClampMin = "0.0"))
 	float ProjectileSpeed = 1000.0f;

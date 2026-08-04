@@ -81,21 +81,6 @@ void UWeaponComponent::FireSpecial2()
 	FireLoadoutSlot(ELoadoutSlot::SpecialWeapon2);
 }
 
-bool UWeaponComponent::CanFirePrimary() const
-{
-	return CanFireLoadoutSlot(ELoadoutSlot::PrimaryWeapon);
-}
-
-bool UWeaponComponent::CanFireSpecial1() const
-{
-	return CanFireLoadoutSlot(ELoadoutSlot::SpecialWeapon1);
-}
-
-bool UWeaponComponent::CanFireSpecial2() const
-{
-	return CanFireLoadoutSlot(ELoadoutSlot::SpecialWeapon2);
-}
-
 void UWeaponComponent::FireLoadoutSlot(ELoadoutSlot Slot)
 {
 	FWeaponSlotState* SlotState = GetWeaponSlotState(Slot);
@@ -108,23 +93,6 @@ void UWeaponComponent::FireLoadoutSlot(ELoadoutSlot Slot)
 	{
 		UE_LOG(LogDualFire, Warning, TEXT("[WeaponComp] No projectile class for weapon %s"), *SlotState->WeaponID.ToString());
 		return;
-	}
-
-	switch (SlotState->WeaponData.FireMode)
-	{
-	case EFireMode::SingleShot:
-		// TODO: SingleShot(클릭당 1발) 미구현 — 구현 전까지 Auto와 동일하게 폴백
-		if (!SlotState->bSingleShotWarningLogged)
-		{
-			UE_LOG(LogDualFire, Warning,
-				TEXT("[WeaponComp] FireMode SingleShot not implemented for %s — falling back to Auto"),
-				*SlotState->WeaponID.ToString());
-			SlotState->bSingleShotWarningLogged = true;
-		}
-		break;
-	case EFireMode::Auto:
-	default:
-		break;
 	}
 
 	AActor* Owner = GetOwner();
@@ -174,7 +142,7 @@ void UWeaponComponent::FireLoadoutSlot(ELoadoutSlot Slot)
 	World->GetTimerManager().SetTimer(
 		SlotState->CooldownHandle,
 		CooldownDelegate,
-		GetCooldownFromFireRate(SlotState->WeaponData.FireRate),
+		1.0f / SlotState->WeaponData.FireRate,
 		false);
 
 	UE_LOG(LogDualFire, Verbose, TEXT("[WeaponComp] Fired %s"), *SlotState->WeaponID.ToString());
@@ -205,28 +173,7 @@ void UWeaponComponent::FireLoadoutSlot(ELoadoutSlot Slot)
 #endif
 }
 
-bool UWeaponComponent::CanFireLoadoutSlot(ELoadoutSlot Slot) const
-{
-	const FWeaponSlotState* SlotState = GetWeaponSlotState(Slot);
-	return SlotState && !SlotState->bCooldownActive && IsValid(SlotState->ProjectileClass);
-}
-
 FWeaponSlotState* UWeaponComponent::GetWeaponSlotState(ELoadoutSlot Slot)
-{
-	switch (Slot)
-	{
-	case ELoadoutSlot::PrimaryWeapon:
-		return &PrimaryWeaponSlot;
-	case ELoadoutSlot::SpecialWeapon1:
-		return &SpecialWeapon1Slot;
-	case ELoadoutSlot::SpecialWeapon2:
-		return &SpecialWeapon2Slot;
-	default:
-		return nullptr;
-	}
-}
-
-const FWeaponSlotState* UWeaponComponent::GetWeaponSlotState(ELoadoutSlot Slot) const
 {
 	switch (Slot)
 	{
@@ -293,11 +240,6 @@ void UWeaponComponent::ClearActiveCooldowns()
 	World->GetTimerManager().ClearTimer(PrimaryWeaponSlot.CooldownHandle);
 	World->GetTimerManager().ClearTimer(SpecialWeapon1Slot.CooldownHandle);
 	World->GetTimerManager().ClearTimer(SpecialWeapon2Slot.CooldownHandle);
-}
-
-float UWeaponComponent::GetCooldownFromFireRate(float FireRate) const
-{
-	return 1.0f / FMath::Max(0.001f, FireRate);
 }
 
 void UWeaponComponent::OnLoadoutSlotCooldownExpired(ELoadoutSlot Slot)
