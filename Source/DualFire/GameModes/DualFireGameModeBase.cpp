@@ -192,6 +192,13 @@ void ADualFireGameModeBase::BeginPlay()
 
 void ADualFireGameModeBase::StartMission()
 {
+    if (!IsValid(StageControllerClass))
+    {
+        UE_LOG(LogDualFire, Error,
+            TEXT("[GameMode] StartMission: StageControllerClass 미설정 — 미션 시작 차단"));
+        return;
+    }
+
     // ── 1. LoadoutManager → PlayerPawn 주입 ──────────────────────────────────
     UGameInstance* GI = UGameplayStatics::GetGameInstance(this);
     if (!IsValid(GI))
@@ -222,22 +229,15 @@ void ADualFireGameModeBase::StartMission()
     }
 
     // ── 2. StageController 스폰 ───────────────────────────────────────────────
-    if (IsValid(StageControllerClass))
-    {
-        FActorSpawnParameters Params;
-        Params.SpawnCollisionHandlingOverride = ESpawnActorCollisionHandlingMethod::AlwaysSpawn;
-        ActiveStageController = GetWorld()->SpawnActor<AStageController>(
-            StageControllerClass, FVector::ZeroVector, FRotator::ZeroRotator, Params);
+    FActorSpawnParameters Params;
+    Params.SpawnCollisionHandlingOverride = ESpawnActorCollisionHandlingMethod::AlwaysSpawn;
+    ActiveStageController = GetWorld()->SpawnActor<AStageController>(
+        StageControllerClass, FVector::ZeroVector, FRotator::ZeroRotator, Params);
 
-        if (!IsValid(ActiveStageController))
-        {
-            UE_LOG(LogDualFire, Error, TEXT("[GameMode] StageController 스폰 실패"));
-        }
-    }
-    else
+    if (!IsValid(ActiveStageController))
     {
-        UE_LOG(LogDualFire, Warning,
-            TEXT("[GameMode] StageControllerClass 미설정 — 웨이브 없이 진행"));
+        UE_LOG(LogDualFire, Error, TEXT("[GameMode] StartMission: StageController 스폰 실패 — 미션 시작 차단"));
+        return;
     }
 
     UE_LOG(LogDualFire, Log, TEXT("[GameMode] StartMission 완료"));
