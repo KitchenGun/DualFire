@@ -212,6 +212,12 @@ void AStageController::SpawnWaveSequential(FWaveRow Wave, int32 AlreadySpawned)
 
 		if (IsValid(Enemy))
 		{
+			if (UEnemyAIComponent* AI = Enemy->GetAIComponent();
+				IsValid(AI) && !IsValid(AI->ProjectileClass) && IsValid(EnemyProjectileClass))
+			{
+				AI->ProjectileClass = EnemyProjectileClass;
+			}
+
 			if (!Enemy->InitFromEnemyRow(EnemyRow))
 			{
 				UE_LOG(LogDualFire, Warning,
@@ -228,14 +234,6 @@ void AStageController::SpawnWaveSequential(FWaveRow Wave, int32 AlreadySpawned)
 			}
 			else
 			{
-				if (UEnemyAIComponent* AI = Enemy->GetAIComponent())
-				{
-					if (!IsValid(AI->ProjectileClass) && IsValid(EnemyProjectileClass))
-					{
-						AI->ProjectileClass = EnemyProjectileClass;
-					}
-				}
-
 				RegisterEnemy(Enemy);
 			}
 		}
