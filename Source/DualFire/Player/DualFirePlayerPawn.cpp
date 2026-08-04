@@ -263,24 +263,6 @@ void ADualFirePlayerPawn::OnFireSpecial2Input(const FInputActionValue& Value)
     }
 }
 
-// ── 이동 제어 위임 ────────────────────────────────────────────────────────────
-
-void ADualFirePlayerPawn::SetSpeedMultiplier(float InMultiplier)
-{
-    if (IsValid(MovementComp))
-    {
-        MovementComp->SetSpeedMultiplier(InMultiplier);
-    }
-}
-
-void ADualFirePlayerPawn::SetMovementLocked(bool bLocked)
-{
-    if (IsValid(MovementComp))
-    {
-        MovementComp->SetMovementLocked(bLocked);
-    }
-}
-
 // ── 디버그 콘솔 명령 ─────────────────────────────────────────────────────────
 
 void ADualFirePlayerPawn::DF_Damage(int32 Amount)

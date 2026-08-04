@@ -42,16 +42,11 @@ void UDualFireMovementComponent::TickComponent(
     }
 
     // AddMovementInput으로 누적된 입력 소비 (Enhanced Input → Pawn → 여기)
-    FVector InputVector = ConsumeInputVector();
-
-    if (bMovementLocked)
-    {
-        InputVector = FVector::ZeroVector;
-    }
+    const FVector InputVector = ConsumeInputVector();
 
     // XY 평면 정규화 후 속도 적용 (대각선 포함 모든 방향 동일 속도 보장)
     const FVector InputDir = FVector(InputVector.X, InputVector.Y, 0.f).GetSafeNormal();
-    const FVector TargetVelocity = InputDir * MoveSpeed * SpeedMultiplier;
+    const FVector TargetVelocity = InputDir * MoveSpeed;
 
     Velocity = TargetVelocity;
     Velocity.Z = 0.f; // bConstrainToPlane 이중 보장
@@ -90,22 +85,6 @@ void UDualFireMovementComponent::TickComponent(
     Velocity = (DeltaTime > SMALL_NUMBER) ? (ActualDelta / DeltaTime) : FVector::ZeroVector;
 
     UpdateComponentVelocity();
-}
-
-// ── 확장 슬롯 (스텁) ─────────────────────────────────────────────────────────
-
-void UDualFireMovementComponent::SetSpeedMultiplier(float InMultiplier)
-{
-    SpeedMultiplier = FMath::Max(0.f, InMultiplier);
-}
-
-void UDualFireMovementComponent::SetMovementLocked(bool bLocked)
-{
-    bMovementLocked = bLocked;
-    if (bMovementLocked)
-    {
-        Velocity = FVector::ZeroVector;
-    }
 }
 
 // ── 화면 경계 클램핑 ──────────────────────────────────────────────────────────

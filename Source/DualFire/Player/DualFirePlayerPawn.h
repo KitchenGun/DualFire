@@ -118,8 +118,6 @@ public:
 
     int32 GetInputMappingPriority() const { return InputMappingPriority; }
 
-    // ── 이동 제어 위임 ───────────────────────────────────────────────────────
-
     // ── 컴포넌트 접근자 (LoadoutManager 등 외부 시스템에서 사용) ────────────────
 
     UFUNCTION(BlueprintPure, Category="Components")
@@ -135,14 +133,6 @@ public:
     /** 자동 재생 없이 지정된 뱅킹 프레임 하나를 표시한다. */
     UFUNCTION(BlueprintCallable, Category="Aircraft")
     void SetAircraftBankPose(EAircraftBankPose Pose);
-
-    /** 슈퍼웨폰 발동 등에서 이동 속도 배율 변경. MovementComp에 위임 */
-    UFUNCTION(BlueprintCallable, Category="Movement")
-    void SetSpeedMultiplier(float InMultiplier);
-
-    /** 스턴/연출 중 이동 잠금. MovementComp에 위임 */
-    UFUNCTION(BlueprintCallable, Category="Movement")
-    void SetMovementLocked(bool bLocked);
 
     // ── 디버그 콘솔 명령 (Exec — 에디터 PIE 콘솔에서 호출) ───────────────────
 
