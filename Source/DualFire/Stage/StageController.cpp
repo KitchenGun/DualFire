@@ -280,14 +280,12 @@ void AStageController::SetState(EStageState NewState)
 
 	case EStageState::Ended:
 		SetActorTickEnabled(false);
-		GetWorld()->GetTimerManager().ClearTimer(EliteTimeLimitHandle);
 		GetWorld()->GetTimerManager().ClearTimer(PrototypeBossArrivalTimeoutHandle);
 		for (FTimerHandle& Handle : SequenceSpawnTimerHandles)
 		{
 			GetWorld()->GetTimerManager().ClearTimer(Handle);
 		}
 		SequenceSpawnTimerHandles.Reset();
-		// 결과별 GameMode 호출은 OnEliteDeath / OnEliteTimeLimitExpired에서 수행
 		break;
 
 	default:
@@ -393,34 +391,6 @@ void AStageController::HandlePrototypeBossArrivalTimeout()
 	if (ADualFireGameModeBase* GM = Cast<ADualFireGameModeBase>(UGameplayStatics::GetGameMode(this)))
 	{
 		GM->OnMissionFail();
-	}
-}
-
-void AStageController::OnEliteDeath()
-{
-	if (CurrentState == EStageState::EliteCombat)
-	{
-		UE_LOG(LogDualFire, Log, TEXT("[Stage] 엘리트 격파 → 미션 클리어"));
-		SetState(EStageState::Ended);
-
-		if (ADualFireGameModeBase* GM = Cast<ADualFireGameModeBase>(UGameplayStatics::GetGameMode(this)))
-		{
-			GM->OnMissionClear();
-		}
-	}
-}
-
-void AStageController::OnEliteTimeLimitExpired()
-{
-	if (CurrentState == EStageState::EliteCombat)
-	{
-		UE_LOG(LogDualFire, Warning, TEXT("[Stage] 엘리트 제한 시간 초과 → 미션 실패"));
-		SetState(EStageState::Ended);
-
-		if (ADualFireGameModeBase* GM = Cast<ADualFireGameModeBase>(UGameplayStatics::GetGameMode(this)))
-		{
-			GM->OnMissionFail();
-		}
 	}
 }
 

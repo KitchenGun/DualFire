@@ -62,10 +62,6 @@ public:
 	UPROPERTY(EditDefaultsOnly, BlueprintReadWrite, Category="Stage", meta=(ClampMin="1.0"))
 	float EliteTriggerTime = 80.0f;
 
-	/** EliteCombat 제한 시간(초). 이 시간 내에 처리 못하면 EliteCombat → Ended (실패) */
-	UPROPERTY(EditDefaultsOnly, BlueprintReadWrite, Category="Stage", meta=(ClampMin="1.0"))
-	float EliteTimeLimit = 60.0f;
-
 	/** 프로토타입 보스가 화면 안으로 내려오는 시간 */
 	UPROPERTY(EditDefaultsOnly, BlueprintReadWrite, Category="Stage|Prototype Boss", meta=(ClampMin="0.1"))
 	float PrototypeBossDescentDuration = 3.0f;
@@ -139,10 +135,6 @@ public:
 
 	// ── 공개 API ──────────────────────────────────────────────────────────────
 
-	/** EliteCombat 단계에서 엘리트 적이 격파(사망)되면 호출 → Ended(클리어)로 전환 */
-	UFUNCTION(BlueprintCallable, Category="Stage")
-	void OnEliteDeath();
-
 	UFUNCTION(BlueprintPure, Category="Stage")
 	float GetElapsedTime() const { return ElapsedTime; }
 
@@ -173,8 +165,6 @@ private:
 	/** 다음에 트리거할 ActiveWaves 인덱스 */
 	int32 NextWaveIndex = 0;
 
-	/** EliteCombat 제한 시간 타이머 핸들 */
-	FTimerHandle EliteTimeLimitHandle;
 	FTimerHandle PrototypeBossArrivalTimeoutHandle;
 
 	TArray<FTimerHandle> SequenceSpawnTimerHandles;
@@ -220,8 +210,6 @@ private:
 	/** 상태 전환 + 브로드캐스트 + 단계별 진입 처리 */
 	void SetState(EStageState NewState);
 
-	/** 엘리트 제한 시간 만료 콜백 → Ended(실패) */
-	void OnEliteTimeLimitExpired();
 	void BeginPrototypeBossSequence();
 	void StopCombatForPrototypeBoss();
 	void HandlePrototypeBossDestinationReached();
