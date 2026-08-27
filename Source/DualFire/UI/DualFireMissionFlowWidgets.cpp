@@ -46,6 +46,7 @@ void UDualFireCampaignMapWidget::NativeOnInitialized()
 	MissionButton->OnClicked().AddUObject(this, &ThisClass::SelectMission);
 	BackButton->OnClicked().AddUObject(this, &ThisClass::BackToTitle);
 	BackButton->SetLabelText(NSLOCTEXT("DualFireUI", "CampaignBack", "BACK"));
+	RegisterDualFireConfirmPrompt(*this, ConfirmInputAction);
 }
 
 void UDualFireCampaignMapWidget::NativeOnActivated()
@@ -144,6 +145,7 @@ void UDualFireMissionBriefingWidget::NativeOnInitialized()
 	ContinueButton->SetLabelText(NSLOCTEXT("DualFireUI", "BriefingContinue", "CONTINUE"));
 	SkipButton->SetLabelText(NSLOCTEXT("DualFireUI", "BriefingSkip", "SKIP"));
 	BackButton->SetLabelText(NSLOCTEXT("DualFireUI", "BriefingBack", "BACK"));
+	RegisterDualFireConfirmPrompt(*this, ConfirmInputAction);
 }
 
 void UDualFireMissionBriefingWidget::NativeOnActivated()

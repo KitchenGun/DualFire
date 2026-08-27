@@ -6,12 +6,10 @@
 #include "UI/DualFireMenuButton.h"
 #include "UI/DualFireUIPlayerController.h"
 
-#include "Blueprint/WidgetTree.h"
 #include "Components/TextBlock.h"
 #include "Engine/Engine.h"
 #include "GameFramework/GameUserSettings.h"
 #include "Input/CommonUIInputTypes.h"
-#include "InputAction.h"
 #include "Kismet/KismetSystemLibrary.h"
 #include "TimerManager.h"
 #include "Widgets/CommonActivatableWidgetContainer.h"
@@ -32,40 +30,6 @@ FText WindowModeToText(const EWindowMode::Type WindowMode)
 	}
 }
 
-void RegisterConfirmPrompt(UCommonUserWidget& Widget, const UInputAction* ConfirmInputAction)
-{
-	if (!IsValid(ConfirmInputAction))
-	{
-		UE_LOG(LogDualFire, Warning, TEXT("[UI] ConfirmInputAction is not configured on %s."), *Widget.GetName());
-		return;
-	}
-
-	const TWeakObjectPtr<UCommonUserWidget> WeakWidget(&Widget);
-	FBindUIActionArgs BindArgs(ConfirmInputAction, true, FSimpleDelegate::CreateLambda([WeakWidget]()
-	{
-		UCommonUserWidget* BoundWidget = WeakWidget.Get();
-		if (!IsValid(BoundWidget) || !IsValid(BoundWidget->WidgetTree))
-		{
-			return;
-		}
-
-		TArray<UWidget*> Widgets;
-		BoundWidget->WidgetTree->GetAllWidgets(Widgets);
-		for (UWidget* ChildWidget : Widgets)
-		{
-			UDualFireMenuButton* MenuButton = Cast<UDualFireMenuButton>(ChildWidget);
-			if (IsValid(MenuButton) && MenuButton->ExecuteFocusedSelectAction())
-			{
-				return;
-			}
-		}
-
-		UE_LOG(LogDualFire, Warning, TEXT("[UI] Select input has no focused menu button on %s."),
-			*BoundWidget->GetName());
-	}));
-	BindArgs.OverrideDisplayName = NSLOCTEXT("DualFireUI", "SelectAction", "SELECT");
-	Widget.RegisterUIActionBinding(BindArgs);
-}
 }
 
 UDualFireStartMenuWidget::UDualFireStartMenuWidget()
@@ -93,7 +57,7 @@ void UDualFireStartMenuWidget::NativeOnInitialized()
 	StartMissionButton->OnClicked().AddUObject(this, &ThisClass::StartMission);
 	SettingsButton->OnClicked().AddUObject(this, &ThisClass::OpenSettings);
 	ExitButton->OnClicked().AddUObject(this, &ThisClass::ExitGame);
-	RegisterConfirmPrompt(*this, ConfirmInputAction);
+	RegisterDualFireConfirmPrompt(*this, ConfirmInputAction);
 }
 
 void UDualFireStartMenuWidget::NativeOnActivated()
@@ -215,7 +179,7 @@ void UDualFireSettingsWidget::NativeOnInitialized()
 	VSyncButton->OnClicked().AddUObject(this, &ThisClass::ToggleVSync);
 	ApplyButton->OnClicked().AddUObject(this, &ThisClass::ApplySettings);
 	BackButton->OnClicked().AddUObject(this, &ThisClass::CloseSettings);
-	RegisterConfirmPrompt(*this, ConfirmInputAction);
+	RegisterDualFireConfirmPrompt(*this, ConfirmInputAction);
 }
 
 void UDualFireSettingsWidget::NativeOnActivated()
@@ -356,7 +320,7 @@ void UDualFireExitConfirmWidget::NativeOnInitialized()
 
 	ConfirmButton->OnClicked().AddUObject(this, &ThisClass::ConfirmExit);
 	CancelButton->OnClicked().AddUObject(this, &ThisClass::CancelExit);
-	RegisterConfirmPrompt(*this, ConfirmInputAction);
+	RegisterDualFireConfirmPrompt(*this, ConfirmInputAction);
 }
 
 UWidget* UDualFireExitConfirmWidget::NativeGetDesiredFocusTarget() const

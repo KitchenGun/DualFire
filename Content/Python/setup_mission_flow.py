@@ -16,6 +16,7 @@ START_CONTROLLER_PATH = "/Game/Blueprint/UI/PlayerController/BP_PC_Start"
 GAME_INSTANCE_PATH = "/Game/Blueprint/GameInstance/BP_GameInstance"
 MISSION_TABLE_PATH = "/Game/Data/Mission/DT_Missions"
 STAGE_TABLE_PATH = "/Game/Data/Stage/DT_Stages"
+CONFIRM_ACTION_PATH = "/Game/Input/UI/IA_UI_Confirm"
 UMG = unreal.get_default_object(unreal.UMGToolSet)
 
 
@@ -238,16 +239,21 @@ def configure_defaults(campaign, briefing, mission_table):
     result = load_required(RESULT_PATH)
     start_controller = load_required(START_CONTROLLER_PATH)
     game_instance = load_required(GAME_INSTANCE_PATH)
+    confirm_action = load_required(CONFIRM_ACTION_PATH)
 
     unreal.get_default_object(start_menu.generated_class()).set_editor_property(
         "campaign_widget_class", campaign.generated_class()
     )
-    unreal.get_default_object(campaign.generated_class()).set_editor_property(
-        "briefing_widget_class", briefing.generated_class()
-    )
-    unreal.get_default_object(briefing.generated_class()).set_editor_property(
-        "hangar_widget_class", hangar.generated_class()
-    )
+    campaign_cdo = unreal.get_default_object(campaign.generated_class())
+    campaign.modify()
+    campaign_cdo.modify()
+    campaign_cdo.set_editor_property("briefing_widget_class", briefing.generated_class())
+    campaign_cdo.set_editor_property("confirm_input_action", confirm_action)
+    briefing_cdo = unreal.get_default_object(briefing.generated_class())
+    briefing.modify()
+    briefing_cdo.modify()
+    briefing_cdo.set_editor_property("hangar_widget_class", hangar.generated_class())
+    briefing_cdo.set_editor_property("confirm_input_action", confirm_action)
     controller_cdo = unreal.get_default_object(start_controller.generated_class())
     controller_cdo.set_editor_property("campaign_map_widget_class", campaign.generated_class())
     controller_cdo.set_editor_property("mission_briefing_widget_class", briefing.generated_class())
@@ -259,6 +265,9 @@ def configure_defaults(campaign, briefing, mission_table):
 
     for asset in (start_menu, campaign, briefing, hangar, result, start_controller, game_instance):
         unreal.EditorAssetLibrary.save_loaded_asset(asset, only_if_is_dirty=False)
+    for path in (CAMPAIGN_PATH, BRIEFING_PATH):
+        if not unreal.EditorAssetLibrary.save_asset(path, only_if_is_dirty=False):
+            fail(f"Widget defaults save failed: {path}")
 
 
 def main():

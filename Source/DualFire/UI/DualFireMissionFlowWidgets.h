@@ -8,6 +8,7 @@
 
 class UCommonTextBlock;
 class UDualFireMenuButton;
+class UInputAction;
 
 UCLASS(BlueprintType, Blueprintable)
 class DUALFIRE_API UDualFireCampaignMapWidget : public UCommonActivatableWidget
@@ -38,6 +39,9 @@ protected:
 
 	UPROPERTY(EditDefaultsOnly, BlueprintReadOnly, Category="Campaign")
 	TSubclassOf<UCommonActivatableWidget> BriefingWidgetClass;
+
+	UPROPERTY(EditDefaultsOnly, BlueprintReadOnly, Category="Input")
+	TObjectPtr<UInputAction> ConfirmInputAction;
 
 	UPROPERTY(BlueprintReadOnly, Category="Campaign|Widgets", meta=(BindWidget))
 	TObjectPtr<UDualFireMenuButton> MissionButton;
@@ -84,6 +88,9 @@ protected:
 
 	UPROPERTY(EditDefaultsOnly, BlueprintReadOnly, Category="Briefing")
 	TSubclassOf<UCommonActivatableWidget> HangarWidgetClass;
+
+	UPROPERTY(EditDefaultsOnly, BlueprintReadOnly, Category="Input")
+	TObjectPtr<UInputAction> ConfirmInputAction;
 
 	UPROPERTY(BlueprintReadOnly, Category="Briefing|Widgets", meta=(BindWidget))
 	TObjectPtr<UDualFireMenuButton> ContinueButton;
