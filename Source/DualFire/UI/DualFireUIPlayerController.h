@@ -27,12 +27,6 @@ public:
 		EDualFireUILayer Layer,
 		TSubclassOf<UCommonActivatableWidget> WidgetClass);
 
-	UFUNCTION(BlueprintCallable, Category = "UI")
-	bool PopActiveWidget(EDualFireUILayer Layer);
-
-	UFUNCTION(BlueprintCallable, Category = "UI")
-	void ClearLayer(EDualFireUILayer Layer);
-
 protected:
 	virtual void BeginPlay() override;
 	virtual void EndPlay(const EEndPlayReason::Type EndPlayReason) override;

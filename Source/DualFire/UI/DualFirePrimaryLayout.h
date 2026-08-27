@@ -34,15 +34,6 @@ public:
 		EDualFireUILayer Layer,
 		TSubclassOf<UCommonActivatableWidget> WidgetClass);
 
-	UFUNCTION(BlueprintCallable, Category = "UI|Layout")
-	bool PopActiveWidget(EDualFireUILayer Layer);
-
-	UFUNCTION(BlueprintCallable, Category = "UI|Layout")
-	void ClearLayer(EDualFireUILayer Layer);
-
-	UFUNCTION(BlueprintPure, Category = "UI|Layout")
-	UWidget* GetActionBar() const { return ActionBar; }
-
 protected:
 	virtual void NativeOnInitialized() override;
 

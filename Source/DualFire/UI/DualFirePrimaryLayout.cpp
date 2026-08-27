@@ -73,37 +73,6 @@ UCommonActivatableWidget* UDualFirePrimaryLayout::PushWidgetToLayer(
 	return Stack->AddWidget(WidgetClass);
 }
 
-bool UDualFirePrimaryLayout::PopActiveWidget(const EDualFireUILayer Layer)
-{
-	UCommonActivatableWidgetStack* Stack = GetLayerStack(Layer);
-	if (!IsValid(Stack))
-	{
-		UE_LOG(LogDualFire, Warning, TEXT("[UI] Cannot pop invalid layer %d."), static_cast<int32>(Layer));
-		return false;
-	}
-
-	UCommonActivatableWidget* ActiveWidget = Stack->GetActiveWidget();
-	if (!IsValid(ActiveWidget))
-	{
-		return false;
-	}
-
-	ActiveWidget->DeactivateWidget();
-	return true;
-}
-
-void UDualFirePrimaryLayout::ClearLayer(const EDualFireUILayer Layer)
-{
-	UCommonActivatableWidgetStack* Stack = GetLayerStack(Layer);
-	if (!IsValid(Stack))
-	{
-		UE_LOG(LogDualFire, Warning, TEXT("[UI] Cannot clear invalid layer %d."), static_cast<int32>(Layer));
-		return;
-	}
-
-	Stack->ClearWidgets();
-}
-
 void UDualFirePrimaryLayout::BuildDefaultWidgetTree()
 {
 	check(WidgetTree);

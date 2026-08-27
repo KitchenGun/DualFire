@@ -41,19 +41,6 @@ UCommonActivatableWidget* ADualFireUIPlayerController::PushWidgetToLayer(
 	return RootLayout->PushWidgetToLayer(Layer, WidgetClass);
 }
 
-bool ADualFireUIPlayerController::PopActiveWidget(const EDualFireUILayer Layer)
-{
-	return IsValid(RootLayout) && RootLayout->PopActiveWidget(Layer);
-}
-
-void ADualFireUIPlayerController::ClearLayer(const EDualFireUILayer Layer)
-{
-	if (IsValid(RootLayout))
-	{
-		RootLayout->ClearLayer(Layer);
-	}
-}
-
 void ADualFireUIPlayerController::AddUIInputMapping()
 {
 	if (!IsLocalPlayerController() || !IsValid(UIInputMapping) || bUIInputMappingAdded)
