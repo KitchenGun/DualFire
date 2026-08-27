@@ -66,6 +66,7 @@ public:
 
 	UEnemyAIComponent* GetAIComponent() const { return AIComp; }
 	bool CountsTowardMissionMetrics() const { return bCountsTowardMissionMetrics; }
+	FName GetRuntimeEnemyID() const { return RuntimeEnemyID; }
 
 	// ── IEnemyAttributeInterface ──────────────────────────────────────────────
 
@@ -82,6 +83,9 @@ public:
 	}
 
 private:
+	UPROPERTY(VisibleInstanceOnly, Category="Enemy|Runtime")
+	FName RuntimeEnemyID = NAME_None;
+
 	/** HealthComp.OnDeath 콜백. 적은 잔여 기체 없이 즉시 격파 → Destroy */
 	UFUNCTION()
 	void OnEnemyDeath();

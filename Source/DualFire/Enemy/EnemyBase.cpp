@@ -71,6 +71,7 @@ void AEnemyBase::OnAcquiredFromPool_Implementation()
 void AEnemyBase::OnReleasedToPool_Implementation()
 {
 	UnregisterFromStageController();
+	RuntimeEnemyID = NAME_None;
 	if (AIComp)
 	{
 		AIComp->StopAttackTimer();
@@ -97,6 +98,7 @@ bool AEnemyBase::InitFromEnemyRow(const FEnemyRow& Row)
 	}
 
 	MaxHealth = Row.MaxHealth;
+	RuntimeEnemyID = Row.EnemyID;
 	EnemyAttribute = Row.Attribute;
 	Mesh->SetSkeletalMesh(LoadedMesh);
 	HealthComp->InitFromData(MaxHealth, 0, 1.0f, 0.0f);

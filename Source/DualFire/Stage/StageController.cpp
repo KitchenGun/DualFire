@@ -7,11 +7,13 @@
 #include "Enemy/EnemyAIComponent.h"
 #include "Camera/StageCameraActor.h"
 #include "GameModes/DualFireGameModeBase.h"
+#include "GameInstance/DualFireGameInstance.h"
 #include "Weapon/Projectile/BaseProjectile.h"
 #include "DualFire.h"
 
 #include "Engine/DataTable.h"
 #include "Engine/World.h"
+#include "Curves/CurveFloat.h"
 #include "EngineUtils.h"
 #include "GameFramework/PlayerController.h"
 #include "TimerManager.h"
@@ -31,9 +33,62 @@ AStageController::AStageController()
 	PrototypeBossClass = ADualFirePrototypeBossCube::StaticClass();
 }
 
+bool AStageController::ConfigureStage(const FName InStageID, FText& OutError)
+{
+	OutError = FText::GetEmpty();
+	FName InvalidField = NAME_None;
+	const UDualFireGameInstance* GI = Cast<UDualFireGameInstance>(GetGameInstance());
+	const UDataTable* StageTable = IsValid(GI) ? GI->GetStageDataTable() : nullptr;
+	if (!IsValid(StageTable))
+	{
+		OutError = FText::FromString(TEXT("Stage DataTable이 지정되지 않았습니다."));
+		LogConfigurationError(InStageID, TEXT("StageDataTable"), OutError);
+		return false;
+	}
+
+	const FStageRow* StageRow = StageTable->FindRow<FStageRow>(
+		InStageID, TEXT("StageController.ConfigureStage"), false);
+	if (!StageRow)
+	{
+		OutError = FText::FromString(FString::Printf(
+			TEXT("StageID '%s' 행을 찾을 수 없습니다."), *InStageID.ToString()));
+		LogConfigurationError(InStageID, TEXT("StageID"), OutError);
+		return false;
+	}
+
+	TArray<FWaveRow> ValidatedWaves;
+	if (!BuildValidatedWaves(InStageID, ValidatedWaves, OutError, InvalidField) ||
+		!ValidateStageRow(InStageID, *StageRow, ValidatedWaves, OutError, InvalidField))
+	{
+		LogConfigurationError(InStageID, InvalidField, OutError);
+		return false;
+	}
+
+	StageID = InStageID;
+	ActiveStageRow = *StageRow;
+	ActiveWaves = MoveTemp(ValidatedWaves);
+	ActivePauseTriggers = StageRow->PauseTriggers;
+	ActivePauseTriggers.Sort([](const FStagePauseTrigger& A, const FStagePauseTrigger& B)
+	{
+		return A.TriggerTime < B.TriggerTime;
+	});
+	NextWaveIndex = 0;
+	NextPauseTriggerIndex = 0;
+	ElapsedTime = 0.0f;
+	bConfigured = true;
+	return true;
+}
+
 void AStageController::BeginPlay()
 {
 	Super::BeginPlay();
+	if (!bConfigured)
+	{
+		const FText Error = FText::FromString(TEXT("ConfigureStage가 BeginPlay 전에 성공하지 않았습니다."));
+		LogConfigurationError(StageID, TEXT("ConfigureStage"), Error);
+		SetActorTickEnabled(false);
+		return;
+	}
 
 	CachePlayerPawn(UGameplayStatics::GetPlayerPawn(this, 0));
 	if (APlayerController* PC = UGameplayStatics::GetPlayerController(this, 0))
@@ -43,9 +98,8 @@ void AStageController::BeginPlay()
 
 	RegisterPlacedEnemies();
 	PrewarmPools();
-	BuildActiveWaves();
 	SetState(EStageState::Timeline);
-
+	UpdateCameraScrollSpeed();
 	SetActorTickEnabled(true);
 }
 
@@ -71,6 +125,11 @@ void AStageController::EndPlay(const EEndPlayReason::Type EndPlayReason)
 	}
 
 	ActiveEnemies.Reset();
+	PauseScopedEnemies.Reset();
+	if (AStageCameraActor* Camera = GetStageCamera())
+	{
+		Camera->SetPaused(false);
+	}
 
 	Super::EndPlay(EndPlayReason);
 }
@@ -82,7 +141,10 @@ void AStageController::Tick(float DeltaTime)
 	if (CurrentState == EStageState::Timeline)
 	{
 		TickTimeline(DeltaTime);
-		TickEnemyAI(DeltaTime);
+		if (CurrentState == EStageState::Timeline)
+		{
+			TickEnemyAI(DeltaTime);
+		}
 	}
 	else if (CurrentState == EStageState::EliteCombat)
 	{
@@ -104,154 +166,467 @@ bool AStageController::SetEliteTriggerTimeForPIE(float InTriggerTime)
 	return false;
 }
 
-// ── 내부 초기화 ───────────────────────────────────────────────────────────────
-
-void AStageController::BuildActiveWaves()
+bool AStageController::BuildValidatedWaves(
+	const FName InStageID,
+	TArray<FWaveRow>& OutWaves,
+	FText& OutError,
+	FName& OutField) const
 {
-	ActiveWaves.Reset();
-	NextWaveIndex = 0;
-
-	if (bUseTestWaves)
+	OutWaves.Reset();
+	if (!IsValid(WaveDataTable))
 	{
-		ActiveWaves = TestWaves;
+		OutField = TEXT("WaveDataTable");
+		OutError = FText::FromString(TEXT("Wave DataTable이 지정되지 않았습니다."));
+		return false;
 	}
-	else if (IsValid(WaveDataTable))
+	if (!IsValid(EnemyDataTable))
 	{
-		TArray<FWaveRow*> Rows;
-		WaveDataTable->GetAllRows<FWaveRow>(TEXT("StageController.BuildActiveWaves"), Rows);
-		for (const FWaveRow* Row : Rows)
+		OutField = TEXT("EnemyDataTable");
+		OutError = FText::FromString(TEXT("Enemy DataTable이 지정되지 않았습니다."));
+		return false;
+	}
+
+	TArray<FWaveRow*> Rows;
+	WaveDataTable->GetAllRows<FWaveRow>(TEXT("StageController.BuildValidatedWaves"), Rows);
+	for (const FWaveRow* Row : Rows)
+	{
+		if (!Row || Row->StageID != InStageID)
 		{
-			if (Row && (StageID.IsNone() || Row->StageID == StageID))
-			{
-				ActiveWaves.Add(*Row);
-			}
+			continue;
 		}
-	}
-	else
-	{
-		UE_LOG(LogDualFire, Warning, TEXT("[Stage] WaveDataTable 없음 — 웨이브 없음"));
+		if (Row->WaveID.IsNone() || Row->EnemyID.IsNone() || Row->TriggerTime < 0.0f ||
+			Row->Count < 1 || Row->SpawnInterval < 0.0f)
+		{
+			OutField = TEXT("WaveRow");
+			OutError = FText::FromString(FString::Printf(
+				TEXT("WaveID '%s'의 필수 값이 유효하지 않습니다."), *Row->WaveID.ToString()));
+			return false;
+		}
+		FEnemyRow EnemyRow;
+		if (!FindEnemyRow(Row->EnemyID, EnemyRow))
+		{
+			OutField = TEXT("EnemyID");
+			OutError = FText::FromString(FString::Printf(
+				TEXT("WaveID '%s'가 존재하지 않는 EnemyID '%s'를 참조합니다."),
+				*Row->WaveID.ToString(), *Row->EnemyID.ToString()));
+			return false;
+		}
+		OutWaves.Add(*Row);
 	}
 
-	// TriggerTime 오름차순 정렬
-	ActiveWaves.Sort([](const FWaveRow& A, const FWaveRow& B)
+	OutWaves.Sort([](const FWaveRow& A, const FWaveRow& B)
 	{
 		return A.TriggerTime < B.TriggerTime;
 	});
+	return true;
+}
 
-	UE_LOG(LogDualFire, Log, TEXT("[Stage] 웨이브 %d개 로드"), ActiveWaves.Num());
+bool AStageController::ValidateStageRow(
+	const FName InStageID,
+	const FStageRow& Row,
+	const TArray<FWaveRow>& Waves,
+	FText& OutError,
+	FName& OutField) const
+{
+	if (Row.StageID.IsNone() || Row.StageID != InStageID)
+	{
+		OutField = TEXT("StageID");
+		OutError = FText::FromString(TEXT("StageRow의 StageID가 요청 ID와 일치하지 않습니다."));
+		return false;
+	}
+	if (Row.MinScrollSpeed < 0.0f || Row.MaxScrollSpeed <= 0.0f ||
+		Row.MaxScrollSpeed < Row.MinScrollSpeed)
+	{
+		OutField = TEXT("ScrollSpeedRange");
+		OutError = FText::FromString(TEXT("최소·최대 스크롤 속도 범위가 유효하지 않습니다."));
+		return false;
+	}
+	if (!IsValid(Row.NormalizedScrollCurve) || Row.NormalizedScrollCurve->FloatCurve.GetNumKeys() == 0)
+	{
+		OutField = TEXT("NormalizedScrollCurve");
+		OutError = FText::FromString(TEXT("정규화 Scroll Curve가 지정되지 않았거나 키가 없습니다."));
+		return false;
+	}
+	for (auto It = Row.NormalizedScrollCurve->FloatCurve.GetKeyIterator(); It; ++It)
+	{
+		const FRichCurveKey& Key = *It;
+		if (Key.Value < 0.0f || Key.Value > 1.0f)
+		{
+			OutField = TEXT("NormalizedScrollCurve");
+			OutError = FText::FromString(FString::Printf(
+				TEXT("Curve 키 %.3f초 값 %.3f가 0~1 범위를 벗어났습니다."), Key.Time, Key.Value));
+			return false;
+		}
+	}
+
+	TSet<int64> TriggerMilliseconds;
+	for (const FStagePauseTrigger& Trigger : Row.PauseTriggers)
+	{
+		const int64 TriggerKey = FMath::RoundToInt64(Trigger.TriggerTime * 1000.0f);
+		if (Trigger.TriggerTime < 0.0f || TriggerMilliseconds.Contains(TriggerKey))
+		{
+			OutField = TEXT("PauseTriggers");
+			OutError = FText::FromString(FString::Printf(
+				TEXT("멈춤 트리거 %.3f초가 음수이거나 중복입니다."), Trigger.TriggerTime));
+			return false;
+		}
+		TriggerMilliseconds.Add(TriggerKey);
+
+		if (Trigger.ResumeCondition == EStagePauseResumeCondition::RealTime)
+		{
+			if (Trigger.ResumeDelay <= 0.0f || !Trigger.TargetEnemyID.IsNone())
+			{
+				OutField = TEXT("ResumeDelay");
+				OutError = FText::FromString(TEXT("실제 시간 재개 조건은 양수 ResumeDelay만 사용해야 합니다."));
+				return false;
+			}
+		}
+		else if (Trigger.ResumeCondition == EStagePauseResumeCondition::WaveDefeated)
+		{
+			const bool bHasWaveAtTrigger = Waves.ContainsByPredicate([&Trigger](const FWaveRow& Wave)
+			{
+				return FMath::IsNearlyEqual(Wave.TriggerTime, Trigger.TriggerTime, KINDA_SMALL_NUMBER);
+			});
+			if (!bHasWaveAtTrigger || Trigger.ResumeDelay > 0.0f || !Trigger.TargetEnemyID.IsNone())
+			{
+				OutField = TEXT("ResumeCondition");
+				OutError = FText::FromString(TEXT("웨이브 전멸 조건에는 같은 시각 웨이브가 하나 이상 필요합니다."));
+				return false;
+			}
+		}
+		else if (Trigger.ResumeCondition == EStagePauseResumeCondition::EnemyDefeated)
+		{
+			FEnemyRow TargetRow;
+			if (Trigger.TargetEnemyID.IsNone() || Trigger.ResumeDelay > 0.0f ||
+				!FindEnemyRow(Trigger.TargetEnemyID, TargetRow))
+			{
+				OutField = TEXT("TargetEnemyID");
+				OutError = FText::FromString(FString::Printf(
+					TEXT("멈춤 트리거가 존재하지 않는 EnemyID '%s'를 참조합니다."),
+					*Trigger.TargetEnemyID.ToString()));
+				return false;
+			}
+		}
+		else
+		{
+			OutField = TEXT("ResumeCondition");
+			OutError = FText::FromString(TEXT("지원하지 않는 재개 조건입니다."));
+			return false;
+		}
+	}
+	return true;
+}
+
+void AStageController::LogConfigurationError(
+	const FName InStageID,
+	const FName Field,
+	const FText& Error) const
+{
+	UE_LOG(LogDualFire, Error, TEXT("[Stage] ConfigureStage 실패 — StageID:%s Field:%s Error:%s"),
+		*InStageID.ToString(), *Field.ToString(), *Error.ToString());
 }
 
 // ── Timeline 단계 ─────────────────────────────────────────────────────────────
 
 void AStageController::TickTimeline(float DeltaTime)
 {
-	ElapsedTime += DeltaTime;
-
-	// 웨이브 트리거
-	while (NextWaveIndex < ActiveWaves.Num() &&
-		   ActiveWaves[NextWaveIndex].TriggerTime <= ElapsedTime)
+	float RemainingTime = FMath::Max(DeltaTime, 0.0f);
+	while (RemainingTime > KINDA_SMALL_NUMBER && CurrentState == EStageState::Timeline)
 	{
-		TriggerWave(ActiveWaves[NextWaveIndex]);
-		++NextWaveIndex;
+		ProcessTimelineBoundary();
+		if (bStagePaused)
+		{
+			TickStagePause(RemainingTime);
+			continue;
+		}
+		if (ElapsedTime >= EliteTriggerTime - KINDA_SMALL_NUMBER)
+		{
+			SetState(EStageState::EliteCombat);
+			break;
+		}
+
+		const float Boundary = GetNextTimelineBoundary();
+		const float Advance = FMath::Min(RemainingTime, FMath::Max(Boundary - ElapsedTime, 0.0f));
+		if (Advance <= KINDA_SMALL_NUMBER)
+		{
+			ElapsedTime = Boundary;
+			continue;
+		}
+
+		ElapsedTime += Advance;
+		RemainingTime -= Advance;
+		UpdateCameraScrollSpeed();
+	}
+	ProcessTimelineBoundary();
+}
+
+void AStageController::ProcessTimelineBoundary()
+{
+	if (CurrentState != EStageState::Timeline)
+	{
+		return;
 	}
 
-	// 엘리트 트리거
-	if (ElapsedTime >= EliteTriggerTime)
+	while (NextPauseTriggerIndex < ActivePauseTriggers.Num() &&
+		ActivePauseTriggers[NextPauseTriggerIndex].TriggerTime <= ElapsedTime + KINDA_SMALL_NUMBER)
+	{
+		BeginStagePause(ActivePauseTriggers[NextPauseTriggerIndex]);
+		++NextPauseTriggerIndex;
+		break;
+	}
+
+	while (NextWaveIndex < ActiveWaves.Num() &&
+		ActiveWaves[NextWaveIndex].TriggerTime <= ElapsedTime + KINDA_SMALL_NUMBER)
+	{
+		const int32 ScopeGeneration = bStagePaused &&
+			ActivePauseTrigger.ResumeCondition == EStagePauseResumeCondition::WaveDefeated &&
+			FMath::IsNearlyEqual(ActiveWaves[NextWaveIndex].TriggerTime, ActivePauseTrigger.TriggerTime)
+			? PauseScopeGeneration
+			: 0;
+		TriggerWave(ActiveWaves[NextWaveIndex], ScopeGeneration);
+		++NextWaveIndex;
+	}
+	EvaluateStagePause();
+
+	if (!bStagePaused && ElapsedTime >= EliteTriggerTime - KINDA_SMALL_NUMBER &&
+		CurrentState == EStageState::Timeline)
 	{
 		SetState(EStageState::EliteCombat);
 	}
 }
 
-void AStageController::TriggerWave(const FWaveRow& Wave)
+float AStageController::GetNextTimelineBoundary() const
+{
+	float Boundary = EliteTriggerTime;
+	if (NextPauseTriggerIndex < ActivePauseTriggers.Num())
+	{
+		Boundary = FMath::Min(Boundary, ActivePauseTriggers[NextPauseTriggerIndex].TriggerTime);
+	}
+	if (NextWaveIndex < ActiveWaves.Num())
+	{
+		Boundary = FMath::Min(Boundary, ActiveWaves[NextWaveIndex].TriggerTime);
+	}
+	return FMath::Max(Boundary, ElapsedTime);
+}
+
+void AStageController::BeginStagePause(const FStagePauseTrigger& Trigger)
+{
+	ActivePauseTrigger = Trigger;
+	PauseRealTime = 0.0f;
+	PendingPauseScopedSpawns = 0;
+	PauseScopedEnemies.Reset();
+	bTargetEnemyDefeated = false;
+	bStagePaused = true;
+	++PauseScopeGeneration;
+	if (AStageCameraActor* Camera = GetStageCamera())
+	{
+		Camera->SetPaused(true);
+	}
+	UE_LOG(LogDualFire, Log, TEXT("[Stage] 멈춤 시작 — StageID:%s Time:%.3f Condition:%s"),
+		*StageID.ToString(), Trigger.TriggerTime, *UEnum::GetValueAsString(Trigger.ResumeCondition));
+}
+
+void AStageController::TickStagePause(float& RemainingTime)
+{
+	if (ActivePauseTrigger.ResumeCondition != EStagePauseResumeCondition::RealTime)
+	{
+		RemainingTime = 0.0f;
+		return;
+	}
+
+	const float Needed = FMath::Max(ActivePauseTrigger.ResumeDelay - PauseRealTime, 0.0f);
+	const float Advance = FMath::Min(RemainingTime, Needed);
+	PauseRealTime += Advance;
+	RemainingTime -= Advance;
+	EvaluateStagePause();
+}
+
+void AStageController::EvaluateStagePause()
+{
+	if (!bStagePaused)
+	{
+		return;
+	}
+	for (auto It = PauseScopedEnemies.CreateIterator(); It; ++It)
+	{
+		if (!It->IsValid() || It->Get()->IsHidden())
+		{
+			It.RemoveCurrent();
+		}
+	}
+	if (ShouldResumePause(
+		ActivePauseTrigger,
+		PauseRealTime,
+		PauseScopedEnemies.Num(),
+		PendingPauseScopedSpawns,
+		bTargetEnemyDefeated))
+	{
+		EndStagePause();
+	}
+}
+
+void AStageController::EndStagePause()
+{
+	if (!bStagePaused)
+	{
+		return;
+	}
+	bStagePaused = false;
+	PauseScopedEnemies.Reset();
+	PendingPauseScopedSpawns = 0;
+	if (AStageCameraActor* Camera = GetStageCamera())
+	{
+		Camera->SetPaused(false);
+	}
+	UpdateCameraScrollSpeed();
+	UE_LOG(LogDualFire, Log, TEXT("[Stage] 멈춤 종료 — StageID:%s Time:%.3f"),
+		*StageID.ToString(), ElapsedTime);
+}
+
+float AStageController::EvaluateScrollSpeed(const FStageRow& StageRow, const float StageTime)
+{
+	if (!IsValid(StageRow.NormalizedScrollCurve))
+	{
+		return 0.0f;
+	}
+	const float Normalized = FMath::Clamp(
+		StageRow.NormalizedScrollCurve->GetFloatValue(StageTime), 0.0f, 1.0f);
+	return FMath::Lerp(StageRow.MinScrollSpeed, StageRow.MaxScrollSpeed, Normalized);
+}
+
+bool AStageController::ShouldResumePause(
+	const FStagePauseTrigger& Trigger,
+	const float InPauseRealTime,
+	const int32 ActiveScopedEnemies,
+	const int32 PendingScopedSpawns,
+	const bool bInTargetEnemyDefeated)
+{
+	switch (Trigger.ResumeCondition)
+	{
+	case EStagePauseResumeCondition::RealTime:
+		return InPauseRealTime >= Trigger.ResumeDelay - KINDA_SMALL_NUMBER;
+	case EStagePauseResumeCondition::WaveDefeated:
+		return ActiveScopedEnemies == 0 && PendingScopedSpawns == 0;
+	case EStagePauseResumeCondition::EnemyDefeated:
+		return bInTargetEnemyDefeated;
+	default:
+		return false;
+	}
+}
+
+void AStageController::UpdateCameraScrollSpeed()
+{
+	if (AStageCameraActor* Camera = GetStageCamera())
+	{
+		Camera->SetScrollSpeed(EvaluateScrollSpeed(ActiveStageRow, ElapsedTime));
+		Camera->SetPaused(bStagePaused);
+	}
+}
+
+void AStageController::TriggerWave(const FWaveRow& Wave, const int32 ScopeGeneration)
 {
 	UE_LOG(LogDualFire, Log, TEXT("[Stage] 웨이브 트리거 — %s (Count=%d)"),
 		*Wave.WaveID.ToString(), Wave.Count);
-
-	SpawnWaveSequential(Wave, 0);
+	if (ScopeGeneration > 0)
+	{
+		PendingPauseScopedSpawns += Wave.Count;
+	}
+	SpawnWaveSequential(Wave, 0, ScopeGeneration);
 }
 
-void AStageController::SpawnWaveSequential(FWaveRow Wave, int32 AlreadySpawned)
+void AStageController::SpawnWaveSequential(
+	FWaveRow Wave,
+	const int32 AlreadySpawned,
+	const int32 ScopeGeneration)
 {
 	if (AlreadySpawned >= Wave.Count)
 	{
 		return;
 	}
 
+	AEnemyBase* SpawnedEnemy = nullptr;
 	const TSubclassOf<AEnemyBase> EnemyClass = ResolveEnemyClass(Wave.EnemyID);
 	if (!IsValid(EnemyClass))
 	{
-		UE_LOG(LogDualFire, Warning, TEXT("[Stage] EnemyID '%s'에 대한 클래스 없음 — 스폰 생략"),
-			*Wave.EnemyID.ToString());
-		return;
-	}
-
-	FEnemyRow EnemyRow;
-	if (!FindEnemyRow(Wave.EnemyID, EnemyRow))
-	{
-		UE_LOG(LogDualFire, Warning, TEXT("[Stage] EnemyID '%s' 데이터 없음 — 스폰 생략"),
+		UE_LOG(LogDualFire, Error, TEXT("[Stage] EnemyID '%s'에 대한 클래스 없음 — 스폰 생략"),
 			*Wave.EnemyID.ToString());
 	}
 	else
 	{
-		const FVector SpawnLoc = ResolveSpawnAnchor(Wave.SpawnAnchor, Wave.SpawnOffset);
-		FActorSpawnParameters Params;
-		Params.SpawnCollisionHandlingOverride = ESpawnActorCollisionHandlingMethod::AlwaysSpawn;
-
-		UActorPoolSubsystem* Pool = GetWorld()->GetSubsystem<UActorPoolSubsystem>();
-		AEnemyBase* Enemy = nullptr;
-		if (IsValid(Pool))
+		FEnemyRow EnemyRow;
+		if (!FindEnemyRow(Wave.EnemyID, EnemyRow))
 		{
-			Enemy = Cast<AEnemyBase>(
-				Pool->AcquireActor(EnemyClass, FTransform(EnemyFacingRotation, SpawnLoc)));
+			UE_LOG(LogDualFire, Error, TEXT("[Stage] EnemyID '%s' 데이터 없음 — 스폰 생략"),
+				*Wave.EnemyID.ToString());
 		}
 		else
 		{
-			Enemy = GetWorld()->SpawnActor<AEnemyBase>(EnemyClass, SpawnLoc, EnemyFacingRotation, Params);
-		}
+			const FVector SpawnLoc = ResolveSpawnAnchor(Wave.SpawnAnchor, Wave.SpawnOffset);
+			FActorSpawnParameters Params;
+			Params.SpawnCollisionHandlingOverride = ESpawnActorCollisionHandlingMethod::AlwaysSpawn;
 
-		if (IsValid(Enemy))
-		{
-			if (UEnemyAIComponent* AI = Enemy->GetAIComponent();
-				IsValid(AI) && !IsValid(AI->ProjectileClass) && IsValid(EnemyProjectileClass))
-			{
-				AI->ProjectileClass = EnemyProjectileClass;
-			}
+			UActorPoolSubsystem* Pool = GetWorld()->GetSubsystem<UActorPoolSubsystem>();
+			AEnemyBase* Enemy = IsValid(Pool)
+				? Cast<AEnemyBase>(Pool->AcquireActor(EnemyClass, FTransform(EnemyFacingRotation, SpawnLoc)))
+				: GetWorld()->SpawnActor<AEnemyBase>(EnemyClass, SpawnLoc, EnemyFacingRotation, Params);
 
-			if (!Enemy->InitFromEnemyRow(EnemyRow))
+			if (IsValid(Enemy))
 			{
-				UE_LOG(LogDualFire, Warning,
-					TEXT("[Stage] EnemyID '%s' 초기화 실패 — 등록 없이 반환"),
-					*Wave.EnemyID.ToString());
-				if (IsValid(Pool))
+				if (UEnemyAIComponent* AI = Enemy->GetAIComponent();
+					IsValid(AI) && !IsValid(AI->ProjectileClass) && IsValid(EnemyProjectileClass))
 				{
-					Pool->ReleaseActor(Enemy);
+					AI->ProjectileClass = EnemyProjectileClass;
+				}
+
+				if (!Enemy->InitFromEnemyRow(EnemyRow))
+				{
+					UE_LOG(LogDualFire, Error,
+						TEXT("[Stage] EnemyID '%s' 초기화 실패 — 등록 없이 반환"),
+						*Wave.EnemyID.ToString());
+					if (IsValid(Pool)) Pool->ReleaseActor(Enemy);
+					else Enemy->Destroy();
 				}
 				else
 				{
-					Enemy->Destroy();
+					RegisterEnemy(Enemy);
+					SpawnedEnemy = Enemy;
 				}
-			}
-			else
-			{
-				RegisterEnemy(Enemy);
 			}
 		}
 	}
+	MarkPauseScopedSpawnComplete(ScopeGeneration, SpawnedEnemy);
 
 	const int32 NextCount = AlreadySpawned + 1;
 	if (NextCount < Wave.Count && Wave.SpawnInterval > 0.0f)
 	{
 		FTimerHandle SeqHandle;
 		FTimerDelegate Del;
-		Del.BindUObject(this, &AStageController::SpawnWaveSequential, Wave, NextCount);
+		Del.BindUObject(this, &AStageController::SpawnWaveSequential, Wave, NextCount, ScopeGeneration);
 		GetWorld()->GetTimerManager().SetTimer(SeqHandle, Del, Wave.SpawnInterval, false);
 		SequenceSpawnTimerHandles.Add(SeqHandle);
 	}
 	else if (NextCount < Wave.Count)
 	{
 		// SpawnInterval == 0이면 즉시 재귀
-		SpawnWaveSequential(Wave, NextCount);
+		SpawnWaveSequential(Wave, NextCount, ScopeGeneration);
 	}
+}
+
+void AStageController::MarkPauseScopedSpawnComplete(
+	const int32 ScopeGeneration,
+	AEnemyBase* SpawnedEnemy)
+{
+	if (ScopeGeneration <= 0 || ScopeGeneration != PauseScopeGeneration ||
+		ActivePauseTrigger.ResumeCondition != EStagePauseResumeCondition::WaveDefeated)
+	{
+		return;
+	}
+	PendingPauseScopedSpawns = FMath::Max(PendingPauseScopedSpawns - 1, 0);
+	if (IsValid(SpawnedEnemy))
+	{
+		PauseScopedEnemies.Add(SpawnedEnemy);
+	}
+	EvaluateStagePause();
 }
 
 // ── 상태 전환 ─────────────────────────────────────────────────────────────────
@@ -477,6 +852,8 @@ void AStageController::UnregisterEnemy(AEnemyBase* Enemy)
 	{
 		return;
 	}
+	PauseScopedEnemies.Remove(Enemy);
+	EvaluateStagePause();
 }
 
 void AStageController::RecordEnemySpawned(const FEnemyAttribute& Attribute)
@@ -487,7 +864,17 @@ void AStageController::RecordEnemySpawned(const FEnemyAttribute& Attribute)
 
 void AStageController::NotifyEnemyDefeated(AEnemyBase* Enemy)
 {
-	if (!IsValid(Enemy) || !ActiveEnemies.Contains(Enemy) || !Enemy->CountsTowardMissionMetrics())
+	if (!IsValid(Enemy) || !ActiveEnemies.Contains(Enemy))
+	{
+		return;
+	}
+	if (bStagePaused && ActivePauseTrigger.ResumeCondition == EStagePauseResumeCondition::EnemyDefeated &&
+		Enemy->GetRuntimeEnemyID() == ActivePauseTrigger.TargetEnemyID)
+	{
+		bTargetEnemyDefeated = true;
+		EvaluateStagePause();
+	}
+	if (!Enemy->CountsTowardMissionMetrics())
 	{
 		return;
 	}

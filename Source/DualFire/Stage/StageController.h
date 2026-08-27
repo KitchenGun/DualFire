@@ -14,18 +14,13 @@ class AStageCameraActor;
 class ABaseProjectile;
 class APawn;
 class UDataTable;
+class UCurveFloat;
 
 DECLARE_DYNAMIC_MULTICAST_DELEGATE_OneParam(FOnStageStateChanged, EStageState, NewState);
 
 /**
- * 타임라인 / 웨이브 / 엘리트 전투 / 미션 결과를 관리하는 스테이지 컨트롤러.
- * 레벨에 하나 배치하거나 GameMode가 스폰한다.
- *
- * 현재 구현:
- *   - EStageState 상태머신 (Timeline → EliteCombat → Ended)
- *   - Tick 기반 웨이브 트리거 (TriggerTime 오름차순)
- *   - ESpawnAnchor → 월드 좌표 변환 (StageCameraActor GetPlayableBounds 이용)
- *   - DataTable 없을 때 TestWaves 하드코딩 배열로 대체
+ * ConfigureStage 검증을 통과한 StageRow와 WaveRow만 커밋하고,
+ * 타임라인 / 웨이브 / 데이터 기반 스크롤·멈춤 / 미션 결과를 관리한다.
  */
 UCLASS(BlueprintType, Blueprintable)
 class DUALFIRE_API AStageController : public AActor
@@ -76,7 +71,7 @@ public:
 	UPROPERTY(EditDefaultsOnly, BlueprintReadOnly, Category="Stage|Prototype Boss")
 	TSubclassOf<ADualFirePrototypeBossCube> PrototypeBossClass;
 
-	UPROPERTY(EditDefaultsOnly, BlueprintReadWrite, Category="Stage|Data")
+	UPROPERTY(VisibleInstanceOnly, BlueprintReadOnly, Category="Stage|Data")
 	FName StageID = TEXT("STAGE_TEST");
 
 	UPROPERTY(EditDefaultsOnly, BlueprintReadWrite, Category="Stage|Data")
@@ -98,22 +93,9 @@ public:
 	UPROPERTY(EditDefaultsOnly, BlueprintReadWrite, Category="Stage|Spawn")
 	TMap<FName, TSubclassOf<AEnemyBase>> EnemyClassMap;
 
-	/** 스폰 앵커 X 위치 = 화면 우측 경계 + 이 값 (cm) */
+	/** 기존 앵커 배치 호환용 화면 상단 여백. 3x3 화면 내부 배치 전환 후 제거 대상. */
 	UPROPERTY(EditDefaultsOnly, BlueprintReadWrite, Category="Stage|Spawn", meta=(ClampMin="0.0"))
 	float SpawnMarginX = 300.0f;
-
-	// ── 테스트 웨이브 (DataTable 없을 때 사용) ────────────────────────────────
-
-	/**
-	 * true: TestWaves 하드코딩 배열 사용.
-	 * false: WaveDataTable + StageID 조합으로 DataTable 조회.
-	 */
-	UPROPERTY(EditDefaultsOnly, BlueprintReadWrite, Category="Stage|Debug")
-	bool bUseTestWaves = true;
-
-	/** bUseTestWaves=true일 때 사용할 웨이브 목록. 에디터에서 직접 편집 가능 */
-	UPROPERTY(EditDefaultsOnly, BlueprintReadWrite, Category="Stage|Debug")
-	TArray<FWaveRow> TestWaves;
 
 	UPROPERTY(EditDefaultsOnly, BlueprintReadWrite, Category="Stage|Pool", meta=(ClampMin="0"))
 	int32 EnemyPrewarmCountPerClass = 32;
@@ -131,6 +113,10 @@ public:
 	int32 PlayerProjectilePrewarmCountPerClass = 64;
 
 	// ── 공개 API ──────────────────────────────────────────────────────────────
+
+	/** StageID를 해석·검증하고 성공한 데이터만 런타임 상태로 커밋한다. */
+	UFUNCTION(BlueprintCallable, Category="Stage")
+	bool ConfigureStage(FName InStageID, FText& OutError);
 
 	UFUNCTION(BlueprintPure, Category="Stage")
 	float GetElapsedTime() const { return ElapsedTime; }
@@ -155,12 +141,32 @@ public:
 	void UnregisterEnemy(AEnemyBase* Enemy);
 	void NotifyEnemyDefeated(AEnemyBase* Enemy);
 
+	static float EvaluateScrollSpeed(const FStageRow& StageRow, float StageTime);
+	static bool ShouldResumePause(
+		const FStagePauseTrigger& Trigger,
+		float PauseRealTime,
+		int32 ActiveScopedEnemies,
+		int32 PendingScopedSpawns,
+		bool bTargetEnemyDefeated);
+
 private:
 	/** TriggerTime 오름차순으로 정렬된 실행 대상 웨이브 목록 */
 	TArray<FWaveRow> ActiveWaves;
 
 	/** 다음에 트리거할 ActiveWaves 인덱스 */
 	int32 NextWaveIndex = 0;
+
+	FStageRow ActiveStageRow;
+	TArray<FStagePauseTrigger> ActivePauseTriggers;
+	int32 NextPauseTriggerIndex = 0;
+	FStagePauseTrigger ActivePauseTrigger;
+	TSet<TWeakObjectPtr<AEnemyBase>> PauseScopedEnemies;
+	float PauseRealTime = 0.0f;
+	int32 PendingPauseScopedSpawns = 0;
+	int32 PauseScopeGeneration = 0;
+	bool bTargetEnemyDefeated = false;
+	bool bStagePaused = false;
+	bool bConfigured = false;
 
 	FTimerHandle PrototypeBossArrivalTimeoutHandle;
 
@@ -180,17 +186,19 @@ private:
 	int32 GroundEnemiesSpawned = 0;
 	int32 GroundEnemiesDefeated = 0;
 
-	/** ActiveWaves를 구성하고 TriggerTime 기준 정렬 (BeginPlay) */
-	void BuildActiveWaves();
+	bool BuildValidatedWaves(FName InStageID, TArray<FWaveRow>& OutWaves, FText& OutError, FName& OutField) const;
+	bool ValidateStageRow(FName InStageID, const FStageRow& Row, const TArray<FWaveRow>& Waves, FText& OutError, FName& OutField) const;
+	void LogConfigurationError(FName InStageID, FName Field, const FText& Error) const;
 
 	/** Timeline 단계 Tick — 경과 시간 누적, 웨이브·엘리트 트리거 */
 	void TickTimeline(float DeltaTime);
 
 	/** 단일 웨이브 발동 — 순차 스폰 시작 */
-	void TriggerWave(const FWaveRow& Wave);
+	void TriggerWave(const FWaveRow& Wave, int32 ScopeGeneration);
 
 	/** SpawnInterval 간격으로 적을 한 마리씩 재귀 스폰 */
-	void SpawnWaveSequential(FWaveRow Wave, int32 AlreadySpawned);
+	void SpawnWaveSequential(FWaveRow Wave, int32 AlreadySpawned, int32 ScopeGeneration);
+	void MarkPauseScopedSpawnComplete(int32 ScopeGeneration, AEnemyBase* SpawnedEnemy);
 
 	/** EnemyID → 적 클래스 해석. EnemyClassMap 우선, 없으면 DefaultEnemyClass */
 	TSubclassOf<AEnemyBase> ResolveEnemyClass(FName EnemyID) const;
@@ -203,6 +211,13 @@ private:
 
 	/** 상태 전환 + 브로드캐스트 + 단계별 진입 처리 */
 	void SetState(EStageState NewState);
+	void ProcessTimelineBoundary();
+	float GetNextTimelineBoundary() const;
+	void BeginStagePause(const FStagePauseTrigger& Trigger);
+	void TickStagePause(float& RemainingTime);
+	void EvaluateStagePause();
+	void EndStagePause();
+	void UpdateCameraScrollSpeed();
 
 	void BeginPrototypeBossSequence();
 	void StopCombatForPrototypeBoss();

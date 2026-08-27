@@ -249,19 +249,35 @@ void ADualFireGameModeBase::StartMission()
         return;
     }
 
-    // ── 2. StageController 스폰 ───────────────────────────────────────────────
-    FActorSpawnParameters Params;
-    Params.SpawnCollisionHandlingOverride = ESpawnActorCollisionHandlingMethod::AlwaysSpawn;
-    ActiveStageController = GetWorld()->SpawnActor<AStageController>(
-        StageControllerClass, FVector::ZeroVector, FRotator::ZeroRotator, Params);
-
-    if (!IsValid(ActiveStageController))
+	// ConfigureStage가 BeginPlay보다 먼저 끝나도록 지연 스폰한다.
+	const FTransform StageTransform(FRotator::ZeroRotator, FVector::ZeroVector);
+	AStageController* PendingStageController = GetWorld()->SpawnActorDeferred<AStageController>(
+		StageControllerClass,
+		StageTransform,
+		nullptr,
+		nullptr,
+		ESpawnActorCollisionHandlingMethod::AlwaysSpawn);
+	if (!IsValid(PendingStageController))
     {
         UE_LOG(LogDualFire, Error, TEXT("[GameMode] StartMission: StageController 스폰 실패 — 미션 시작 차단"));
         return;
     }
 
-    UE_LOG(LogDualFire, Log, TEXT("[GameMode] StartMission 완료"));
+	FText StageError;
+	const FName StageID = Flow->GetLaunchContext().Preparation.StageID;
+	if (!PendingStageController->ConfigureStage(StageID, StageError))
+	{
+		PendingStageController->Destroy();
+		UE_LOG(LogDualFire, Error,
+			TEXT("[GameMode] StartMission: StageController 설정 실패 — StageID:%s Error:%s"),
+			*StageID.ToString(), *StageError.ToString());
+		return;
+	}
+
+	PendingStageController->FinishSpawning(StageTransform);
+	ActiveStageController = PendingStageController;
+
+	UE_LOG(LogDualFire, Log, TEXT("[GameMode] StartMission 완료 — StageID:%s"), *StageID.ToString());
 }
 
 // ── 미션 종료 ───────────────────────────────────────────────────────────────────
