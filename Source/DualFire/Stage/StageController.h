@@ -93,10 +93,6 @@ public:
 	UPROPERTY(EditDefaultsOnly, BlueprintReadWrite, Category="Stage|Spawn")
 	TMap<FName, TSubclassOf<AEnemyBase>> EnemyClassMap;
 
-	/** 기존 앵커 배치 호환용 화면 상단 여백. 3x3 화면 내부 배치 전환 후 제거 대상. */
-	UPROPERTY(EditDefaultsOnly, BlueprintReadWrite, Category="Stage|Spawn", meta=(ClampMin="0.0"))
-	float SpawnMarginX = 300.0f;
-
 	UPROPERTY(EditDefaultsOnly, BlueprintReadWrite, Category="Stage|Pool", meta=(ClampMin="0"))
 	int32 EnemyPrewarmCountPerClass = 32;
 
@@ -148,6 +144,15 @@ public:
 		int32 ActiveScopedEnemies,
 		int32 PendingScopedSpawns,
 		bool bTargetEnemyDefeated);
+	static FVector2D GetSpawnAnchorRatios(ESpawnAnchor Anchor);
+	static float FindNextTimelineBoundary(
+		float InEliteTriggerTime,
+		const TArray<FStagePauseTrigger>& PauseTriggers,
+		int32 PauseTriggerIndex,
+		const TArray<FWaveRow>& Waves,
+		int32 WaveIndex,
+		float InElapsedTime);
+	static bool ShouldProcessPauseFirst(float PauseTriggerTime, float WaveTriggerTime);
 
 private:
 	/** TriggerTime 오름차순으로 정렬된 실행 대상 웨이브 목록 */

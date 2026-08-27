@@ -370,6 +370,15 @@ void AStageController::ProcessTimelineBoundary()
 	while (NextPauseTriggerIndex < ActivePauseTriggers.Num() &&
 		ActivePauseTriggers[NextPauseTriggerIndex].TriggerTime <= ElapsedTime + KINDA_SMALL_NUMBER)
 	{
+		const float NextWaveTime = NextWaveIndex < ActiveWaves.Num()
+			? ActiveWaves[NextWaveIndex].TriggerTime
+			: TNumericLimits<float>::Max();
+		if (!ShouldProcessPauseFirst(
+			ActivePauseTriggers[NextPauseTriggerIndex].TriggerTime,
+			NextWaveTime))
+		{
+			break;
+		}
 		BeginStagePause(ActivePauseTriggers[NextPauseTriggerIndex]);
 		++NextPauseTriggerIndex;
 		break;
@@ -397,16 +406,13 @@ void AStageController::ProcessTimelineBoundary()
 
 float AStageController::GetNextTimelineBoundary() const
 {
-	float Boundary = EliteTriggerTime;
-	if (NextPauseTriggerIndex < ActivePauseTriggers.Num())
-	{
-		Boundary = FMath::Min(Boundary, ActivePauseTriggers[NextPauseTriggerIndex].TriggerTime);
-	}
-	if (NextWaveIndex < ActiveWaves.Num())
-	{
-		Boundary = FMath::Min(Boundary, ActiveWaves[NextWaveIndex].TriggerTime);
-	}
-	return FMath::Max(Boundary, ElapsedTime);
+	return FindNextTimelineBoundary(
+		EliteTriggerTime,
+		ActivePauseTriggers,
+		NextPauseTriggerIndex,
+		ActiveWaves,
+		NextWaveIndex,
+		ElapsedTime);
 }
 
 void AStageController::BeginStagePause(const FStagePauseTrigger& Trigger)
@@ -793,33 +799,63 @@ FVector AStageController::ResolveSpawnAnchor(ESpawnAnchor Anchor, const FVector&
 	}
 
 	const FBox2D Bounds = Cam->GetPlayableBounds();
+	const FVector2D Ratios = GetSpawnAnchorRatios(Anchor);
+	const float SpawnX = FMath::Lerp(Bounds.Min.X, Bounds.Max.X, Ratios.X);
+	const float SpawnY = FMath::Lerp(Bounds.Min.Y, Bounds.Max.Y, Ratios.Y);
+	return FVector(SpawnX, SpawnY, 0.0f) + Offset;
+}
 
-	// X: 화면 위쪽 바깥에서 스폰 (+X = 진행 방향)
-	const float SpawnX = Bounds.Max.X + SpawnMarginX;
-
-	// Y: 앵커 열에 따라 좌/중/우
-	float YRatio = 0.5f;
+FVector2D AStageController::GetSpawnAnchorRatios(ESpawnAnchor Anchor)
+{
 	switch (Anchor)
 	{
 	case ESpawnAnchor::TopLeft:
-	case ESpawnAnchor::Left:
-	case ESpawnAnchor::BottomLeft:
-		YRatio = 0.0f;
-		break;
+		return FVector2D(1.0f, 0.0f);
 	case ESpawnAnchor::TopCenter:
-	case ESpawnAnchor::Center:
-	case ESpawnAnchor::BottomCenter:
-		YRatio = 0.5f;
-		break;
+		return FVector2D(1.0f, 0.5f);
 	case ESpawnAnchor::TopRight:
+		return FVector2D(1.0f, 1.0f);
+	case ESpawnAnchor::Left:
+		return FVector2D(0.5f, 0.0f);
+	case ESpawnAnchor::Center:
+		return FVector2D(0.5f, 0.5f);
 	case ESpawnAnchor::Right:
+		return FVector2D(0.5f, 1.0f);
+	case ESpawnAnchor::BottomLeft:
+		return FVector2D(0.0f, 0.0f);
+	case ESpawnAnchor::BottomCenter:
+		return FVector2D(0.0f, 0.5f);
 	case ESpawnAnchor::BottomRight:
-		YRatio = 1.0f;
-		break;
+		return FVector2D(0.0f, 1.0f);
 	}
-	const float SpawnY = FMath::Lerp(Bounds.Min.Y, Bounds.Max.Y, YRatio);
+	return FVector2D(0.5f, 0.5f);
+}
 
-	return FVector(SpawnX, SpawnY, 0.0f) + Offset;
+float AStageController::FindNextTimelineBoundary(
+	const float InEliteTriggerTime,
+	const TArray<FStagePauseTrigger>& PauseTriggers,
+	const int32 PauseTriggerIndex,
+	const TArray<FWaveRow>& Waves,
+	const int32 WaveIndex,
+	const float InElapsedTime)
+{
+	float Boundary = InEliteTriggerTime;
+	if (PauseTriggers.IsValidIndex(PauseTriggerIndex))
+	{
+		Boundary = FMath::Min(Boundary, PauseTriggers[PauseTriggerIndex].TriggerTime);
+	}
+	if (Waves.IsValidIndex(WaveIndex))
+	{
+		Boundary = FMath::Min(Boundary, Waves[WaveIndex].TriggerTime);
+	}
+	return FMath::Max(Boundary, InElapsedTime);
+}
+
+bool AStageController::ShouldProcessPauseFirst(
+	const float PauseTriggerTime,
+	const float WaveTriggerTime)
+{
+	return PauseTriggerTime <= WaveTriggerTime + KINDA_SMALL_NUMBER;
 }
 
 AStageCameraActor* AStageController::GetStageCamera() const
