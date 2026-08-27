@@ -385,6 +385,10 @@ void UDualFireHangarWidget::RegisterCategoryTabs()
 		{
 			// 카테고리는 Hover/포커스가 아니라 클릭 또는 이전/다음 액션으로만 변경한다.
 			Button->SetSelectUponFocusEnabled(false);
+			if (IsValid(CategoryButtonStyleClass))
+			{
+				Button->SetStyle(CategoryButtonStyleClass);
+			}
 			Button->SetLabelText(GetCategoryLabel(Category));
 		}
 	}

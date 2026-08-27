@@ -172,6 +172,9 @@ protected:
 	UPROPERTY(EditDefaultsOnly, BlueprintReadOnly, Category="Hangar")
 	TSubclassOf<UCommonButtonBase> CategoryButtonClass;
 
+	UPROPERTY(EditDefaultsOnly, BlueprintReadOnly, Category="Hangar")
+	TSubclassOf<UCommonButtonStyle> CategoryButtonStyleClass;
+
 	UPROPERTY(BlueprintReadOnly, Category="Hangar|Widgets", meta=(BindWidget))
 	TObjectPtr<UDualFireHangarLoadoutPreviewWidget> LoadoutPreview;
 
