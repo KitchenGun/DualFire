@@ -47,13 +47,8 @@ void UDualFireMissionResultMetricRowWidget::SetMetricResult(
 
 UDualFireMissionResultWidget::UDualFireMissionResultWidget()
 {
-	bIsBackHandler = true;
+	SetFocusedButtonConfirmEnabled(false);
 	bIsBackActionDisplayedInActionBar = false;
-}
-
-TOptional<FUIInputConfig> UDualFireMissionResultWidget::GetDesiredInputConfig() const
-{
-	return FUIInputConfig(ECommonInputMode::Menu, EMouseCaptureMode::NoCapture);
 }
 
 void UDualFireMissionResultWidget::NativeOnInitialized()

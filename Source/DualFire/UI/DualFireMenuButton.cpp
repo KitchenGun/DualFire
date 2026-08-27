@@ -2,50 +2,9 @@
 
 #include "UI/DualFireMenuButton.h"
 
-#include "Blueprint/WidgetTree.h"
-#include "DualFire.h"
-#include "Input/CommonUIInputTypes.h"
-#include "InputAction.h"
 #include "UI/DualFireMenuButtonStyle.h"
 
 #include "CommonTextBlock.h"
-
-void RegisterDualFireConfirmPrompt(
-	UCommonUserWidget& Widget,
-	const UInputAction* ConfirmInputAction)
-{
-	if (!IsValid(ConfirmInputAction))
-	{
-		UE_LOG(LogDualFire, Warning, TEXT("[UI] ConfirmInputAction is not configured on %s."), *Widget.GetName());
-		return;
-	}
-
-	const TWeakObjectPtr<UCommonUserWidget> WeakWidget(&Widget);
-	FBindUIActionArgs BindArgs(ConfirmInputAction, true, FSimpleDelegate::CreateLambda([WeakWidget]()
-	{
-		UCommonUserWidget* BoundWidget = WeakWidget.Get();
-		if (!IsValid(BoundWidget) || !IsValid(BoundWidget->WidgetTree))
-		{
-			return;
-		}
-
-		TArray<UWidget*> Widgets;
-		BoundWidget->WidgetTree->GetAllWidgets(Widgets);
-		for (UWidget* ChildWidget : Widgets)
-		{
-			UDualFireMenuButton* MenuButton = Cast<UDualFireMenuButton>(ChildWidget);
-			if (IsValid(MenuButton) && MenuButton->ExecuteFocusedSelectAction())
-			{
-				return;
-			}
-		}
-
-		UE_LOG(LogDualFire, Warning, TEXT("[UI] Select input has no focused menu button on %s."),
-			*BoundWidget->GetName());
-	}));
-	BindArgs.OverrideDisplayName = NSLOCTEXT("DualFireUI", "SelectAction", "SELECT");
-	Widget.RegisterUIActionBinding(BindArgs);
-}
 
 UDualFireMenuButton::UDualFireMenuButton()
 {

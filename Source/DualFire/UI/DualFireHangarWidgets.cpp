@@ -16,7 +16,6 @@
 #include "Kismet/GameplayStatics.h"
 #include "Loadout/LoadoutManagerSubsystem.h"
 #include "GameInstance/DualFireMissionFlowSubsystem.h"
-#include "TimerManager.h"
 #include "UI/DualFireMenuButton.h"
 #include "UI/DualFireMenuButtonStyle.h"
 
@@ -279,10 +278,8 @@ void UDualFireHangarItemEntryWidget::RefreshEntry()
 
 UDualFireHangarWidget::UDualFireHangarWidget()
 {
-	bAutoRestoreFocus = true;
-	bIsBackHandler = true;
+	SetFocusedButtonConfirmEnabled(false);
 	bIsBackActionDisplayedInActionBar = true;
-	OverrideBackActionDisplayName = NSLOCTEXT("DualFireHangar", "BackAction", "BACK");
 
 	static ConstructorHelpers::FObjectFinder<UDataTable> AircraftTable(
 		TEXT("/Game/Data/Loadout/DT_LoadoutAircrafts.DT_LoadoutAircrafts"));
@@ -306,11 +303,6 @@ UDualFireHangarWidget::UDualFireHangarWidget()
 	SetInitialRow(InitialLoadoutRows.ShieldRow, ShieldTable.Object, TEXT("TEST_SHIELD"));
 	MissingItemIcon = TSoftObjectPtr<UTexture2D>(
 		FSoftObjectPath(TEXT("/Game/UI/Textures/Hangar/T_UI_Hangar_ItemPlaceholder.T_UI_Hangar_ItemPlaceholder")));
-}
-
-TOptional<FUIInputConfig> UDualFireHangarWidget::GetDesiredInputConfig() const
-{
-	return FUIInputConfig(ECommonInputMode::Menu, EMouseCaptureMode::NoCapture);
 }
 
 void UDualFireHangarWidget::NativeOnInitialized()
@@ -357,12 +349,6 @@ void UDualFireHangarWidget::NativeOnActivated()
 
 	RefreshLoadoutPreview();
 	CategoryTabs->SelectTabByID(GetCategoryID(EDualFireHangarCategory::Aircraft), true);
-	RequestRefreshFocus();
-
-	if (UWorld* World = GetWorld())
-	{
-		World->GetTimerManager().SetTimerForNextTick(this, &ThisClass::ApplyFallbackFocus);
-	}
 }
 
 UWidget* UDualFireHangarWidget::NativeGetDesiredFocusTarget() const
@@ -688,19 +674,6 @@ void UDualFireHangarWidget::Sortie()
 	bSortieRequested = true;
 	UE_LOG(LogDualFire, Log, TEXT("[Hangar] Sortie confirmed. Aircraft=%s"), *DraftLoadout.AircraftID.ToString());
 	UGameplayStatics::OpenLevelBySoftObjectPtr(this, Launch.Preparation.MissionLevel);
-}
-
-void UDualFireHangarWidget::ApplyFallbackFocus()
-{
-	APlayerController* Controller = GetOwningPlayer();
-	if (!IsValid(Controller) || HasAnyUserFocus() || HasUserFocusedDescendants(Controller))
-	{
-		return;
-	}
-	if (UWidget* FocusTarget = GetDesiredFocusTarget())
-	{
-		FocusTarget->SetUserFocus(Controller);
-	}
 }
 
 void UDualFireHangarWidget::SetStatus(const FText& Message)

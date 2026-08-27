@@ -7,9 +7,7 @@
 #include "Engine/DataTable.h"
 #include "GameInstance/DualFireGameInstance.h"
 #include "GameInstance/DualFireMissionFlowSubsystem.h"
-#include "Input/CommonUIInputTypes.h"
 #include "UI/DualFireMenuButton.h"
-#include "UI/DualFireUIPlayerController.h"
 
 namespace
 {
@@ -25,17 +23,6 @@ FText FormatEnvironmentTags(const TArray<FName>& Tags)
 }
 }
 
-UDualFireCampaignMapWidget::UDualFireCampaignMapWidget()
-{
-	bAutoRestoreFocus = true;
-	bIsBackHandler = true;
-}
-
-TOptional<FUIInputConfig> UDualFireCampaignMapWidget::GetDesiredInputConfig() const
-{
-	return FUIInputConfig(ECommonInputMode::Menu, EMouseCaptureMode::NoCapture);
-}
-
 void UDualFireCampaignMapWidget::NativeOnInitialized()
 {
 	Super::NativeOnInitialized();
@@ -46,14 +33,12 @@ void UDualFireCampaignMapWidget::NativeOnInitialized()
 	MissionButton->OnClicked().AddUObject(this, &ThisClass::SelectMission);
 	BackButton->OnClicked().AddUObject(this, &ThisClass::BackToTitle);
 	BackButton->SetLabelText(NSLOCTEXT("DualFireUI", "CampaignBack", "BACK"));
-	RegisterDualFireConfirmPrompt(*this, ConfirmInputAction);
 }
 
 void UDualFireCampaignMapWidget::NativeOnActivated()
 {
 	Super::NativeOnActivated();
 	RefreshMissionDetails();
-	RequestRefreshFocus();
 }
 
 UWidget* UDualFireCampaignMapWidget::NativeGetDesiredFocusTarget() const
@@ -85,9 +70,7 @@ void UDualFireCampaignMapWidget::SelectMission()
 		return;
 	}
 
-	ADualFireUIPlayerController* Controller = Cast<ADualFireUIPlayerController>(GetOwningPlayer());
-	if (!IsValid(Controller) || !IsValid(BriefingWidgetClass) ||
-		!IsValid(Controller->PushWidgetToLayer(EDualFireUILayer::Menu, BriefingWidgetClass)))
+	if (!IsValid(PushScreenToLayer(EDualFireUILayer::Menu, BriefingWidgetClass)))
 	{
 		UE_LOG(LogDualFire, Error, TEXT("[Campaign] 브리핑 화면 열기 실패"));
 	}
@@ -121,17 +104,6 @@ void UDualFireCampaignMapWidget::RefreshMissionDetails()
 	if (IsValid(Text_Status)) Text_Status->SetText(FText::GetEmpty());
 }
 
-UDualFireMissionBriefingWidget::UDualFireMissionBriefingWidget()
-{
-	bAutoRestoreFocus = true;
-	bIsBackHandler = true;
-}
-
-TOptional<FUIInputConfig> UDualFireMissionBriefingWidget::GetDesiredInputConfig() const
-{
-	return FUIInputConfig(ECommonInputMode::Menu, EMouseCaptureMode::NoCapture);
-}
-
 void UDualFireMissionBriefingWidget::NativeOnInitialized()
 {
 	Super::NativeOnInitialized();
@@ -145,14 +117,12 @@ void UDualFireMissionBriefingWidget::NativeOnInitialized()
 	ContinueButton->SetLabelText(NSLOCTEXT("DualFireUI", "BriefingContinue", "CONTINUE"));
 	SkipButton->SetLabelText(NSLOCTEXT("DualFireUI", "BriefingSkip", "SKIP"));
 	BackButton->SetLabelText(NSLOCTEXT("DualFireUI", "BriefingBack", "BACK"));
-	RegisterDualFireConfirmPrompt(*this, ConfirmInputAction);
 }
 
 void UDualFireMissionBriefingWidget::NativeOnActivated()
 {
 	Super::NativeOnActivated();
 	RefreshBriefing();
-	RequestRefreshFocus();
 }
 
 UWidget* UDualFireMissionBriefingWidget::NativeGetDesiredFocusTarget() const
@@ -168,9 +138,7 @@ bool UDualFireMissionBriefingWidget::NativeOnHandleBackAction()
 
 void UDualFireMissionBriefingWidget::ContinueToHangar()
 {
-	ADualFireUIPlayerController* Controller = Cast<ADualFireUIPlayerController>(GetOwningPlayer());
-	if (!IsValid(Controller) || !IsValid(HangarWidgetClass) ||
-		!IsValid(Controller->PushWidgetToLayer(EDualFireUILayer::Menu, HangarWidgetClass)))
+	if (!IsValid(PushScreenToLayer(EDualFireUILayer::Menu, HangarWidgetClass)))
 	{
 		if (IsValid(Text_Status)) Text_Status->SetText(FText::FromString(TEXT("HANGAR IS UNAVAILABLE.")));
 		UE_LOG(LogDualFire, Error, TEXT("[Briefing] 격납고 화면 열기 실패"));

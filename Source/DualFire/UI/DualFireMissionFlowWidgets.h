@@ -3,22 +3,18 @@
 #pragma once
 
 #include "CoreMinimal.h"
-#include "CommonActivatableWidget.h"
+#include "UI/DualFireMenuScreenWidget.h"
 #include "DualFireMissionFlowWidgets.generated.h"
 
 class UCommonTextBlock;
 class UDualFireMenuButton;
-class UInputAction;
 
 UCLASS(BlueprintType, Blueprintable)
-class DUALFIRE_API UDualFireCampaignMapWidget : public UCommonActivatableWidget
+class DUALFIRE_API UDualFireCampaignMapWidget : public UDualFireMenuScreenWidget
 {
 	GENERATED_BODY()
 
 public:
-	UDualFireCampaignMapWidget();
-	virtual TOptional<FUIInputConfig> GetDesiredInputConfig() const override;
-
 	UFUNCTION(BlueprintCallable, Category="Campaign")
 	void SelectMission();
 
@@ -39,9 +35,6 @@ protected:
 
 	UPROPERTY(EditDefaultsOnly, BlueprintReadOnly, Category="Campaign")
 	TSubclassOf<UCommonActivatableWidget> BriefingWidgetClass;
-
-	UPROPERTY(EditDefaultsOnly, BlueprintReadOnly, Category="Input")
-	TObjectPtr<UInputAction> ConfirmInputAction;
 
 	UPROPERTY(BlueprintReadOnly, Category="Campaign|Widgets", meta=(BindWidget))
 	TObjectPtr<UDualFireMenuButton> MissionButton;
@@ -66,14 +59,11 @@ private:
 };
 
 UCLASS(BlueprintType, Blueprintable)
-class DUALFIRE_API UDualFireMissionBriefingWidget : public UCommonActivatableWidget
+class DUALFIRE_API UDualFireMissionBriefingWidget : public UDualFireMenuScreenWidget
 {
 	GENERATED_BODY()
 
 public:
-	UDualFireMissionBriefingWidget();
-	virtual TOptional<FUIInputConfig> GetDesiredInputConfig() const override;
-
 	UFUNCTION(BlueprintCallable, Category="Briefing")
 	void ContinueToHangar();
 
@@ -88,9 +78,6 @@ protected:
 
 	UPROPERTY(EditDefaultsOnly, BlueprintReadOnly, Category="Briefing")
 	TSubclassOf<UCommonActivatableWidget> HangarWidgetClass;
-
-	UPROPERTY(EditDefaultsOnly, BlueprintReadOnly, Category="Input")
-	TObjectPtr<UInputAction> ConfirmInputAction;
 
 	UPROPERTY(BlueprintReadOnly, Category="Briefing|Widgets", meta=(BindWidget))
 	TObjectPtr<UDualFireMenuButton> ContinueButton;

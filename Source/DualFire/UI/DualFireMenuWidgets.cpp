@@ -4,15 +4,11 @@
 
 #include "DualFire.h"
 #include "UI/DualFireMenuButton.h"
-#include "UI/DualFireUIPlayerController.h"
 
 #include "Components/TextBlock.h"
 #include "Engine/Engine.h"
 #include "GameFramework/GameUserSettings.h"
-#include "Input/CommonUIInputTypes.h"
 #include "Kismet/KismetSystemLibrary.h"
-#include "TimerManager.h"
-#include "Widgets/CommonActivatableWidgetContainer.h"
 
 namespace
 {
@@ -34,15 +30,7 @@ FText WindowModeToText(const EWindowMode::Type WindowMode)
 
 UDualFireStartMenuWidget::UDualFireStartMenuWidget()
 {
-	bAutoRestoreFocus = true;
-	bIsBackHandler = true;
 	bIsBackActionDisplayedInActionBar = true;
-	OverrideBackActionDisplayName = NSLOCTEXT("DualFireUI", "BackAction", "BACK");
-}
-
-TOptional<FUIInputConfig> UDualFireStartMenuWidget::GetDesiredInputConfig() const
-{
-	return FUIInputConfig(ECommonInputMode::Menu, EMouseCaptureMode::NoCapture);
 }
 
 void UDualFireStartMenuWidget::NativeOnInitialized()
@@ -57,19 +45,6 @@ void UDualFireStartMenuWidget::NativeOnInitialized()
 	StartMissionButton->OnClicked().AddUObject(this, &ThisClass::StartMission);
 	SettingsButton->OnClicked().AddUObject(this, &ThisClass::OpenSettings);
 	ExitButton->OnClicked().AddUObject(this, &ThisClass::ExitGame);
-	RegisterDualFireConfirmPrompt(*this, ConfirmInputAction);
-}
-
-void UDualFireStartMenuWidget::NativeOnActivated()
-{
-	Super::NativeOnActivated();
-	// Common UI의 포커스 복원을 먼저 요청하고 다음 틱에도 비어 있을 때만 보완한다.
-	RequestRefreshFocus();
-
-	if (UWorld* World = GetWorld())
-	{
-		World->GetTimerManager().SetTimerForNextTick(this, &ThisClass::ApplyFallbackFocus);
-	}
 }
 
 UWidget* UDualFireStartMenuWidget::NativeGetDesiredFocusTarget() const
@@ -83,30 +58,9 @@ bool UDualFireStartMenuWidget::NativeOnHandleBackAction()
 	return true;
 }
 
-void UDualFireStartMenuWidget::ApplyFallbackFocus()
-{
-	APlayerController* Controller = GetOwningPlayer();
-	if (!IsValid(Controller) || HasAnyUserFocus() || HasUserFocusedDescendants(Controller))
-	{
-		return;
-	}
-
-	if (UWidget* FocusTarget = GetDesiredFocusTarget())
-	{
-		FocusTarget->SetUserFocus(Controller);
-	}
-}
-
 void UDualFireStartMenuWidget::StartMission()
 {
-	ADualFireUIPlayerController* Controller = Cast<ADualFireUIPlayerController>(GetOwningPlayer());
-	if (!IsValid(Controller) || !IsValid(CampaignWidgetClass))
-	{
-		UE_LOG(LogDualFire, Warning, TEXT("[UI] Campaign screen is not configured."));
-		return;
-	}
-
-	if (!IsValid(Controller->PushWidgetToLayer(EDualFireUILayer::Menu, CampaignWidgetClass)))
+	if (!IsValid(PushScreenToLayer(EDualFireUILayer::Menu, CampaignWidgetClass)))
 	{
 		UE_LOG(LogDualFire, Error, TEXT("[UI] Failed to open the campaign screen."));
 	}
@@ -114,55 +68,17 @@ void UDualFireStartMenuWidget::StartMission()
 
 void UDualFireStartMenuWidget::OpenSettings()
 {
-	ADualFireUIPlayerController* Controller = Cast<ADualFireUIPlayerController>(GetOwningPlayer());
-	if (!IsValid(Controller) || !IsValid(SettingsWidgetClass))
-	{
-		UE_LOG(LogDualFire, Warning, TEXT("[UI] Settings screen is not configured."));
-		return;
-	}
-
-	Controller->PushWidgetToLayer(EDualFireUILayer::Menu, SettingsWidgetClass);
+	PushScreenToLayer(EDualFireUILayer::Menu, SettingsWidgetClass);
 }
 
 void UDualFireStartMenuWidget::ExitGame()
 {
-	ADualFireUIPlayerController* Controller = Cast<ADualFireUIPlayerController>(GetOwningPlayer());
-	if (!IsValid(Controller) || !IsValid(ExitConfirmWidgetClass))
-	{
-		UE_LOG(LogDualFire, Warning, TEXT("[UI] Exit confirmation screen is not configured."));
-		return;
-	}
-
-	UDualFirePrimaryLayout* RootLayout = Controller->GetRootLayout();
-	UCommonActivatableWidgetStack* ModalStack = IsValid(RootLayout)
-		? RootLayout->GetLayerStack(EDualFireUILayer::Modal)
-		: nullptr;
-	if (!IsValid(ModalStack))
-	{
-		UE_LOG(LogDualFire, Warning, TEXT("[UI] Modal layer is unavailable."));
-		return;
-	}
-
-	// 활성 Modal이 있는 동안에는 같은 확인창을 다시 쌓지 않는다.
-	if (IsValid(ModalStack->GetActiveWidget()))
-	{
-		return;
-	}
-
-	Controller->PushWidgetToLayer(EDualFireUILayer::Modal, ExitConfirmWidgetClass);
+	PushUniqueModalScreen(ExitConfirmWidgetClass);
 }
 
 UDualFireSettingsWidget::UDualFireSettingsWidget()
 {
-	bAutoRestoreFocus = true;
-	bIsBackHandler = true;
 	bIsBackActionDisplayedInActionBar = true;
-	OverrideBackActionDisplayName = NSLOCTEXT("DualFireUI", "BackAction", "BACK");
-}
-
-TOptional<FUIInputConfig> UDualFireSettingsWidget::GetDesiredInputConfig() const
-{
-	return FUIInputConfig(ECommonInputMode::Menu, EMouseCaptureMode::NoCapture);
 }
 
 void UDualFireSettingsWidget::NativeOnInitialized()
@@ -179,39 +95,17 @@ void UDualFireSettingsWidget::NativeOnInitialized()
 	VSyncButton->OnClicked().AddUObject(this, &ThisClass::ToggleVSync);
 	ApplyButton->OnClicked().AddUObject(this, &ThisClass::ApplySettings);
 	BackButton->OnClicked().AddUObject(this, &ThisClass::CloseSettings);
-	RegisterDualFireConfirmPrompt(*this, ConfirmInputAction);
 }
 
 void UDualFireSettingsWidget::NativeOnActivated()
 {
 	Super::NativeOnActivated();
 	LoadCurrentSettings();
-	// Common UI의 포커스 복원을 먼저 요청하고 다음 틱에도 비어 있을 때만 보완한다.
-	RequestRefreshFocus();
-
-	if (UWorld* World = GetWorld())
-	{
-		World->GetTimerManager().SetTimerForNextTick(this, &ThisClass::ApplyFallbackFocus);
-	}
 }
 
 UWidget* UDualFireSettingsWidget::NativeGetDesiredFocusTarget() const
 {
 	return WindowModeButton;
-}
-
-void UDualFireSettingsWidget::ApplyFallbackFocus()
-{
-	APlayerController* Controller = GetOwningPlayer();
-	if (!IsValid(Controller) || HasAnyUserFocus() || HasUserFocusedDescendants(Controller))
-	{
-		return;
-	}
-
-	if (UWidget* FocusTarget = GetDesiredFocusTarget())
-	{
-		FocusTarget->SetUserFocus(Controller);
-	}
 }
 
 bool UDualFireSettingsWidget::NativeOnHandleBackAction()
@@ -297,16 +191,8 @@ void UDualFireSettingsWidget::CloseSettings()
 
 UDualFireExitConfirmWidget::UDualFireExitConfirmWidget()
 {
-	bAutoRestoreFocus = true;
-	bIsBackHandler = true;
 	bIsBackActionDisplayedInActionBar = true;
 	bIsModal = true;
-	OverrideBackActionDisplayName = NSLOCTEXT("DualFireUI", "BackAction", "BACK");
-}
-
-TOptional<FUIInputConfig> UDualFireExitConfirmWidget::GetDesiredInputConfig() const
-{
-	return FUIInputConfig(ECommonInputMode::Menu, EMouseCaptureMode::NoCapture);
 }
 
 void UDualFireExitConfirmWidget::NativeOnInitialized()
@@ -320,7 +206,6 @@ void UDualFireExitConfirmWidget::NativeOnInitialized()
 
 	ConfirmButton->OnClicked().AddUObject(this, &ThisClass::ConfirmExit);
 	CancelButton->OnClicked().AddUObject(this, &ThisClass::CancelExit);
-	RegisterDualFireConfirmPrompt(*this, ConfirmInputAction);
 }
 
 UWidget* UDualFireExitConfirmWidget::NativeGetDesiredFocusTarget() const

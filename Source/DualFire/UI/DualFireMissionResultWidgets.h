@@ -3,14 +3,13 @@
 #pragma once
 
 #include "CoreMinimal.h"
-#include "CommonActivatableWidget.h"
 #include "CommonUserWidget.h"
 #include "Core/DualFireMissionResultTypes.h"
+#include "UI/DualFireMenuScreenWidget.h"
 #include "DualFireMissionResultWidgets.generated.h"
 
 class UCommonTextBlock;
 class UImage;
-class UInputAction;
 class UProgressBar;
 class UTexture2D;
 class UVerticalBox;
@@ -42,14 +41,13 @@ protected:
 };
 
 UCLASS(BlueprintType, Blueprintable)
-class DUALFIRE_API UDualFireMissionResultWidget : public UCommonActivatableWidget
+class DUALFIRE_API UDualFireMissionResultWidget : public UDualFireMenuScreenWidget
 {
 	GENERATED_BODY()
 
 public:
 	UDualFireMissionResultWidget();
 
-	virtual TOptional<FUIInputConfig> GetDesiredInputConfig() const override;
 	void SetMissionResultData(const FDualFireMissionResultData& InResultData);
 
 	UFUNCTION(BlueprintCallable, Category="Mission Result")
@@ -62,9 +60,6 @@ protected:
 	virtual void NativeOnInitialized() override;
 	virtual UWidget* NativeGetDesiredFocusTarget() const override;
 	virtual bool NativeOnHandleBackAction() override;
-
-	UPROPERTY(EditDefaultsOnly, BlueprintReadOnly, Category="Mission Result|Input")
-	TObjectPtr<UInputAction> ConfirmInputAction;
 
 	UPROPERTY(EditDefaultsOnly, BlueprintReadOnly, Category="Mission Result|Widgets")
 	TSubclassOf<UDualFireMissionResultMetricRowWidget> MetricRowClass;

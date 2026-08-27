@@ -7,12 +7,6 @@
 #include "DualFireMenuButton.generated.h"
 
 class UCommonTextBlock;
-class UCommonUserWidget;
-class UInputAction;
-
-DUALFIRE_API void RegisterDualFireConfirmPrompt(
-	UCommonUserWidget& Widget,
-	const UInputAction* ConfirmInputAction);
 
 /** 시각적 계층을 WBP_MenuButton에서 편집하는 재사용 가능한 Common UI 메뉴 버튼이다. */
 UCLASS(BlueprintType, Blueprintable)

@@ -4,12 +4,12 @@
 
 #include "CoreMinimal.h"
 #include "Blueprint/IUserObjectListEntry.h"
-#include "CommonActivatableWidget.h"
 #include "CommonButtonBase.h"
 #include "CommonTabListWidgetBase.h"
 #include "CommonUserWidget.h"
 #include "Core/DualFireDataTypes.h"
 #include "UI/DualFireHangarTypes.h"
+#include "UI/DualFireMenuScreenWidget.h"
 #include "DualFireHangarWidgets.generated.h"
 
 class UCommonListView;
@@ -135,14 +135,12 @@ private:
 
 /** 시작 메뉴와 전투 레벨 사이에서 DraftLoadout을 편집하는 격납고 화면이다. */
 UCLASS(BlueprintType, Blueprintable)
-class DUALFIRE_API UDualFireHangarWidget : public UCommonActivatableWidget
+class DUALFIRE_API UDualFireHangarWidget : public UDualFireMenuScreenWidget
 {
 	GENERATED_BODY()
 
 public:
 	UDualFireHangarWidget();
-
-	virtual TOptional<FUIInputConfig> GetDesiredInputConfig() const override;
 
 	UFUNCTION(BlueprintCallable, Category="Hangar")
 	void EquipFocusedItem();
@@ -161,9 +159,6 @@ protected:
 
 	UPROPERTY(EditDefaultsOnly, BlueprintReadOnly, Category="Hangar|Data")
 	TSoftObjectPtr<UTexture2D> MissingItemIcon;
-
-	UPROPERTY(EditDefaultsOnly, BlueprintReadOnly, Category="Hangar|Input")
-	TObjectPtr<UInputAction> ConfirmInputAction;
 
 	UPROPERTY(EditDefaultsOnly, BlueprintReadOnly, Category="Hangar|Input")
 	TObjectPtr<UInputAction> PreviousCategoryInputAction;
@@ -206,7 +201,6 @@ private:
 	void EquipItem(UDualFireHangarItemObject* ItemObject);
 	void HandleItemClicked(UObject* Item);
 	void HandleItemSelectionChanged(UObject* Item);
-	void ApplyFallbackFocus();
 	void SetStatus(const FText& Message);
 	void SelectInvalidField(FName InvalidField);
 
