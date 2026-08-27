@@ -60,6 +60,9 @@ struct DUALFIRE_API FDualFireMissionResultData
 	EMissionResult Result = EMissionResult::None;
 
 	UPROPERTY(BlueprintReadOnly, Category="Mission Result")
+	EDualFireMissionFailureReason FailureReason = EDualFireMissionFailureReason::None;
+
+	UPROPERTY(BlueprintReadOnly, Category="Mission Result")
 	FName StageID = NAME_None;
 
 	UPROPERTY(BlueprintReadOnly, Category="Mission Result")

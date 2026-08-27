@@ -7,7 +7,7 @@
 #include "Components/ProgressBar.h"
 #include "Components/VerticalBox.h"
 #include "Engine/GameInstance.h"
-#include "GameInstance/DualFireMissionResultSubsystem.h"
+#include "GameInstance/DualFireMissionFlowSubsystem.h"
 #include "Input/CommonUIInputTypes.h"
 #include "InputAction.h"
 #include "Kismet/GameplayStatics.h"
@@ -192,10 +192,10 @@ void UDualFireMissionResultWidget::ContinueToLobby()
 	bLobbyTravelStarted = true;
 	if (UGameInstance* GameInstance = GetGameInstance())
 	{
-		if (UDualFireMissionResultSubsystem* ResultSubsystem =
-			GameInstance->GetSubsystem<UDualFireMissionResultSubsystem>())
+		if (UDualFireMissionFlowSubsystem* Flow =
+			GameInstance->GetSubsystem<UDualFireMissionFlowSubsystem>())
 		{
-			ResultSubsystem->ClearPendingResult();
+			Flow->ReturnToMissionSelect();
 		}
 	}
 	UGameplayStatics::OpenLevel(this, FName(TEXT("/Game/Level/LV_Start")));

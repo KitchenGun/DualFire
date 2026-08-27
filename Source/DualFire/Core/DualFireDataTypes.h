@@ -12,6 +12,8 @@ class UTexture2D;
 class UPaperFlipbook;
 class ABaseProjectile;
 class ADualFirePlayerPawn;
+class UCurveFloat;
+class UWorld;
 
 namespace DualFireLoadout
 {
@@ -315,6 +317,81 @@ struct DUALFIRE_API FWaveRow : public FTableRowBase
 
 	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Wave", meta = (ClampMin = "0.0"))
 	float SpawnInterval = 0.0f;
+};
+
+USTRUCT(BlueprintType)
+struct DUALFIRE_API FStagePauseTrigger
+{
+	GENERATED_BODY()
+
+	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category="Stage", meta=(ClampMin="0.0"))
+	float TriggerTime = 0.0f;
+
+	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category="Stage")
+	EStagePauseResumeCondition ResumeCondition = EStagePauseResumeCondition::RealTime;
+
+	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category="Stage", meta=(ClampMin="0.0"))
+	float ResumeDelay = 0.0f;
+
+	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category="Stage")
+	FName TargetEnemyID = NAME_None;
+};
+
+USTRUCT(BlueprintType)
+struct DUALFIRE_API FStageRow : public FTableRowBase
+{
+	GENERATED_BODY()
+
+	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category="Stage")
+	FName StageID = NAME_None;
+
+	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category="Stage", meta=(ClampMin="0.0"))
+	float MinScrollSpeed = 0.0f;
+
+	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category="Stage", meta=(ClampMin="0.0"))
+	float MaxScrollSpeed = 0.0f;
+
+	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category="Stage")
+	TObjectPtr<UCurveFloat> NormalizedScrollCurve;
+
+	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category="Stage")
+	TArray<FStagePauseTrigger> PauseTriggers;
+};
+
+USTRUCT(BlueprintType)
+struct DUALFIRE_API FMissionRow : public FTableRowBase
+{
+	GENERATED_BODY()
+
+	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category="Mission")
+	FName MissionID = NAME_None;
+
+	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category="Mission")
+	FText MissionCode;
+
+	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category="Mission")
+	FText DisplayName;
+
+	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category="Mission")
+	TArray<FName> EnvironmentTags;
+
+	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category="Mission")
+	FName NormalDifficultyID = TEXT("NORMAL");
+
+	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category="Mission|Briefing")
+	FText BriefingText;
+
+	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category="Mission|Briefing")
+	FText ObjectiveText;
+
+	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category="Mission|Briefing")
+	FText EnemyCompositionHint;
+
+	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category="Mission")
+	FName StageID = NAME_None;
+
+	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category="Mission")
+	TSoftObjectPtr<UWorld> MissionLevel;
 };
 
 USTRUCT(BlueprintType)

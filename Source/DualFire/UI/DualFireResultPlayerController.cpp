@@ -4,7 +4,7 @@
 
 #include "DualFire.h"
 #include "Engine/GameInstance.h"
-#include "GameInstance/DualFireMissionResultSubsystem.h"
+#include "GameInstance/DualFireMissionFlowSubsystem.h"
 #include "InputMappingContext.h"
 #include "Kismet/GameplayStatics.h"
 #include "UI/DualFireMissionResultWidgets.h"
@@ -38,9 +38,9 @@ void ADualFireResultPlayerController::BeginPlay()
 		return;
 	}
 
-	UDualFireMissionResultSubsystem* ResultSubsystem =
-		GetGameInstance() ? GetGameInstance()->GetSubsystem<UDualFireMissionResultSubsystem>() : nullptr;
-	if (!IsValid(ResultSubsystem) || !ResultSubsystem->HasPendingResult())
+	UDualFireMissionFlowSubsystem* Flow =
+		GetGameInstance() ? GetGameInstance()->GetSubsystem<UDualFireMissionFlowSubsystem>() : nullptr;
+	if (!IsValid(Flow) || !Flow->HasPendingResult())
 	{
 		UE_LOG(LogDualFire, Error, TEXT("[UI] 표시할 미션 결과 데이터가 없어 로비로 복귀"));
 		OpenLobbyWhenResultIsMissing();
@@ -58,7 +58,7 @@ void ADualFireResultPlayerController::BeginPlay()
 		return;
 	}
 
-	ResultWidget->SetMissionResultData(ResultSubsystem->GetPendingResult());
+	ResultWidget->SetMissionResultData(Flow->GetPendingResult());
 }
 
 void ADualFireResultPlayerController::OpenLobbyWhenResultIsMissing()

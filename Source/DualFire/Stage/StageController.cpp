@@ -389,7 +389,7 @@ void AStageController::HandlePrototypeBossArrivalTimeout()
 	SetState(EStageState::Ended);
 	if (ADualFireGameModeBase* GM = Cast<ADualFireGameModeBase>(UGameplayStatics::GetGameMode(this)))
 	{
-		GM->OnMissionFail();
+		GM->OnMissionFail(EDualFireMissionFailureReason::StageConditionFailed);
 	}
 }
 

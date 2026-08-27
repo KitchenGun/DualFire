@@ -82,6 +82,30 @@ enum class EMissionResult : uint8
 };
 
 UENUM(BlueprintType)
+enum class EDualFireMissionFailureReason : uint8
+{
+	None                 UMETA(DisplayName = "None"),
+	PlayerDestroyed      UMETA(DisplayName = "Player Destroyed"),
+	StageConditionFailed UMETA(DisplayName = "Stage Condition Failed"),
+};
+
+UENUM(BlueprintType)
+enum class EDualFireStartRoute : uint8
+{
+	None      UMETA(DisplayName = "None"),
+	Campaign  UMETA(DisplayName = "Campaign"),
+	Briefing  UMETA(DisplayName = "Briefing"),
+};
+
+UENUM(BlueprintType)
+enum class EStagePauseResumeCondition : uint8
+{
+	RealTime       UMETA(DisplayName = "Real Time"),
+	WaveDefeated   UMETA(DisplayName = "Wave Defeated"),
+	EnemyDefeated  UMETA(DisplayName = "Enemy Defeated"),
+};
+
+UENUM(BlueprintType)
 enum class EEnemyMovementPattern : uint8
 {
 	Linear    UMETA(DisplayName = "Linear"),

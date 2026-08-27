@@ -7,7 +7,7 @@
 #include "Player/DualFirePlayerPawn.h"
 #include "Stage/StageController.h"
 #include "Loadout/LoadoutManagerSubsystem.h"
-#include "GameInstance/DualFireMissionResultSubsystem.h"
+#include "GameInstance/DualFireMissionFlowSubsystem.h"
 #include "Core/LoadoutDataLibrary.h"
 #include "UI/DualFireMissionPlayerController.h"
 
@@ -96,35 +96,55 @@ void ADualFireGameModeBase::InitGame(const FString& MapName, const FString& Opti
         return;
     }
 
-    FText LoadoutError;
-    FName InvalidField;
+	UDualFireMissionFlowSubsystem* Flow = GI->GetSubsystem<UDualFireMissionFlowSubsystem>();
+	if (!IsValid(Flow))
+	{
+		UE_LOG(LogDualFire, Error, TEXT("[GameMode] InitGame: MissionFlow 없음 — 미션 시작 차단"));
+		return;
+	}
 
-    // 격납고 선택값은 TestLoadout보다 항상 우선한다. 무효해도 조용히 대체하지 않는다.
-    if (LM->HasActiveLoadout())
-    {
-        if (!LM->ValidateLoadout(LM->GetActiveLoadout(), LoadoutError, InvalidField))
-        {
-            UE_LOG(LogDualFire, Error,
-                TEXT("[GameMode] InitGame: 선택 로드아웃 무효 — Field:%s Error:%s"),
-                *InvalidField.ToString(),
-                *LoadoutError.ToString());
-        }
-        return;
-    }
+	FText LoadoutError;
+	FName InvalidField;
+	if (Flow->HasLaunchContext())
+	{
+		const FMissionLaunchContext Launch = Flow->GetLaunchContext();
+		if (!LM->TrySetActiveLoadout(Launch.Loadout, LoadoutError, InvalidField))
+		{
+			UE_LOG(LogDualFire, Error,
+				TEXT("[GameMode] InitGame: 출격 로드아웃 무효 — Field:%s Error:%s"),
+				*InvalidField.ToString(), *LoadoutError.ToString());
+		}
+		return;
+	}
 
-    if (!LM->TrySetActiveLoadout(
-        ULoadoutDataLibrary::MakeLoadoutFromRowHandles(TestLoadout),
-        LoadoutError,
-        InvalidField))
-    {
-        UE_LOG(LogDualFire, Error,
-            TEXT("[GameMode] InitGame: TestLoadout 검증 실패 — Field:%s Error:%s"),
-            *InvalidField.ToString(),
-            *LoadoutError.ToString());
-        return;
-    }
+	if (Flow->HasPreparationContext())
+	{
+		UE_LOG(LogDualFire, Error,
+			TEXT("[GameMode] InitGame: 준비 컨텍스트가 출격 승인되지 않음 — 미션 시작 차단"));
+		return;
+	}
 
-    UE_LOG(LogDualFire, Log, TEXT("[GameMode] InitGame: 외부 로드아웃 없음 — TestLoadout으로 폴백"));
+	FText FlowError;
+	FName FlowField;
+	if (!Flow->TryBeginPreparation(TEXT("MISSION_01"), TEXT("NORMAL"), FlowError, FlowField))
+	{
+		UE_LOG(LogDualFire, Error,
+			TEXT("[GameMode] InitGame: 직접 실행 준비 실패 — Field:%s Error:%s"),
+			*FlowField.ToString(), *FlowError.ToString());
+		return;
+	}
+
+	const FLoadout DirectLoadout = ULoadoutDataLibrary::MakeLoadoutFromRowHandles(TestLoadout);
+	if (!Flow->TryFinalizeLaunch(DirectLoadout, LoadoutError, InvalidField))
+	{
+		UE_LOG(LogDualFire, Error,
+			TEXT("[GameMode] InitGame: TestLoadout 검증 실패 — Field:%s Error:%s"),
+			*InvalidField.ToString(), *LoadoutError.ToString());
+		return;
+	}
+
+	UE_LOG(LogDualFire, Log,
+		TEXT("[GameMode] InitGame: LV_Test 직접 실행 — MISSION_01/STAGE_TEST TestLoadout 적용"));
 }
 
 UClass* ADualFireGameModeBase::GetDefaultPawnClassForController_Implementation(AController* InController)
@@ -208,12 +228,13 @@ void ADualFireGameModeBase::StartMission()
     }
 
     ULoadoutManagerSubsystem* LM = GI->GetSubsystem<ULoadoutManagerSubsystem>();
+	UDualFireMissionFlowSubsystem* Flow = GI->GetSubsystem<UDualFireMissionFlowSubsystem>();
     ADualFirePlayerPawn* Pawn = Cast<ADualFirePlayerPawn>(
         UGameplayStatics::GetPlayerPawn(this, 0));
-    if (!IsValid(LM) || !IsValid(Pawn))
+    if (!IsValid(LM) || !IsValid(Flow) || !Flow->HasLaunchContext() || !IsValid(Pawn))
     {
         UE_LOG(LogDualFire, Error,
-            TEXT("[GameMode] StartMission: LoadoutManager 또는 PlayerPawn 없음 — 미션 시작 차단"));
+            TEXT("[GameMode] StartMission: 출격 컨텍스트, LoadoutManager 또는 PlayerPawn 없음 — 미션 시작 차단"));
         return;
     }
 
@@ -245,17 +266,19 @@ void ADualFireGameModeBase::StartMission()
 
 // ── 미션 종료 ───────────────────────────────────────────────────────────────────
 
-void ADualFireGameModeBase::OnMissionFail()
+void ADualFireGameModeBase::OnMissionFail(const EDualFireMissionFailureReason FailureReason)
 {
-    EndMission(EMissionResult::Failed);
+    EndMission(EMissionResult::Failed, FailureReason);
 }
 
 void ADualFireGameModeBase::OnMissionClear()
 {
-    EndMission(EMissionResult::Cleared);
+    EndMission(EMissionResult::Cleared, EDualFireMissionFailureReason::None);
 }
 
-void ADualFireGameModeBase::EndMission(EMissionResult Result)
+void ADualFireGameModeBase::EndMission(
+	const EMissionResult Result,
+	const EDualFireMissionFailureReason FailureReason)
 {
     // 중복 종료 방지 (잔여 기체 0 사망과 엘리트 타임아웃이 동시에 들어오는 경우 등)
     if (MissionResult != EMissionResult::None)
@@ -263,13 +286,13 @@ void ADualFireGameModeBase::EndMission(EMissionResult Result)
         return;
     }
     MissionResult = Result;
-	BuildMissionResultData(Result);
+	BuildMissionResultData(Result, FailureReason);
 	if (UGameInstance* GameInstance = GetGameInstance())
 	{
-		if (UDualFireMissionResultSubsystem* ResultSubsystem =
-			GameInstance->GetSubsystem<UDualFireMissionResultSubsystem>())
+		if (UDualFireMissionFlowSubsystem* Flow =
+			GameInstance->GetSubsystem<UDualFireMissionFlowSubsystem>())
 		{
-			ResultSubsystem->StoreResult(MissionResultData);
+			Flow->StoreResult(MissionResultData);
 		}
 	}
 
@@ -294,17 +317,29 @@ void ADualFireGameModeBase::EndMission(EMissionResult Result)
     OnMissionEnded.Broadcast(Result);
 }
 
-void ADualFireGameModeBase::BuildMissionResultData(EMissionResult Result)
+void ADualFireGameModeBase::BuildMissionResultData(
+	const EMissionResult Result,
+	const EDualFireMissionFailureReason FailureReason)
 {
 	MissionResultData = FDualFireMissionResultData();
 	MissionResultData.Result = Result;
-	MissionResultData.MissionCode = MissionCode;
-	MissionResultData.MissionName = MissionDisplayName;
-	MissionResultData.Difficulty = DifficultyDisplayName;
+	MissionResultData.FailureReason = FailureReason;
+
+	if (UGameInstance* GI = GetGameInstance())
+	{
+		if (const UDualFireMissionFlowSubsystem* Flow = GI->GetSubsystem<UDualFireMissionFlowSubsystem>();
+			IsValid(Flow) && Flow->HasLaunchContext())
+		{
+			const FMissionLaunchContext Launch = Flow->GetLaunchContext();
+			MissionResultData.MissionCode = Launch.Preparation.MissionRow.MissionCode;
+			MissionResultData.MissionName = Launch.Preparation.MissionRow.DisplayName;
+			MissionResultData.Difficulty = FText::FromName(Launch.Preparation.DifficultyID);
+			MissionResultData.StageID = Launch.Preparation.StageID;
+		}
+	}
 
 	if (IsValid(ActiveStageController))
 	{
-		MissionResultData.StageID = ActiveStageController->StageID;
 		MissionResultData.ElapsedTime = ActiveStageController->GetElapsedTime();
 	}
 

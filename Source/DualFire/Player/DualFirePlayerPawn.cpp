@@ -314,7 +314,7 @@ void ADualFirePlayerPawn::OnPlayerFinalDeath()
     if (ADualFireGameModeBase* GameMode =
         Cast<ADualFireGameModeBase>(UGameplayStatics::GetGameMode(this)))
     {
-        GameMode->OnMissionFail();
+        GameMode->OnMissionFail(EDualFireMissionFailureReason::PlayerDestroyed);
     }
 }
 

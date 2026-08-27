@@ -87,12 +87,9 @@ public:
 
     // ── 미션 종료 ───────────────────────────────────────────────────────────────
 
-    /**
-     * 미션 실패 처리. 잔여 기체 소진 사망(§5.3.7) 또는 엘리트 제한 시간 초과(§5.5.4) 시 호출.
-     * 검증 리포트 로그 출력 + 입력 잠금. 이미 종료된 경우 무시.
-     */
+    /** 미션 실패 처리. 플레이어 격추와 스테이지 조건 실패를 결과 데이터에 구분해 기록한다. */
     UFUNCTION(BlueprintCallable, Category="Mission")
-    void OnMissionFail();
+    void OnMissionFail(EDualFireMissionFailureReason FailureReason);
 
     /**
      * 미션 클리어 처리. 엘리트 격파(§5.5.4) 시 호출.
@@ -107,15 +104,6 @@ public:
 
 	UFUNCTION(BlueprintPure, Category="Mission")
 	const FDualFireMissionResultData& GetMissionResultData() const { return MissionResultData; }
-
-	UPROPERTY(EditDefaultsOnly, BlueprintReadOnly, Category="Mission|Result")
-	FText MissionCode = FText::FromString(TEXT("MISSION 01"));
-
-	UPROPERTY(EditDefaultsOnly, BlueprintReadOnly, Category="Mission|Result")
-	FText MissionDisplayName = FText::FromString(TEXT("CHARGE ASSAULT"));
-
-	UPROPERTY(EditDefaultsOnly, BlueprintReadOnly, Category="Mission|Result")
-	FText DifficultyDisplayName = FText::FromString(TEXT("NORMAL"));
 
     /** 미션 종료 시 발생. HUD 결과 화면·연출 구독용 */
     UPROPERTY(BlueprintAssignable, Category="Mission")
@@ -137,6 +125,6 @@ private:
 	FDualFireMissionResultData MissionResultData;
 
     /** 미션 종료 공통 처리 — 결과 확정, 입력 잠금, 리포트 출력, 델리게이트 */
-    void EndMission(EMissionResult Result);
-	void BuildMissionResultData(EMissionResult Result);
+    void EndMission(EMissionResult Result, EDualFireMissionFailureReason FailureReason);
+	void BuildMissionResultData(EMissionResult Result, EDualFireMissionFailureReason FailureReason);
 };
