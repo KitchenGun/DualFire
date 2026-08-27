@@ -1,0 +1,298 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>클리어 평가 배치 비교 — 목업 v0.1</title>
+<style>
+  :root{
+    --bg:#0b0e14; --panel:#11161f; --panel2:#151c27; --line:#1f2836;
+    --hud:#8fe388; --hud-dim:#4a7a52; --amber:#e8b44a;
+    --txt:#cdd6e4; --txt-dim:#5d6b80;
+    --air:#5ab8d4; --gnd:#d49a5a;
+    --rS:#e8b44a; --rA:#8fe388; --rB:#5ab8d4; --rC:#cdd6e4; --rD:#e06c5a;
+  }
+  *{margin:0;padding:0;box-sizing:border-box}
+  body{background:var(--bg);color:var(--txt);font-family:ui-monospace,'Cascadia Mono','D2Coding',Consolas,monospace;padding:28px 20px 60px}
+  .wrap{max-width:1100px;margin:0 auto}
+  header{display:flex;align-items:baseline;gap:14px;border-bottom:1px solid var(--line);padding-bottom:14px;margin-bottom:16px;flex-wrap:wrap}
+  header h1{font-size:15px;letter-spacing:.22em;color:var(--hud);font-weight:600}
+  header .doc{font-size:11px;color:var(--txt-dim)}
+  .controls{display:flex;flex-wrap:wrap;gap:10px;align-items:center;margin-bottom:14px}
+  .opt-btn{appearance:none;background:var(--panel);border:1px solid var(--line);color:var(--txt-dim);font:inherit;font-size:12px;letter-spacing:.1em;padding:8px 14px;cursor:pointer}
+  .opt-btn:hover{border-color:var(--hud-dim);color:var(--txt)}
+  .opt-btn:focus-visible{outline:2px solid var(--hud);outline-offset:2px}
+  .opt-btn.on{background:#152218;border-color:var(--hud);color:var(--hud)}
+  .fx-toggle{display:flex;align-items:center;gap:8px;font-size:12px;color:var(--txt-dim);cursor:pointer}
+  .fx-toggle input{accent-color:var(--hud);width:15px;height:15px;cursor:pointer}
+  .replay-anim{margin-left:auto}
+
+  .screen{position:relative;aspect-ratio:16/9;background:#0d1119;border:1px solid var(--line);overflow:hidden;font-size:10px}
+  .layout{position:absolute;inset:0;display:none}
+  .screen.optA .layout.A{display:block}
+  .screen.optB .layout.B{display:block}
+  .screen.optC .layout.C{display:block}
+
+  .clearbanner{position:absolute;top:0;left:0;right:0;height:11%;display:flex;align-items:center;gap:16px;padding:0 18px;background:rgba(9,12,18,.92);border-bottom:1px solid var(--line);z-index:2}
+  .clearbanner .mc{font-size:14px;letter-spacing:.2em;color:#e6eef9}
+  .clearbanner .cl{color:var(--hud);font-size:12px;letter-spacing:.3em;border:1px solid var(--hud);padding:3px 10px}
+  .clearbanner .rw{margin-left:auto;color:var(--amber);font-size:11px}
+
+  .botbar{position:absolute;bottom:0;left:0;right:0;height:9%;background:rgba(9,12,18,.92);border-top:1px solid var(--line);display:flex;align-items:center;gap:16px;padding:0 16px;z-index:6;font-size:9px;color:var(--txt-dim)}
+  .botbar .k{border:1px solid var(--line);padding:2px 6px;color:var(--txt);margin-right:4px}
+  .botbar .act{margin-left:auto;display:flex;gap:10px}
+  .botbar .btn{border:1px solid var(--line);color:var(--txt);padding:7px 16px;font-size:10px;letter-spacing:.14em}
+  .botbar .btn.primary{background:#152218;border-color:var(--hud);color:var(--hud);font-size:11px;padding:7px 22px}
+
+  /* 평가 항목 행 */
+  .ev{display:flex;align-items:center;gap:10px;background:var(--panel);border:1px solid var(--line);padding:8px 12px}
+  .ev .nm{width:88px;color:var(--txt-dim);font-size:9px;letter-spacing:.08em}
+  .ev .nm.air{color:var(--air)}
+  .ev .nm.gnd{color:var(--gnd)}
+  .ev .val{flex:1;color:#e6eef9;font-size:11px}
+  .ev .rk{width:26px;height:26px;display:flex;align-items:center;justify-content:center;font-size:14px;font-weight:600;border:1.5px solid}
+  .rk.S{color:var(--rS);border-color:var(--rS)}
+  .rk.A{color:var(--rA);border-color:var(--rA)}
+  .rk.B{color:var(--rB);border-color:var(--rB)}
+  .rk.C{color:var(--rC);border-color:var(--rC)}
+  .rk.D{color:var(--rD);border-color:var(--rD)}
+
+  /* 종합 랭크 */
+  .total{display:flex;flex-direction:column;align-items:center;justify-content:center;gap:6px}
+  .total .tl{font-size:9px;letter-spacing:.3em;color:var(--txt-dim)}
+  .total .trk{width:84px;height:84px;display:flex;align-items:center;justify-content:center;font-size:52px;font-weight:700;border:3px solid var(--rA);color:var(--rA)}
+  .total .nb{font-size:9px;color:var(--amber);letter-spacing:.2em}
+
+  /* 알림 */
+  .noti{background:var(--panel2);border:1px solid var(--line);border-left:3px solid var(--hud-dim);padding:7px 10px}
+  .noti .nt{font-size:8px;letter-spacing:.2em;color:var(--txt-dim)}
+  .noti .nn{color:#e6eef9;margin-top:2px}
+  .noti.branch{border-left-color:var(--amber)}
+  .noti.ach{border-left-color:var(--hud)}
+  .noti.syn{border-left-color:var(--air)}
+  .noti.diff{border-left-color:var(--rD)}
+  .noti.multi{display:none}
+  .screen.multi-on .noti.multi{display:block}
+
+  /* 순차 연출 (도장 등장) */
+  .stamp{opacity:1}
+  .screen.anim-play .stamp{opacity:0;animation:stampIn .4s ease-out forwards}
+  @keyframes stampIn{from{opacity:0;transform:scale(1.6)}to{opacity:1;transform:scale(1)}}
+  .screen.anim-play .d1{animation-delay:.15s}
+  .screen.anim-play .d2{animation-delay:.45s}
+  .screen.anim-play .d3{animation-delay:.75s}
+  .screen.anim-play .d4{animation-delay:1.05s}
+  .screen.anim-play .d5{animation-delay:1.35s}
+  .screen.anim-play .d6{animation-delay:1.9s}
+  @media (prefers-reduced-motion:reduce){.screen.anim-play .stamp{animation:none;opacity:1}}
+
+  /* ── A안: 순차 카드형 ── */
+  .A .evwrap{position:absolute;left:6%;top:16%;width:44%;display:flex;flex-direction:column;gap:7px}
+  .A .totalwrap{position:absolute;right:10%;top:18%}
+  .A .dim{position:absolute;inset:0;background:rgba(5,7,11,.55);z-index:3;display:none}
+  .screen.multi-on .A .dim{display:block}
+  .A .card{position:absolute;left:30%;right:30%;top:34%;background:var(--panel);border:1px solid var(--hud);padding:18px;z-index:4;display:none;flex-direction:column;gap:8px;align-items:center}
+  .screen.multi-on .A .card{display:flex}
+  .A .card .ct{font-size:9px;letter-spacing:.26em;color:var(--amber)}
+  .A .card .cn{font-size:13px;color:#e6eef9}
+  .A .card .cd{font-size:9px;color:var(--txt-dim)}
+  .A .card .pg{font-size:9px;color:var(--txt-dim);margin-top:6px}
+  .A .card .nx{border:1px solid var(--line);padding:4px 14px;color:var(--txt);font-size:9px;margin-top:4px}
+  .A .single-noti{position:absolute;left:6%;bottom:13%;width:44%}
+  .screen.multi-on .A .single-noti{display:none}
+
+  /* ── B안: 정산 대시보드형 ── */
+  .B .evwrap{position:absolute;left:4%;top:16%;width:40%;display:flex;flex-direction:column;gap:7px}
+  .B .totalwrap{position:absolute;left:48%;top:18%}
+  .B .notiwrap{position:absolute;right:4%;top:16%;width:30%;display:flex;flex-direction:column;gap:6px}
+  .B .notihead{font-size:8px;letter-spacing:.24em;color:var(--txt-dim)}
+
+  /* ── C안: 연출+스택형 ── */
+  .C .evwrap{position:absolute;left:4%;top:16%;width:40%;display:flex;flex-direction:column;gap:7px}
+  .C .totalwrap{position:absolute;left:48%;top:18%}
+  .C .notiwrap{position:absolute;right:4%;top:16%;width:30%;display:flex;flex-direction:column;gap:6px}
+  .C .notihead{font-size:8px;letter-spacing:.24em;color:var(--txt-dim)}
+  .C .skiphint{position:absolute;left:4%;bottom:13%;font-size:9px;color:var(--txt-dim)}
+  .screen.anim-play .C .noti{opacity:0;animation:stampIn .35s ease-out forwards;animation-delay:2.1s}
+  @media (prefers-reduced-motion:reduce){.screen.anim-play .C .noti{animation:none;opacity:1}}
+
+  .notes{margin-top:22px;display:grid;grid-template-columns:1fr 1fr;gap:12px}
+  .note{background:var(--panel);border:1px solid var(--line);padding:14px 16px;font-size:12px;line-height:1.75}
+  .note h3{font-size:11px;letter-spacing:.18em;color:var(--hud);margin-bottom:8px;font-weight:600}
+  .note.warn h3{color:var(--amber)}
+  .note ul{list-style:none}
+  .note li{padding-left:14px;position:relative}
+  .note li::before{content:"▸";position:absolute;left:0;color:var(--hud-dim)}
+  .note li b{color:#e6eef9;font-weight:600}
+  [data-note]{display:none}
+  @media (max-width:760px){.notes{grid-template-columns:1fr}}
+</style>
+</head>
+<body>
+<div class="wrap">
+  <header>
+    <h1>클리어 평가 배치 비교</h1>
+    <span class="doc">UI 기획 4호 목업 v0.1 · 미션 1-3 클리어 · 랭크 색상은 가정값</span>
+  </header>
+
+  <div class="controls">
+    <button class="opt-btn on" data-opt="A">A안 — 순차 카드형</button>
+    <button class="opt-btn" data-opt="B">B안 — 정산 대시보드형</button>
+    <button class="opt-btn" data-opt="C">C안 — 연출 + 스택형</button>
+    <label class="fx-toggle"><input type="checkbox" id="multi"> 다중 알림 시뮬레이션 (4건 동시 발생)</label>
+    <button class="opt-btn replay-anim" id="replayAnim">연출 다시 재생</button>
+  </div>
+
+  <div class="screen optA" id="screen">
+    <div class="clearbanner">
+      <span class="mc">MISSION 1-3 — 협곡 돌파</span>
+      <span class="cl">CLEAR</span>
+      <span class="rw">보수 +2,400</span>
+    </div>
+    <div class="botbar">
+      <span><span class="k">TAB</span>기록 비교</span>
+      <div class="act">
+        <span class="btn">미션 선택으로</span>
+        <span class="btn primary">리플레이</span>
+      </div>
+    </div>
+
+    <!-- ── A안 ── -->
+    <div class="layout A">
+      <div class="evwrap">
+        <div class="ev stamp d1"><span class="nm air">공중 격파율</span><span class="val">96%</span><span class="rk S">S</span></div>
+        <div class="ev stamp d2"><span class="nm gnd">지상 격파율</span><span class="val">71%</span><span class="rk B">B</span></div>
+        <div class="ev stamp d3"><span class="nm">피탄</span><span class="val">3회</span><span class="rk B">B</span></div>
+        <div class="ev stamp d4"><span class="nm">스코어</span><span class="val">284,610</span><span class="rk A">A</span></div>
+        <div class="ev stamp d5"><span class="nm">사망</span><span class="val">0회</span><span class="rk S">S</span></div>
+      </div>
+      <div class="totalwrap total stamp d6">
+        <span class="tl">TOTAL</span>
+        <span class="trk">A</span>
+        <span class="nb">NEW BEST</span>
+      </div>
+      <div class="single-noti noti diff"><div class="nt">난이도 해금</div><div class="nn">미션 1-3 — HARD 해금</div></div>
+      <!-- 다중 발생 시: 모달 카드 순차 -->
+      <div class="dim"></div>
+      <div class="card">
+        <span class="ct">분기 미션 해금</span>
+        <span class="cn">긴급 요격 임무</span>
+        <span class="cd">특정 조건 달성으로 새로운 임무가 열렸습니다</span>
+        <span class="pg">1 / 4</span>
+        <span class="nx">확인 ▶</span>
+      </div>
+    </div>
+
+    <!-- ── B안 ── -->
+    <div class="layout B">
+      <div class="evwrap">
+        <div class="ev"><span class="nm air">공중 격파율</span><span class="val">96%</span><span class="rk S">S</span></div>
+        <div class="ev"><span class="nm gnd">지상 격파율</span><span class="val">71%</span><span class="rk B">B</span></div>
+        <div class="ev"><span class="nm">피탄</span><span class="val">3회</span><span class="rk B">B</span></div>
+        <div class="ev"><span class="nm">스코어</span><span class="val">284,610</span><span class="rk A">A</span></div>
+        <div class="ev"><span class="nm">사망</span><span class="val">0회</span><span class="rk S">S</span></div>
+      </div>
+      <div class="totalwrap total">
+        <span class="tl">TOTAL</span>
+        <span class="trk">A</span>
+        <span class="nb">NEW BEST</span>
+      </div>
+      <div class="notiwrap">
+        <span class="notihead">UNLOCKS / REWARDS</span>
+        <div class="noti diff"><div class="nt">난이도 해금</div><div class="nn">미션 1-3 — HARD 해금</div></div>
+        <div class="noti multi branch"><div class="nt">분기 미션 해금</div><div class="nn">긴급 요격 임무</div></div>
+        <div class="noti multi ach"><div class="nt">도전과제 1단계</div><div class="nn">정밀 폭격수 — 보상 +1,500</div></div>
+        <div class="noti multi syn"><div class="nt">신규 시너지 발견</div><div class="nn">강습 지원 체계</div></div>
+      </div>
+    </div>
+
+    <!-- ── C안 ── -->
+    <div class="layout C">
+      <div class="evwrap">
+        <div class="ev stamp d1"><span class="nm air">공중 격파율</span><span class="val">96%</span><span class="rk S">S</span></div>
+        <div class="ev stamp d2"><span class="nm gnd">지상 격파율</span><span class="val">71%</span><span class="rk B">B</span></div>
+        <div class="ev stamp d3"><span class="nm">피탄</span><span class="val">3회</span><span class="rk B">B</span></div>
+        <div class="ev stamp d4"><span class="nm">스코어</span><span class="val">284,610</span><span class="rk A">A</span></div>
+        <div class="ev stamp d5"><span class="nm">사망</span><span class="val">0회</span><span class="rk S">S</span></div>
+      </div>
+      <div class="totalwrap total stamp d6">
+        <span class="tl">TOTAL</span>
+        <span class="trk">A</span>
+        <span class="nb">NEW BEST</span>
+      </div>
+      <div class="notiwrap">
+        <span class="notihead">UNLOCKS / REWARDS</span>
+        <div class="noti diff"><div class="nt">난이도 해금</div><div class="nn">미션 1-3 — HARD 해금</div></div>
+        <div class="noti multi branch"><div class="nt">분기 미션 해금</div><div class="nn">긴급 요격 임무</div></div>
+        <div class="noti multi ach"><div class="nt">도전과제 1단계</div><div class="nn">정밀 폭격수 — 보상 +1,500</div></div>
+        <div class="noti multi syn"><div class="nt">신규 시너지 발견</div><div class="nn">강습 지원 체계</div></div>
+      </div>
+      <div class="skiphint">아무 키 — 연출 스킵 (즉시 전체 표시)</div>
+    </div>
+  </div>
+
+  <div class="notes">
+    <div class="note" data-note="A">
+      <h3>A안 — 순차 카드형 (콘솔 클래식)</h3>
+      <ul>
+        <li>알림이 모달 카드로 하나씩 등장 — 개별 알림의 <b>주목도 최고</b></li>
+        <li><b>다중 발생 시 조작 피로.</b> 시뮬레이션을 켜면 4건을 전부 확인으로 넘겨야 평가로 돌아옴 — 리플레이 루프 속도 원칙과 충돌</li>
+        <li>카드가 평가 결과를 가림 (딤 처리) — 격파율 확인과 알림 확인이 순차로 강제됨</li>
+      </ul>
+    </div>
+    <div class="note" data-note="B">
+      <h3>B안 — 정산 대시보드형</h3>
+      <ul>
+        <li><b>조작 0회.</b> 평가+알림+행동이 동시 표시 — 리플레이 루프 최속</li>
+        <li>다중 알림도 우측 스택에 그냥 쌓임 — 개수와 무관하게 화면 1장</li>
+        <li>연출 없음 — 클리어의 보상감·랭크 확인의 긴장감이 약함</li>
+        <li>알림 개별 주목도 낮음 — 중요 알림(분기 해금)이 묻힐 수 있음</li>
+      </ul>
+    </div>
+    <div class="note" data-note="C">
+      <h3>C안 — 연출 + 스택형</h3>
+      <ul>
+        <li>평가 항목이 순차 도장 연출로 등장 → 종합 랭크 → 알림 스택 등장 (연출 다시 재생 버튼으로 확인)</li>
+        <li><b>아무 키로 연출 스킵 → 즉시 전체 표시</b> — 첫 클리어의 긴장감과 반복 플레이의 속도를 양립</li>
+        <li>알림은 B안처럼 스택 — 다중 발생에도 조작 불필요</li>
+        <li>연출 총 길이가 루프 속도의 상한 — 짧게 유지 필요 [검증]</li>
+      </ul>
+    </div>
+    <div class="note warn">
+      <h3>이 목업으로 확인할 것</h3>
+      <ul>
+        <li><b>다중 알림 시뮬레이션을 켜고 A안과 B/C안의 조작량 차이</b>를 비교 — 이 화면 설계의 핵심 결정</li>
+        <li>공중/지상 격파율의 <b>속성 색상 분리 표시</b> — "지상이 B네, 대지 무장 보강해서 리플레이" 판단이 이 화면에서 일어남 (코어 루프의 귀결점)</li>
+        <li>리플레이 버튼이 최우선 위치(우하단 강조)인지 — 루프 속도 원칙</li>
+        <li>기록 비교(TAB): 이전 최고 기록과의 비교 표시는 상세 뷰로 분리 [제안]</li>
+        <li>랭크 색상(S금/A녹/B청/C회/D적)은 가정값 — 아트 확정 시 조정</li>
+      </ul>
+    </div>
+  </div>
+</div>
+
+<script>
+  const screen=document.getElementById('screen');
+  const btns=document.querySelectorAll('.opt-btn[data-opt]');
+  const notes=document.querySelectorAll('[data-note]');
+  function setOpt(o){
+    screen.classList.remove('optA','optB','optC');
+    screen.classList.add('opt'+o);
+    btns.forEach(b=>b.classList.toggle('on',b.dataset.opt===o));
+    notes.forEach(n=>{n.style.display=(n.dataset.note===o)?'block':'none';});
+    playAnim();
+  }
+  function playAnim(){
+    screen.classList.remove('anim-play');
+    void screen.offsetWidth;
+    screen.classList.add('anim-play');
+  }
+  btns.forEach(b=>b.addEventListener('click',()=>setOpt(b.dataset.opt)));
+  document.getElementById('multi').addEventListener('change',e=>{
+    screen.classList.toggle('multi-on',e.target.checked);
+  });
+  document.getElementById('replayAnim').addEventListener('click',playAnim);
+  setOpt('A');
+</script>
+</body>
+</html>

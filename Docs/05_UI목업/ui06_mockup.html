@@ -1,0 +1,303 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>브리핑·세이브·타이틀·옵션 — 목업 v0.1</title>
+<style>
+  :root{
+    --bg:#0b0e14; --panel:#11161f; --panel2:#151c27; --line:#1f2836;
+    --hud:#8fe388; --hud-dim:#4a7a52; --amber:#e8b44a;
+    --txt:#cdd6e4; --txt-dim:#5d6b80;
+    --air:#5ab8d4; --gnd:#d49a5a; --lock:#3a4356; --rS:#e8b44a; --rA:#8fe388;
+  }
+  *{margin:0;padding:0;box-sizing:border-box}
+  body{background:var(--bg);color:var(--txt);font-family:ui-monospace,'Cascadia Mono','D2Coding',Consolas,monospace;padding:28px 20px 60px}
+  .wrap{max-width:1100px;margin:0 auto}
+  header{display:flex;align-items:baseline;gap:14px;border-bottom:1px solid var(--line);padding-bottom:14px;margin-bottom:16px;flex-wrap:wrap}
+  header h1{font-size:15px;letter-spacing:.22em;color:var(--hud);font-weight:600}
+  header .doc{font-size:11px;color:var(--txt-dim)}
+  .controls{display:flex;flex-wrap:wrap;gap:10px;align-items:center;margin-bottom:14px}
+  .opt-btn{appearance:none;background:var(--panel);border:1px solid var(--line);color:var(--txt-dim);font:inherit;font-size:12px;letter-spacing:.1em;padding:8px 14px;cursor:pointer}
+  .opt-btn:hover{border-color:var(--hud-dim);color:var(--txt)}
+  .opt-btn:focus-visible{outline:2px solid var(--hud);outline-offset:2px}
+  .opt-btn.on{background:#152218;border-color:var(--hud);color:var(--hud)}
+  .fx-toggle{display:flex;align-items:center;gap:7px;font-size:12px;color:var(--txt-dim);cursor:pointer}
+  .fx-toggle input{accent-color:var(--hud);width:15px;height:15px;cursor:pointer}
+  .subctl{margin-left:auto;display:flex;gap:16px}
+
+  .screen{position:relative;aspect-ratio:16/9;background:#0d1119;border:1px solid var(--line);overflow:hidden;font-size:10px}
+  .scr{position:absolute;inset:0;display:none}
+  .screen.sBR .scr.BR{display:block}
+  .screen.sSV .scr.SV{display:block}
+  .screen.sTI .scr.TI{display:block}
+  .screen.sOP .scr.OP{display:block}
+
+  .botbar{position:absolute;bottom:0;left:0;right:0;height:9%;background:rgba(9,12,18,.92);border-top:1px solid var(--line);display:flex;align-items:center;gap:14px;padding:0 16px;z-index:5;font-size:9px;color:var(--txt-dim)}
+  .botbar .k{border:1px solid var(--line);padding:2px 6px;color:var(--txt);margin-right:3px}
+  .botbar .go{margin-left:auto;background:#152218;border:1px solid var(--hud);color:var(--hud);padding:7px 20px;font-size:11px;letter-spacing:.18em}
+  .tag{display:inline-block;border:1px solid var(--gnd);color:var(--gnd);padding:1px 7px;font-size:8px;letter-spacing:.14em}
+
+  /* ── 브리핑 ── */
+  .BR .head{position:absolute;top:0;left:0;right:0;height:9%;display:flex;align-items:center;gap:14px;padding:0 18px;background:rgba(9,12,18,.92);border-bottom:1px solid var(--line)}
+  .BR .head .mt{font-size:13px;letter-spacing:.16em;color:#e6eef9}
+  .BR .head .df{margin-left:auto;font-size:10px;color:var(--hud);letter-spacing:.2em}
+  .BR .body{position:absolute;left:4%;top:14%;width:56%;display:flex;flex-direction:column;gap:12px}
+  .BR .bh{font-size:8px;letter-spacing:.24em;color:var(--txt-dim)}
+  .BR .btxt{background:var(--panel);border:1px solid var(--line);padding:13px 15px;font-size:11px;line-height:2;color:var(--txt)}
+  .BR .btxt .vary{display:none;color:var(--amber)}
+  .screen.branch-on .BR .btxt .base{display:none}
+  .screen.branch-on .BR .btxt .vary{display:inline}
+  .BR .hint{background:var(--panel);border:1px solid var(--line);padding:11px 15px;font-size:10px;line-height:1.9}
+  .BR .hint .hv b{color:var(--gnd);font-weight:600}
+  .BR .hint .hv i{color:var(--air);font-style:normal}
+  .BR .hint .hlock{display:none;color:var(--txt-dim)}
+  .screen.hard-on .BR .hint .hv{display:none}
+  .screen.hard-on .BR .hint .hlock{display:block}
+  .BR .side{position:absolute;right:4%;top:14%;width:32%;display:flex;flex-direction:column;gap:10px}
+  .BR .mapthumb{aspect-ratio:4/3;background:
+      radial-gradient(140px 90px at 30% 40%, rgba(90,140,110,.15), transparent 70%),
+      repeating-linear-gradient(0deg,transparent 0 24px,rgba(143,227,136,.05) 24px 25px),
+      #10161f;border:1px solid var(--line);position:relative}
+  .BR .mapthumb .px{position:absolute;width:10px;height:10px;border:1.5px solid var(--hud);border-radius:50%;left:56%;top:44%}
+  .BR .mapthumb .cap{position:absolute;bottom:6px;left:0;right:0;text-align:center;font-size:8px;color:var(--txt-dim)}
+  .BR .obj{background:var(--panel);border:1px solid var(--line);padding:11px 14px;font-size:10px;line-height:1.9}
+
+  /* ── 세이브 슬롯 ── */
+  .SV .head{position:absolute;top:0;left:0;right:0;height:9%;display:flex;align-items:center;padding:0 18px;background:rgba(9,12,18,.92);border-bottom:1px solid var(--line);font-size:12px;letter-spacing:.24em;color:#e6eef9}
+  .SV .slots{position:absolute;left:14%;right:14%;top:14%;display:flex;flex-direction:column;gap:8px}
+  .sl{display:flex;align-items:center;gap:14px;background:var(--panel);border:1px solid var(--line);padding:11px 15px}
+  .sl.cur{border-color:var(--hud);background:#131d15}
+  .sl .no{width:56px;color:var(--txt-dim);font-size:9px;letter-spacing:.16em}
+  .sl .info{flex:1;font-size:10px;color:#e6eef9;line-height:1.7}
+  .sl .info small{display:block;color:var(--txt-dim);font-size:9px}
+  .sl .del{border:1px solid var(--line);color:var(--txt-dim);padding:4px 10px;font-size:9px}
+  .sl.empty{border-style:dashed;opacity:.9}
+  .sl.empty .info{color:var(--txt-dim)}
+  .sl .grant{color:var(--amber);font-size:9px}
+
+  /* ── 타이틀 ── */
+  .TI .logo{position:absolute;left:0;right:0;top:22%;text-align:center}
+  .TI .logo .t1{font-size:30px;letter-spacing:.4em;color:#e6eef9}
+  .TI .logo .t2{font-size:10px;letter-spacing:.5em;color:var(--hud-dim);margin-top:8px}
+  .TI .menu{position:absolute;left:0;right:0;top:52%;display:flex;flex-direction:column;align-items:center;gap:9px}
+  .TI .mi{width:240px;text-align:center;border:1px solid var(--line);background:var(--panel);padding:9px 0;font-size:11px;letter-spacing:.2em;color:var(--txt-dim)}
+  .TI .mi.on{border-color:var(--hud);color:var(--hud);background:#131d15}
+  .TI .mi small{display:block;font-size:8px;letter-spacing:.1em;color:var(--txt-dim);margin-top:3px}
+  .TI .ver{position:absolute;right:14px;bottom:12px;font-size:8px;color:#2a3547}
+
+  /* ── 옵션 ── */
+  .OP .head{position:absolute;top:0;left:0;right:0;height:9%;display:flex;align-items:center;gap:20px;padding:0 18px;background:rgba(9,12,18,.92);border-bottom:1px solid var(--line)}
+  .OP .head .tt{font-size:12px;letter-spacing:.24em;color:#e6eef9}
+  .OP .tabs{display:flex;gap:8px;margin-left:auto}
+  .OP .tab{border:1px solid var(--line);padding:4px 12px;font-size:9px;color:var(--txt-dim);letter-spacing:.14em}
+  .OP .tab.on{border-color:var(--hud);color:var(--hud)}
+  .OP .rows{position:absolute;left:16%;right:16%;top:16%;display:flex;flex-direction:column;gap:7px}
+  .orow{display:flex;align-items:center;background:var(--panel);border:1px solid var(--line);padding:9px 14px;font-size:10px}
+  .orow .on1{flex:1;color:var(--txt)}
+  .orow .ov{color:#e6eef9}
+  .orow .keyc{border:1px solid var(--txt-dim);padding:1px 8px;color:var(--txt);font-size:9px;margin-left:8px}
+  .orow.focus{border-color:var(--hud)}
+  .orow .sw{width:110px;height:6px;background:#1d2b22;position:relative;margin-left:12px}
+  .orow .sw i{position:absolute;left:0;top:0;bottom:0;width:70%;background:var(--hud)}
+
+  .notes{margin-top:22px;display:grid;grid-template-columns:1fr 1fr;gap:12px}
+  .note{background:var(--panel);border:1px solid var(--line);padding:14px 16px;font-size:12px;line-height:1.75}
+  .note h3{font-size:11px;letter-spacing:.18em;color:var(--hud);margin-bottom:8px;font-weight:600}
+  .note.warn h3{color:var(--amber)}
+  .note ul{list-style:none}
+  .note li{padding-left:14px;position:relative}
+  .note li::before{content:"▸";position:absolute;left:0;color:var(--hud-dim)}
+  .note li b{color:#e6eef9;font-weight:600}
+  [data-note]{display:none}
+  @media (max-width:760px){.notes{grid-template-columns:1fr}}
+</style>
+</head>
+<body>
+<div class="wrap">
+  <header>
+    <h1>브리핑 · 세이브 · 타이틀 · 옵션</h1>
+    <span class="doc">UI 기획 6호 목업 v0.1 · 단일 배치 제안 확인용 (A/B 비교 없음) + 상태 토글</span>
+  </header>
+
+  <div class="controls">
+    <button class="opt-btn on" data-s="BR">브리핑</button>
+    <button class="opt-btn" data-s="SV">세이브 슬롯</button>
+    <button class="opt-btn" data-s="TI">타이틀</button>
+    <button class="opt-btn" data-s="OP">옵션 (조작 탭)</button>
+    <span class="subctl" id="brToggles">
+      <label class="fx-toggle"><input type="checkbox" id="branch"> 분기 충족 상태 (메시지 변형)</label>
+      <label class="fx-toggle"><input type="checkbox" id="hard"> HARD 난이도 (힌트 숨김)</label>
+    </span>
+  </div>
+
+  <div class="screen sBR" id="screen">
+
+    <!-- ── 브리핑 ── -->
+    <div class="scr BR">
+      <div class="head">
+        <span class="mt">MISSION 05 — 해상 봉쇄선 돌파</span>
+        <span class="tag" style="color:var(--air);border-color:var(--air)">해상전</span>
+        <span class="df">NORMAL</span>
+      </div>
+      <div class="body">
+        <span class="bh">BRIEFING</span>
+        <div class="btxt">
+          <span class="base">적 봉쇄 함대가 남부 수송로를 차단하고 있다. 봉쇄선을 돌파하여 아군 수송 선단의 항로를 확보하라. 함대 방공망이 두터우니 대공 화기에 주의할 것.</span>
+          <span class="vary">긴급 요격 임무의 성공으로 적 항공 전력이 크게 약화되었다. 방공망이 얇아진 지금이 봉쇄선을 돌파할 기회다. 아군 수송 선단의 항로를 확보하라.</span>
+        </div>
+        <span class="bh">INTEL — 적 구성</span>
+        <div class="hint">
+          <div class="hv">주력: <i>공중 편대 다수</i> · 보조: <b>해상 함선 (지상 판정)</b><br>대공 화기 밀도 높음 — 대공/범용 무장 권장</div>
+          <div class="hlock">이 난이도에서는 사전 정보가 제공되지 않는다. 직접 정찰하라.</div>
+        </div>
+      </div>
+      <div class="side">
+        <span class="bh">AREA</span>
+        <div class="mapthumb"><span class="px"></span><span class="cap">캠페인 맵 발췌 — 작전 해역</span></div>
+        <span class="bh">OBJECTIVE</span>
+        <div class="obj">봉쇄 함대 기함 격파<br>수송로 확보 (스테이지 클리어)</div>
+      </div>
+      <div class="botbar">
+        <span><span class="k">B</span>캠페인 맵</span>
+        <span><span class="k">SPACE</span>스킵</span>
+        <span class="go">로드아웃 ▶</span>
+      </div>
+    </div>
+
+    <!-- ── 세이브 슬롯 ── -->
+    <div class="scr SV">
+      <div class="head">SAVE DATA</div>
+      <div class="slots">
+        <div class="sl cur">
+          <span class="no">SLOT 1</span>
+          <div class="info">캠페인 진행 5/10 · NORMAL<small>플레이 6:42 · 마지막 플레이 2026.08.05</small></div>
+          <span class="del">삭제</span>
+        </div>
+        <div class="sl">
+          <span class="no">SLOT 2</span>
+          <div class="info">캠페인 진행 10/10 · HARD 진행 중<small>플레이 21:18 · 마지막 플레이 2026.07.28</small></div>
+          <span class="del">삭제</span>
+        </div>
+        <div class="sl empty">
+          <span class="no">SLOT 3</span>
+          <div class="info">새 게임 시작<small class="grant">도전과제 누적 보상 지급: CR 4,500 · 해금 장비 12종 사용 가능</small></div>
+        </div>
+        <div class="sl empty"><span class="no">SLOT 4</span><div class="info">빈 슬롯</div></div>
+        <div class="sl empty"><span class="no">SLOT 5</span><div class="info">빈 슬롯</div></div>
+      </div>
+      <div class="botbar">
+        <span><span class="k">B</span>타이틀로</span>
+        <span><span class="k">X</span>삭제 (확인 1회)</span>
+        <span class="go">시작 ▶</span>
+      </div>
+    </div>
+
+    <!-- ── 타이틀 ── -->
+    <div class="scr TI">
+      <div class="logo">
+        <div class="t1">PROJECT&nbsp;SKYFRAME</div>
+        <div class="t2">— 가제 · 로고 영역 —</div>
+      </div>
+      <div class="menu">
+        <div class="mi on">계속하기<small>SLOT 1 · 미션 5 · 6:42</small></div>
+        <div class="mi">세이브 선택</div>
+        <div class="mi">옵션</div>
+        <div class="mi">종료</div>
+      </div>
+      <span class="ver">build 0.0.0 — prototype</span>
+    </div>
+
+    <!-- ── 옵션 (조작 탭) ── -->
+    <div class="scr OP">
+      <div class="head">
+        <span class="tt">OPTIONS</span>
+        <div class="tabs">
+          <span class="tab">게임플레이</span>
+          <span class="tab">사운드</span>
+          <span class="tab">화면</span>
+          <span class="tab on">조작</span>
+        </div>
+      </div>
+      <div class="rows">
+        <div class="orow"><span class="on1">입력 프리셋 (게임패드)</span><span class="ov">기본형 ◂ ▸</span></div>
+        <div class="orow focus"><span class="on1">특수무장 1</span><span class="ov"><span class="keyc">L1</span><span class="keyc">Q</span></span></div>
+        <div class="orow"><span class="on1">특수무장 2</span><span class="ov"><span class="keyc">R1</span><span class="keyc">E</span></span></div>
+        <div class="orow"><span class="on1">슈퍼웨폰</span><span class="ov"><span class="keyc">△</span><span class="keyc">SPACE</span></span></div>
+        <div class="orow"><span class="on1">저속 모드</span><span class="ov"><span class="keyc">L2</span><span class="keyc">SHIFT</span></span></div>
+        <div class="orow"><span class="on1">진동</span><span class="ov">켬</span><span class="sw"><i></i></span></div>
+      </div>
+      <div class="botbar">
+        <span><span class="k">B</span>뒤로</span>
+        <span><span class="k">TAB</span>카테고리</span>
+        <span><span class="k">ENTER</span>키 변경</span>
+        <span><span class="k">R</span>기본값 복원</span>
+      </div>
+    </div>
+  </div>
+
+  <div class="notes">
+    <div class="note" data-note="BR">
+      <h3>브리핑 — 구현 포인트</h3>
+      <ul>
+        <li><b>분기 충족 토글</b>: 브리핑 본문이 분기 상태에 따라 변형됨 (미션 브리핑 시스템의 분기별 메시지) — 앰버색이 변형 메시지</li>
+        <li><b>HARD 토글</b>: 적 구성 힌트가 난이도에 따라 숨김 처리 (정보 차등 정책). 환경 태그·목표는 난이도 무관 상시</li>
+        <li>힌트의 속성 언급은 속성 색상 코딩 적용 (공중=하늘/지상=주황)</li>
+        <li>스킵 지원, 뒤로 = 캠페인 맵, 진행 = 로드아웃 (자유 왕복)</li>
+      </ul>
+    </div>
+    <div class="note" data-note="SV">
+      <h3>세이브 슬롯 — 구현 포인트</h3>
+      <ul>
+        <li>5슬롯 고정. 사용 슬롯: 진행도/난이도/플레이타임/마지막 플레이</li>
+        <li><b>빈 슬롯의 "도전과제 누적 보상 지급" 안내</b> — 게임 전체 공유 재화·장비가 새 세이브에 적용됨을 시작 전에 고지 (해당 결정의 UI 반영 지점)</li>
+        <li>삭제는 파괴적 행동 — 확인 다이얼로그 1회</li>
+      </ul>
+    </div>
+    <div class="note" data-note="TI">
+      <h3>타이틀 — 구현 포인트</h3>
+      <ul>
+        <li><b>계속하기 = 최상단 기본 포커스</b> — 마지막 세이브로 즉시 진입 (루프 속도 원칙의 시작점)</li>
+        <li>계속하기에 슬롯 요약 표시 (어느 세이브로 들어가는지 명시)</li>
+        <li>로고/배경은 아트 영역 — 자리만 확보</li>
+      </ul>
+    </div>
+    <div class="note" data-note="OP">
+      <h3>옵션 — 구현 포인트</h3>
+      <ul>
+        <li>카테고리 4탭: 게임플레이/사운드/화면/조작 [제안]</li>
+        <li>조작 탭: 패드 = 프리셋 선택, 키보드 = 전체 리매핑 (입력 v0.2 준수). 패드/키보드 할당을 한 행에 병기</li>
+        <li>충돌 키 할당 시 경고 후 교체(swap), 기본값 복원 제공</li>
+        <li>옵션 변경 = 자동 저장 트리거. 설정은 게임 전체 공유</li>
+      </ul>
+    </div>
+    <div class="note warn">
+      <h3>이 목업의 성격</h3>
+      <ul>
+        <li>이 4화면은 배치 자유도가 낮아 <b>A/B 비교 없이 단일 제안</b> — 이대로 확정하거나 수정 지시</li>
+        <li>브리핑의 상태 토글 2종은 프로그래머 구현 참조용 (분기 변형 / 난이도 차등이 실제 데이터 분기 지점)</li>
+        <li>타이틀 메뉴 구성(계속하기/세이브 선택/옵션/종료)과 옵션 카테고리 구성은 [제안] — 이견 있으면 조정</li>
+      </ul>
+    </div>
+  </div>
+</div>
+
+<script>
+  const screen=document.getElementById('screen');
+  const btns=document.querySelectorAll('.opt-btn[data-s]');
+  const notes=document.querySelectorAll('[data-note]');
+  const brT=document.getElementById('brToggles');
+  function setS(s){
+    screen.classList.remove('sBR','sSV','sTI','sOP');
+    screen.classList.add('s'+s);
+    btns.forEach(b=>b.classList.toggle('on',b.dataset.s===s));
+    notes.forEach(n=>{n.style.display=(n.dataset.note===s)?'block':'none';});
+    brT.style.visibility = (s==='BR')?'visible':'hidden';
+  }
+  btns.forEach(b=>b.addEventListener('click',()=>setS(b.dataset.s)));
+  document.getElementById('branch').addEventListener('change',e=>screen.classList.toggle('branch-on',e.target.checked));
+  document.getElementById('hard').addEventListener('change',e=>screen.classList.toggle('hard-on',e.target.checked));
+  setS('BR');
+</script>
+</body>
+</html>

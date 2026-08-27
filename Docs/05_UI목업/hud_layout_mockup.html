@@ -1,0 +1,353 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>HUD 배치 · 경계 처리 비교 — 목업 v0.2</title>
+<style>
+  :root{
+    --bg:#0b0e14;
+    --panel:#11161f;
+    --line:#1f2836;
+    --hud:#8fe388;
+    --hud-dim:#4a7a52;
+    --amber:#e8b44a;
+    --txt:#cdd6e4;
+    --txt-dim:#5d6b80;
+    --enemy:#e06c5a;
+    /* 협곡 팔레트 */
+    --floor:#171410;      /* 협곡 바닥 */
+    --floor-patch:#221c14;
+    --river:#123038;
+    --plateau:#2b241a;    /* 절벽 상단 (원색) */
+    --rock:#3a3022;
+    --tree:#1e2f1c;
+  }
+  *{margin:0;padding:0;box-sizing:border-box}
+  body{
+    background:var(--bg); color:var(--txt);
+    font-family:ui-monospace,'Cascadia Mono','D2Coding',Consolas,monospace;
+    padding:28px 20px 60px; min-height:100vh;
+  }
+  .wrap{max-width:1080px;margin:0 auto}
+  header{display:flex;align-items:baseline;gap:14px;border-bottom:1px solid var(--line);padding-bottom:14px;margin-bottom:18px;flex-wrap:wrap}
+  header h1{font-size:15px;letter-spacing:.22em;color:var(--hud);font-weight:600}
+  header .doc{font-size:11px;color:var(--txt-dim);letter-spacing:.1em}
+
+  .controls{display:flex;flex-wrap:wrap;gap:10px;align-items:center;margin-bottom:8px}
+  .controls .grp-label{font-size:9px;letter-spacing:.24em;color:var(--txt-dim);width:100%;margin-top:6px}
+  .opt-btn{
+    appearance:none;background:var(--panel);border:1px solid var(--line);color:var(--txt-dim);
+    font:inherit;font-size:12px;letter-spacing:.1em;padding:8px 14px;cursor:pointer;
+  }
+  .opt-btn:hover{border-color:var(--hud-dim);color:var(--txt)}
+  .opt-btn:focus-visible{outline:2px solid var(--hud);outline-offset:2px}
+  .opt-btn.on{background:#152218;border-color:var(--hud);color:var(--hud)}
+  .fx-toggle{margin-left:auto;display:flex;align-items:center;gap:8px;font-size:12px;color:var(--txt-dim);cursor:pointer}
+  .fx-toggle input{accent-color:var(--hud);width:15px;height:15px;cursor:pointer}
+  .fx-toggle input:focus-visible{outline:2px solid var(--hud);outline-offset:2px}
+
+  /* ── 16:9 스크린 ── */
+  .screen{position:relative;aspect-ratio:16/9;border:1px solid var(--line);overflow:hidden;user-select:none;margin-top:14px;background:var(--plateau)}
+
+  /* 스크롤 애니메이션 (지나가는 느낌) */
+  @keyframes scrollDown{from{background-position-y:0}to{background-position-y:340px}}
+  .scrolling{animation:scrollDown 7s linear infinite}
+  @media (prefers-reduced-motion:reduce){.scrolling{animation:none}}
+
+  /* 좌우 영역 = 절벽 상단 (월드 연속) */
+  .zone{position:absolute;top:0;bottom:0;overflow:hidden}
+  .zone.left{left:0;width:29%}
+  .zone.right{right:0;width:29%}
+  .zone .terrain-layer{
+    position:absolute;inset:-340px 0 0 0;
+    background:
+      radial-gradient(38px 24px at 20% 120px, var(--rock) 58%, transparent 60%),
+      radial-gradient(30px 20px at 68% 40px, var(--rock) 58%, transparent 60%),
+      radial-gradient(22px 22px at 42% 250px, var(--tree) 55%, transparent 58%),
+      radial-gradient(18px 18px at 82% 200px, var(--tree) 55%, transparent 58%),
+      radial-gradient(26px 16px at 12% 300px, var(--rock) 58%, transparent 60%),
+      var(--plateau);
+    background-size:100% 340px;background-repeat:repeat-y;
+  }
+  /* 경계 처리 단계별 레이어 */
+  .zone .dim{position:absolute;inset:0;background:rgba(2,4,8,0);transition:background .25s}
+  .zone .zlabel{position:absolute;bottom:8px;left:0;right:0;text-align:center;font-size:9px;letter-spacing:.26em;color:rgba(205,214,228,.28);z-index:3}
+
+  /* 플레이필드 = 협곡 바닥 */
+  .field{position:absolute;left:29%;width:42%;top:0;bottom:0;overflow:hidden}
+  .field .terrain-layer{
+    position:absolute;inset:-340px 0 0 0;
+    background:
+      linear-gradient(90deg, transparent 0 62%, var(--river) 62% 74%, transparent 74%),
+      radial-gradient(46px 26px at 24% 90px, var(--floor-patch) 58%, transparent 61%),
+      radial-gradient(34px 22px at 70% 210px, var(--floor-patch) 58%, transparent 61%),
+      radial-gradient(28px 18px at 40% 300px, var(--floor-patch) 58%, transparent 61%),
+      var(--floor);
+    background-size:100% 340px;background-repeat:repeat-y;
+  }
+
+  /* 경계 처리: 절벽 에지 + 필드측 그림자 밴드 + 명시 라인 */
+  .edge{position:absolute;top:0;bottom:0;width:0;z-index:2;pointer-events:none}
+  .edge.l{left:29%}
+  .edge.r{left:71%}
+  .edge .cliff-shadow{position:absolute;top:0;bottom:0;width:26px;opacity:0;transition:opacity .25s}
+  .edge.l .cliff-shadow{left:0;background:linear-gradient(90deg,rgba(0,0,0,.55),transparent)}
+  .edge.r .cliff-shadow{right:0;background:linear-gradient(-90deg,rgba(0,0,0,.55),transparent)}
+  .edge .rim{position:absolute;top:0;bottom:0;width:2px;background:rgba(214,196,158,.35);opacity:0;transition:opacity .25s}
+  .edge.l .rim{left:-2px}
+  .edge.r .rim{right:-2px}
+  .edge .hardline{position:absolute;top:0;bottom:0;width:1px;background:var(--hud-dim);opacity:0;transition:opacity .25s}
+  .edge.l .hardline{left:0}
+  .edge.r .hardline{right:0}
+
+  /* 처리 단계 t1/t2/t3 */
+  .screen.t1 .zone .dim{background:rgba(2,4,8,.42)}
+  .screen.t2 .zone .dim{background:rgba(2,4,8,.42)}
+  .screen.t2 .edge .cliff-shadow,.screen.t2 .edge .rim{opacity:1}
+  .screen.t3 .zone .dim{background:rgba(2,4,8,.42)}
+  .screen.t3 .edge .cliff-shadow,.screen.t3 .edge .rim,.screen.t3 .edge .hardline{opacity:1}
+
+  /* 유닛 */
+  .unit{position:absolute;width:34px;height:34px;z-index:2}
+  .unit svg{width:100%;height:100%;overflow:visible}
+  .shadow{position:absolute;width:34px;height:34px;opacity:.5;z-index:1}
+  .shadow svg{width:100%;height:100%}
+
+  /* ── HUD 부품 ── */
+  .hud{position:absolute;font-size:10px;color:var(--hud);letter-spacing:.08em;transition:opacity .25s;z-index:4}
+  .hud .lbl{font-size:8px;color:var(--hud-dim);letter-spacing:.2em;margin-bottom:3px}
+  .segs{display:flex;gap:3px}
+  .seg{width:16px;height:8px;background:var(--hud)}
+  .seg.off{background:#1d2b22}
+  .seg.sh{background:#5ab8d4}
+  .bar{height:8px;background:#1d2b22;position:relative;overflow:hidden}
+  .bar .fill{position:absolute;inset:0;width:72%;background:var(--amber)}
+  .stock{display:flex;gap:4px;margin-top:3px}
+  .stock i{width:10px;height:10px;border:1px solid var(--amber);display:block}
+  .stock i.full{background:var(--amber)}
+  .score{font-size:13px;color:#e6eef9;letter-spacing:.14em}
+  .chain{color:var(--amber);font-size:11px}
+  .chain .t{display:block;height:3px;background:var(--amber);width:60%;margin-top:2px}
+  .cd{display:flex;gap:6px}
+  .cd .slot{width:26px;height:26px;border:1px solid var(--hud-dim);position:relative;display:flex;align-items:center;justify-content:center;font-size:8px;color:var(--txt);background:rgba(5,7,11,.5)}
+  .cd .slot .key{position:absolute;bottom:-11px;left:0;right:0;text-align:center;font-size:7px;color:var(--txt-dim)}
+  .cd .slot .mask{position:absolute;left:0;right:0;bottom:0;height:40%;background:rgba(11,14,20,.78)}
+  .lives{color:var(--txt)}
+  /* 레터박스 HUD는 배경 위에 얹히므로 패널 배킹 */
+  .hud.in-letterbox{background:rgba(4,6,10,.62);padding:8px 10px;border:1px solid rgba(143,227,136,.14)}
+  .hud.infield{opacity:.94}
+  .hud.infield .seg{width:12px;height:6px}
+  .hud.infield .score{font-size:11px}
+
+  [data-show]{display:none}
+  .screen.optA [data-show~="A"]{display:block}
+  .screen.optB [data-show~="B"]{display:block}
+  .screen.optC [data-show~="C"]{display:block}
+
+  /* 지원형 슈퍼웨폰 연출 */
+  .fx{position:absolute;inset:0;opacity:0;pointer-events:none;transition:opacity .3s;z-index:5}
+  .screen.fx-on .fx{opacity:1}
+  .fx .support{position:absolute;fill:#242f3c;stroke:#41586f;stroke-width:1}
+  .fx .tracer{position:absolute;height:2px;background:linear-gradient(90deg,rgba(232,180,74,0),var(--amber));box-shadow:0 0 8px rgba(232,180,74,.7)}
+  .fx .impact{position:absolute;width:26px;height:26px;border-radius:50%;background:radial-gradient(circle,rgba(232,180,74,.85),rgba(232,180,74,0) 70%)}
+  .fx .fxlabel{position:absolute;font-size:8px;letter-spacing:.2em;color:var(--amber);opacity:.85;z-index:6}
+  .screen.fx-on.optA .hud.in-letterbox.lside{opacity:.18}
+  .screen.fx-on.optC .hud.in-letterbox.lside{opacity:.18}
+
+  /* 설명 카드 */
+  .notes{margin-top:22px;display:grid;grid-template-columns:1fr 1fr;gap:12px}
+  .note{background:var(--panel);border:1px solid var(--line);padding:14px 16px;font-size:12px;line-height:1.75}
+  .note h3{font-size:11px;letter-spacing:.18em;color:var(--hud);margin-bottom:8px;font-weight:600}
+  .note.warn h3{color:var(--amber)}
+  .note ul{list-style:none}
+  .note li{padding-left:14px;position:relative;color:var(--txt)}
+  .note li::before{content:"▸";position:absolute;left:0;color:var(--hud-dim)}
+  .note li b{color:#e6eef9;font-weight:600}
+  [data-note]{display:none}
+  @media (max-width:760px){.notes{grid-template-columns:1fr}}
+  @media (prefers-reduced-motion:reduce){*{transition:none!important}}
+</style>
+</head>
+<body>
+<div class="wrap">
+  <header>
+    <h1>HUD 배치 · 경계 처리 비교</h1>
+    <span class="doc">UI 기획 목업 v0.2 · 협곡 미션 예시 · 좌우 영역 = 절벽 상단 (월드 연속, 동기 스크롤)</span>
+  </header>
+
+  <div class="controls" role="group" aria-label="HUD 배치안">
+    <span class="grp-label">HUD 배치</span>
+    <button class="opt-btn on" data-opt="A">A안 — 레터박스 HUD</button>
+    <button class="opt-btn" data-opt="B">B안 — 필드 내 오버레이</button>
+    <button class="opt-btn" data-opt="C">C안 — 혼합</button>
+    <label class="fx-toggle"><input type="checkbox" id="fx"> 지원형 슈퍼웨폰 연출 시뮬레이션</label>
+  </div>
+  <div class="controls" role="group" aria-label="경계 처리">
+    <span class="grp-label">필드 ↔ 레터박스 경계 처리</span>
+    <button class="opt-btn t on" data-t="1">1 — 명도 차이만</button>
+    <button class="opt-btn t" data-t="2">2 — + 절벽 그림자 밴드</button>
+    <button class="opt-btn t" data-t="3">3 — + 명시 라인</button>
+  </div>
+
+  <div class="screen optA t1" id="screen">
+    <!-- 좌우 = 절벽 상단, 월드 연속 -->
+    <div class="zone left">
+      <div class="terrain-layer scrolling"></div>
+      <div class="dim"></div>
+      <span class="zlabel">절벽 상단 — 월드 연속 · 연출 예약</span>
+    </div>
+    <div class="zone right">
+      <div class="terrain-layer scrolling" style="animation-delay:-3.2s"></div>
+      <div class="dim"></div>
+      <span class="zlabel">절벽 상단 — 월드 연속 · 연출 예약</span>
+    </div>
+
+    <!-- 필드 = 협곡 바닥 -->
+    <div class="field">
+      <div class="terrain-layer scrolling" style="animation-delay:-1.4s"></div>
+
+      <!-- 지상 적: 그림자 밀착 -->
+      <div class="shadow" style="left:20%;top:26%"><svg viewBox="0 0 34 34"><rect x="8" y="10" width="18" height="14" fill="#000"/></svg></div>
+      <div class="unit" style="left:19.4%;top:25.2%"><svg viewBox="0 0 34 34"><rect x="8" y="10" width="18" height="14" fill="var(--enemy)"/><rect x="15" y="4" width="4" height="10" fill="var(--enemy)"/></svg></div>
+      <!-- 공중 적: 그림자 분리 -->
+      <div class="shadow" style="left:63%;top:16%"><svg viewBox="0 0 34 34"><polygon points="17,4 30,28 4,28" fill="#000"/></svg></div>
+      <div class="unit" style="left:57%;top:9%"><svg viewBox="0 0 34 34"><polygon points="17,4 30,28 4,28" fill="var(--enemy)"/></svg></div>
+      <!-- 플레이어 -->
+      <div class="shadow" style="left:47%;bottom:9%;top:auto"><svg viewBox="0 0 34 34"><polygon points="17,2 28,30 17,24 6,30" fill="#000"/></svg></div>
+      <div class="unit" style="left:44%;bottom:13%;top:auto"><svg viewBox="0 0 34 34"><polygon points="17,2 28,30 17,24 6,30" fill="#9fd8ff"/></svg></div>
+
+      <!-- B안 HUD -->
+      <div class="hud infield" data-show="B" style="left:4%;bottom:3%">
+        <div class="lbl">HP / SHIELD</div>
+        <div class="segs"><span class="seg"></span><span class="seg"></span><span class="seg off"></span></div>
+        <div class="segs" style="margin-top:3px"><span class="seg sh"></span><span class="seg sh"></span><span class="seg sh"></span><span class="seg off"></span></div>
+        <div class="lives" style="margin-top:4px">✈ ×1</div>
+      </div>
+      <div class="hud infield" data-show="B" style="right:4%;bottom:3%;text-align:right">
+        <div class="lbl">SUPER</div>
+        <div class="bar" style="width:74px;margin-left:auto"><span class="fill"></span></div>
+        <div class="stock" style="justify-content:flex-end"><i class="full"></i><i class="full"></i><i></i></div>
+        <div class="cd" style="margin-top:7px;justify-content:flex-end">
+          <div class="slot">AA<span class="mask"></span><span class="key">L1</span></div>
+          <div class="slot">AG<span class="key">R1</span></div>
+        </div>
+      </div>
+      <div class="hud infield" data-show="B" style="left:4%;top:3%">
+        <div class="score">00284,610</div>
+        <div class="chain">×1.28<span class="t"></span></div>
+      </div>
+
+      <!-- C안: 순간 정보 -->
+      <div class="hud infield" data-show="C" style="left:52%;top:34%">
+        <div class="chain">×1.28<span class="t"></span></div>
+      </div>
+      <div class="hud infield" data-show="C" style="left:41%;bottom:4%">
+        <div class="cd">
+          <div class="slot">AA<span class="mask"></span><span class="key">L1</span></div>
+          <div class="slot">AG<span class="key">R1</span></div>
+        </div>
+      </div>
+    </div>
+
+    <!-- 경계 처리 레이어 -->
+    <div class="edge l"><span class="cliff-shadow"></span><span class="rim"></span><span class="hardline"></span></div>
+    <div class="edge r"><span class="cliff-shadow"></span><span class="rim"></span><span class="hardline"></span></div>
+
+    <!-- A/C안 레터박스 HUD -->
+    <div class="hud in-letterbox lside" data-show="A C" style="left:3%;top:7%">
+      <div class="lbl">HP</div>
+      <div class="segs"><span class="seg"></span><span class="seg"></span><span class="seg off"></span></div>
+      <div class="lbl" style="margin-top:8px">SHIELD</div>
+      <div class="segs"><span class="seg sh"></span><span class="seg sh"></span><span class="seg sh"></span><span class="seg off"></span></div>
+      <div class="lives" style="margin-top:9px">✈ ×1</div>
+    </div>
+    <div class="hud in-letterbox lside" data-show="A" style="left:3%;bottom:9%">
+      <div class="lbl">SPECIAL</div>
+      <div class="cd">
+        <div class="slot">AA<span class="mask"></span><span class="key">L1</span></div>
+        <div class="slot">AG<span class="key">R1</span></div>
+      </div>
+    </div>
+    <div class="hud in-letterbox" data-show="A C" style="right:3%;top:7%;text-align:right">
+      <div class="lbl">SCORE</div>
+      <div class="score">00284,610</div>
+      <div class="chain" data-show="A" style="margin-top:5px">×1.28<span class="t" style="margin-left:auto"></span></div>
+    </div>
+    <div class="hud in-letterbox" data-show="A C" style="right:3%;bottom:9%;text-align:right">
+      <div class="lbl">SUPER</div>
+      <div class="bar" style="width:86px;margin-left:auto"><span class="fill"></span></div>
+      <div class="stock" style="justify-content:flex-end"><i class="full"></i><i class="full"></i><i></i></div>
+    </div>
+
+    <!-- 지원형 슈퍼웨폰 연출 -->
+    <div class="fx">
+      <svg class="support" style="left:3%;top:24%;width:70px;height:30px" viewBox="0 0 70 30"><polygon points="0,15 28,6 70,13 70,17 28,24"/></svg>
+      <svg class="support" style="left:8%;top:44%;width:70px;height:30px" viewBox="0 0 70 30"><polygon points="0,15 28,6 70,13 70,17 28,24"/></svg>
+      <span class="tracer" style="left:10%;top:30%;width:34%"></span>
+      <span class="tracer" style="left:14%;top:49%;width:33%"></span>
+      <span class="impact" style="left:45.5%;top:27.5%"></span>
+      <span class="impact" style="left:44%;top:46.5%"></span>
+      <span class="fxlabel" style="left:4%;top:16%">지원 포격 — 절벽 위에서 필드로 진입</span>
+    </div>
+  </div>
+
+  <div class="notes">
+    <div class="note" id="hudnote" data-note="A">
+      <h3>A안 — 레터박스 HUD</h3>
+      <ul>
+        <li><b>플레이필드 완전 청정.</b> 배경 연속 정책과 조합 시 HUD에 반투명 패널 배킹 필수 (목업 반영됨)</li>
+        <li>연출 시뮬레이션을 켜면 좌측 HUD가 연출에 가려짐 → 연출 중 HUD 정책 별도 필요</li>
+      </ul>
+    </div>
+    <div class="note" data-note="B">
+      <h3>B안 — 필드 내 오버레이</h3>
+      <ul>
+        <li><b>레터박스가 순수 배경+연출 전용으로 보존.</b> 절벽 위 풍경과 연출이 간섭 없이 공존</li>
+        <li>필드 가장자리 잠식 — 탄막과 겹칠 위험. 반투명 필수</li>
+      </ul>
+    </div>
+    <div class="note" data-note="C">
+      <h3>C안 — 혼합</h3>
+      <ul>
+        <li><b>상시 정보는 레터박스, 순간 정보(체인·특수무장 쿨다운)는 필드 안.</b> 쿨다운이 기체 근처라 가려 쏘기 조작과 궁합 좋음</li>
+        <li>연출 충돌은 좌측만 부분 발생 — A안보다 완화</li>
+      </ul>
+    </div>
+    <div class="note warn">
+      <h3>경계 처리 후보 (하단 토글)</h3>
+      <ul>
+        <li><b>1 명도 차이만</b> — 절벽 상단을 어둡게. 가장 자연스럽지만 경계가 흐릿할 수 있음</li>
+        <li><b>2 + 절벽 그림자 밴드</b> — 절벽이 협곡 바닥에 그림자를 드리움 + 절벽 에지 하이라이트. 라이트 각도 시스템과 논리적으로 일치하는 자연 경계</li>
+        <li><b>3 + 명시 라인</b> — HUD 톤의 인공 경계선 추가. 판정 영역이 기계적으로 명확, 대신 월드 연속감은 감소</li>
+        <li>협곡은 예시 — 해상/시가지 등 절벽이 없는 테마에서도 같은 경계 문법이 성립해야 함</li>
+      </ul>
+    </div>
+  </div>
+</div>
+
+<script>
+  const screen = document.getElementById('screen');
+  const optBtns = document.querySelectorAll('.opt-btn[data-opt]');
+  const tBtns = document.querySelectorAll('.opt-btn[data-t]');
+  const notes = document.querySelectorAll('[data-note]');
+  function setOpt(o){
+    screen.classList.remove('optA','optB','optC');
+    screen.classList.add('opt'+o);
+    optBtns.forEach(b=>b.classList.toggle('on', b.dataset.opt===o));
+    notes.forEach(n=>{ n.style.display = (n.dataset.note===o) ? 'block' : 'none'; });
+  }
+  function setT(t){
+    screen.classList.remove('t1','t2','t3');
+    screen.classList.add('t'+t);
+    tBtns.forEach(b=>b.classList.toggle('on', b.dataset.t===t));
+  }
+  optBtns.forEach(b=>b.addEventListener('click',()=>setOpt(b.dataset.opt)));
+  tBtns.forEach(b=>b.addEventListener('click',()=>setT(b.dataset.t)));
+  document.getElementById('fx').addEventListener('change',e=>{
+    screen.classList.toggle('fx-on', e.target.checked);
+  });
+  setOpt('A'); setT('1');
+</script>
+</body>
+</html>

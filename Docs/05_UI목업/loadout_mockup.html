@@ -1,0 +1,433 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>로드아웃(격납고) 배치 비교 — 목업 v0.3 (D안 추가)</title>
+<style>
+  :root{
+    --bg:#0b0e14; --panel:#11161f; --panel2:#151c27; --line:#1f2836;
+    --hud:#8fe388; --hud-dim:#4a7a52; --amber:#e8b44a;
+    --txt:#cdd6e4; --txt-dim:#5d6b80;
+    --air:#5ab8d4; --gnd:#d49a5a; --uni:#8fe388;
+  }
+  *{margin:0;padding:0;box-sizing:border-box}
+  body{background:var(--bg);color:var(--txt);font-family:ui-monospace,'Cascadia Mono','D2Coding',Consolas,monospace;padding:28px 20px 60px}
+  .wrap{max-width:1100px;margin:0 auto}
+  header{display:flex;align-items:baseline;gap:14px;border-bottom:1px solid var(--line);padding-bottom:14px;margin-bottom:16px;flex-wrap:wrap}
+  header h1{font-size:15px;letter-spacing:.22em;color:var(--hud);font-weight:600}
+  header .doc{font-size:11px;color:var(--txt-dim)}
+  .controls{display:flex;flex-wrap:wrap;gap:10px;align-items:center;margin-bottom:14px}
+  .opt-btn{appearance:none;background:var(--panel);border:1px solid var(--line);color:var(--txt-dim);font:inherit;font-size:12px;letter-spacing:.1em;padding:8px 14px;cursor:pointer}
+  .opt-btn:hover{border-color:var(--hud-dim);color:var(--txt)}
+  .opt-btn:focus-visible{outline:2px solid var(--hud);outline-offset:2px}
+  .opt-btn.on{background:#152218;border-color:var(--hud);color:var(--hud)}
+  .fx-toggle{margin-left:auto;display:flex;align-items:center;gap:8px;font-size:12px;color:var(--txt-dim);cursor:pointer}
+  .fx-toggle input{accent-color:var(--hud);width:15px;height:15px;cursor:pointer}
+
+  .screen{position:relative;aspect-ratio:16/9;background:#0d1119;border:1px solid var(--line);overflow:hidden;font-size:10px}
+  .layout{position:absolute;inset:0;display:none}
+  .screen.optA .layout.A{display:block}
+  .screen.optB .layout.B{display:block}
+  .screen.optC .layout.C{display:block}
+  .screen.optD .layout.D{display:block}
+
+  .topbar{position:absolute;top:0;left:0;right:0;height:7.5%;background:rgba(9,12,18,.92);border-bottom:1px solid var(--line);display:flex;align-items:center;gap:14px;padding:0 14px;z-index:6}
+  .topbar .back{color:var(--txt-dim)}
+  .topbar .mtitle{color:#e6eef9;font-size:12px;letter-spacing:.1em}
+  .topbar .tag{border:1px solid var(--gnd);color:var(--gnd);padding:2px 7px;font-size:9px;letter-spacing:.14em}
+  .topbar .hint{color:var(--txt-dim);font-size:9px}
+  .topbar .hint b{color:var(--gnd);font-weight:600}
+  .botbar{position:absolute;bottom:0;left:0;right:0;height:8%;background:rgba(9,12,18,.92);border-top:1px solid var(--line);display:flex;align-items:center;gap:16px;padding:0 14px;z-index:6;font-size:9px;color:var(--txt-dim)}
+  .botbar .k{border:1px solid var(--line);padding:2px 6px;color:var(--txt);margin-right:4px}
+  .botbar .launch{margin-left:auto;background:#152218;border:1px solid var(--hud);color:var(--hud);padding:7px 22px;font-size:11px;letter-spacing:.2em}
+
+  .attr{display:inline-block;padding:1px 5px;font-size:8px;letter-spacing:.1em;border:1px solid}
+  .attr.air{color:var(--air);border-color:var(--air)}
+  .attr.gnd{color:var(--gnd);border-color:var(--gnd)}
+  .attr.uni{color:var(--uni);border-color:var(--uni)}
+  .keycap{display:inline-block;border:1px solid var(--txt-dim);color:var(--txt);padding:0 4px;font-size:8px;margin-left:5px}
+  .statbar{display:flex;gap:2px;margin-top:2px}
+  .statbar i{width:7px;height:5px;background:#223126;display:block}
+  .statbar i.f{background:var(--hud)}
+  .statbar i.up{background:var(--amber)}
+  .syn{border:1px solid var(--hud-dim);background:rgba(21,34,24,.6);padding:8px 10px}
+  .syn .st{font-size:8px;letter-spacing:.2em;color:var(--hud-dim);margin-bottom:4px}
+  .syn .sn{color:var(--hud);font-size:10px}
+  .syn .sd{color:var(--txt-dim);font-size:9px;margin-top:3px}
+
+  .slot{background:var(--panel);border:1px solid var(--line);padding:7px 9px;position:relative}
+  .slot .sl{font-size:8px;color:var(--txt-dim);letter-spacing:.16em}
+  .slot .sv{color:#e6eef9;margin-top:3px;font-size:10px}
+  .slot.sel{border-color:var(--hud);background:#131d15}
+  .slot .keycap{position:absolute;top:6px;right:7px;margin:0}
+
+  .eq{background:var(--panel2);border:1px solid var(--line);padding:6px 9px;display:flex;align-items:center;gap:8px}
+  .eq .en{color:#e6eef9;flex:1}
+  .eq.sel{border-color:var(--hud)}
+  .eq.locked{opacity:.55;border-style:dashed}
+  .eq.locked .en{color:var(--txt-dim);text-decoration:line-through}
+  .eq .why{font-size:8px;color:var(--amber)}
+  .eq .prem{font-size:8px;color:var(--amber)}
+
+  /* ── 기체 뷰 + 동작 프리뷰 ── */
+  .shipview{position:relative;display:flex;align-items:center;justify-content:center}
+  .shipview .pad{position:absolute;border:1px dashed #24303f;border-radius:50%}
+  .shipview .shipwrap{position:relative;z-index:2}
+  .shipview svg.ship{filter:drop-shadow(6px 10px 0 rgba(0,0,0,.35));display:block}
+  .pv-label{position:absolute;top:6px;left:0;right:0;text-align:center;font-size:8px;letter-spacing:.24em;color:var(--hud-dim);z-index:3;opacity:0;transition:opacity .25s}
+
+  /* 레이저 빔 프리뷰 (반복 재생) */
+  .beam{position:absolute;left:50%;bottom:92%;width:10px;height:0;transform:translateX(-50%);transform-origin:bottom;background:linear-gradient(180deg,rgba(143,227,136,0),var(--hud) 30%,#d6ffd2);box-shadow:0 0 14px rgba(143,227,136,.8);opacity:0;z-index:1}
+  .muzzle{position:absolute;left:50%;bottom:88%;width:22px;height:22px;transform:translate(-50%,50%);border-radius:50%;background:radial-gradient(circle,rgba(214,255,210,.9),rgba(143,227,136,0) 70%);opacity:0;z-index:2}
+  @keyframes beamFire{
+    0%{opacity:0;height:0}
+    12%{opacity:1;height:220px}
+    62%{opacity:.9;height:220px}
+    76%{opacity:0;height:220px}
+    100%{opacity:0;height:0}
+  }
+  @keyframes muzzleFire{
+    0%{opacity:0}12%{opacity:1}62%{opacity:.8}76%{opacity:0}100%{opacity:0}
+  }
+  .screen.pv-on .beam{animation:beamFire 2s ease-out infinite}
+  .screen.pv-on .muzzle{animation:muzzleFire 2s ease-out infinite}
+  .screen.pv-on .pv-label{opacity:1}
+  @media (prefers-reduced-motion:reduce){
+    .screen.pv-on .beam{animation:none;opacity:.9;height:220px}
+    .screen.pv-on .muzzle{animation:none;opacity:.8}
+  }
+
+  /* ─────── A안 ─────── */
+  .A .shipview{position:absolute;left:22%;right:22%;top:9.5%;bottom:26%}
+  .A .pad{width:60%;aspect-ratio:1}
+  .A .shipname{position:absolute;left:3%;top:11%;z-index:2}
+  .A .shipname .nm{font-size:13px;color:#e6eef9;letter-spacing:.14em}
+  .A .shipname .tr{font-size:9px;color:var(--txt-dim);margin-top:4px;line-height:1.6}
+  .A .synwrap{position:absolute;right:2.5%;top:11%;width:21%}
+  .A .slotrow{position:absolute;left:6%;right:6%;bottom:10%;display:grid;grid-template-columns:repeat(6,1fr);gap:8px;z-index:3}
+  .A .picker{position:absolute;left:6%;right:28%;bottom:24%;display:none;grid-template-columns:repeat(3,1fr);gap:8px;z-index:4}
+  .screen.picker-on .A .picker{display:grid}
+  .A .picker .eq{flex-direction:column;align-items:flex-start;gap:4px;padding:8px}
+  .A .pickdetail{position:absolute;right:6%;bottom:24%;width:20%;display:none;z-index:4}
+  .screen.picker-on .A .pickdetail{display:block}
+
+  /* ─────── B안 ─────── */
+  .B .col{position:absolute;top:9.5%;bottom:10%}
+  .B .col1{left:2%;width:24%;display:flex;flex-direction:column;gap:6px}
+  .B .col2{left:27.5%;width:34%;display:flex;flex-direction:column;gap:6px}
+  .B .col3{left:63%;right:2%;display:flex;flex-direction:column;gap:8px}
+  .B .colhead{font-size:8px;letter-spacing:.22em;color:var(--txt-dim);padding:2px 0}
+  .B .preview{background:#0a0f16;border:1px solid var(--line);height:34%;position:relative;display:flex;align-items:flex-end;justify-content:center;overflow:hidden}
+  .B .preview .shipwrap{position:relative;margin-bottom:8px}
+  .B .preview .beam{bottom:100%}
+  .B .preview .muzzle{bottom:96%}
+  .B .detail{background:var(--panel);border:1px solid var(--line);padding:9px 11px;flex:1}
+  .B .detail .dn{color:#e6eef9;font-size:11px}
+  .B .detail .row{display:flex;justify-content:space-between;margin-top:6px;color:var(--txt-dim);font-size:9px}
+  .B .detail .row b{color:var(--txt);font-weight:400}
+  .B .cmp{color:var(--amber);font-size:8px}
+  .B .eqlist{display:flex;flex-direction:column;gap:6px}
+
+  /* ─────── C안 ─────── */
+  .C .left{position:absolute;left:2%;width:44%;top:9.5%;bottom:10%;display:flex;flex-direction:column;gap:8px}
+  .C .left .shipview{flex:1}
+  .C .pad{width:56%;aspect-ratio:1}
+  .C .right{position:absolute;left:48.5%;right:2%;top:9.5%;bottom:10%;display:grid;grid-template-columns:1fr 1fr;grid-auto-rows:min-content;gap:8px;align-content:start}
+  .C .overlay{position:absolute;left:48.5%;right:2%;top:9.5%;bottom:10%;background:rgba(11,15,21,.97);border:1px solid var(--hud-dim);padding:11px;display:none;flex-direction:column;gap:6px;z-index:5}
+  .screen.picker-on .C .overlay{display:flex}
+  .C .overlay .oh{font-size:9px;letter-spacing:.2em;color:var(--hud);margin-bottom:2px}
+  .C .overlay .odetail{margin-top:auto;border-top:1px solid var(--line);padding-top:8px;font-size:9px;color:var(--txt-dim);line-height:1.7}
+  .C .overlay .odetail b{color:var(--txt);font-weight:400}
+
+  /* ─────── D안: 무뎁스 3컬럼 + 좌측 프리뷰 무대 ─────── */
+  .D .colP{position:absolute;left:2%;width:28%;top:9.5%;bottom:10%;display:flex;flex-direction:column;gap:8px}
+  .D .stage{background:#0a0f16;border:1px solid var(--line);flex:1.25;position:relative;display:flex;align-items:flex-end;justify-content:center;overflow:hidden}
+  .D .stage .shipwrap{position:relative;margin-bottom:14px}
+  .D .stage .beam{bottom:100%;width:8px}
+  .D .stage .muzzle{bottom:96%;width:18px;height:18px}
+  .D .pdetail{background:var(--panel);border:1px solid var(--line);padding:9px 11px}
+  .D .pdetail .dn{color:#e6eef9;font-size:11px}
+  .D .pdetail .row{display:flex;justify-content:space-between;margin-top:5px;color:var(--txt-dim);font-size:9px}
+  .D .pdetail .row b{color:var(--txt);font-weight:400}
+  .D .colS{position:absolute;left:31.5%;width:27%;top:9.5%;bottom:10%;display:flex;flex-direction:column;gap:6px}
+  .D .colE{position:absolute;left:60%;right:2%;top:9.5%;bottom:10%;display:flex;flex-direction:column;gap:6px}
+  .D .colhead{font-size:8px;letter-spacing:.22em;color:var(--txt-dim);padding:2px 0}
+  .D .eqlist{display:flex;flex-direction:column;gap:6px}
+  .D .cmp{color:var(--amber);font-size:8px;margin-top:4px}
+
+  .notes{margin-top:22px;display:grid;grid-template-columns:1fr 1fr;gap:12px}
+  .note{background:var(--panel);border:1px solid var(--line);padding:14px 16px;font-size:12px;line-height:1.75}
+  .note h3{font-size:11px;letter-spacing:.18em;color:var(--hud);margin-bottom:8px;font-weight:600}
+  .note.warn h3{color:var(--amber)}
+  .note ul{list-style:none}
+  .note li{padding-left:14px;position:relative}
+  .note li::before{content:"▸";position:absolute;left:0;color:var(--hud-dim)}
+  .note li b{color:#e6eef9;font-weight:600}
+  [data-note]{display:none}
+  @media (max-width:760px){.notes{grid-template-columns:1fr}}
+</style>
+</head>
+<body>
+<div class="wrap">
+  <header>
+    <h1>로드아웃 (격납고) 배치 비교 — 동작 프리뷰 반영</h1>
+    <span class="doc">UI 기획 3호 목업 v0.3 · 미션: 협곡 돌파 (지상전) · 프리뷰: 대출력 레이저 선택 상태</span>
+  </header>
+
+  <div class="controls">
+    <button class="opt-btn on" data-opt="A">A안 — 감상형</button>
+    <button class="opt-btn" data-opt="B">B안 — 정비 패널형</button>
+    <button class="opt-btn" data-opt="C">C안 — 혼합형</button>
+    <button class="opt-btn" data-opt="D">D안 — 무뎁스 + 프리뷰 무대</button>
+    <label class="fx-toggle"><input type="checkbox" id="picker" checked> 슈퍼웨폰 선택 상태 + 동작 프리뷰</label>
+  </div>
+
+  <div class="screen optA picker-on pv-on" id="screen">
+    <div class="topbar">
+      <span class="back">◀ 브리핑</span>
+      <span class="mtitle">MISSION 1-3 — 협곡 돌파</span>
+      <span class="tag">지상전</span>
+      <span class="hint">적 구성 힌트: <b>지상 다수</b> · 공중 소수 (Normal)</span>
+    </div>
+    <div class="botbar">
+      <span><span class="k">Q</span>프리셋</span>
+      <span><span class="k">V</span>상세</span>
+      <span><span class="k">B</span>뒤로</span>
+      <span class="launch">출 격</span>
+    </div>
+
+    <!-- ───────── A안: 기체 뷰 = 프리뷰 무대 ───────── -->
+    <div class="layout A">
+      <div class="shipname">
+        <div class="nm">FALCO-7</div>
+        <div class="tr">체력 3<br>특성: 대지 무장 재장전 가속</div>
+      </div>
+      <div class="shipview">
+        <span class="pv-label">동작 프리뷰 — 반복 재생</span>
+        <div class="pad"></div>
+        <div class="shipwrap">
+          <span class="beam"></span><span class="muzzle"></span>
+          <svg class="ship" width="140" height="140" viewBox="0 0 100 100"><polygon points="50,8 62,46 88,58 62,60 56,88 50,74 44,88 38,60 12,58 38,46" fill="#8ea6b8" stroke="#5d7385" stroke-width="1.5"/></svg>
+        </div>
+      </div>
+      <div class="synwrap">
+        <div class="syn">
+          <div class="st">활성 시너지</div>
+          <div class="sn">■ 강습 지원 체계</div>
+          <div class="sd">지원 드론 [로켓 포드] 1기 동행</div>
+        </div>
+      </div>
+      <div class="picker">
+        <div class="eq"><span class="attr uni">전천후</span><span class="en">편대 미사일 지원</span></div>
+        <div class="eq sel"><span class="attr uni">전천후</span><span class="en">대출력 레이저</span></div>
+        <div class="eq"><span class="attr gnd">지상전 특화</span><span class="en">포병 지원 사격</span><span class="prem">특화 프리미엄</span></div>
+        <div class="eq locked" style="grid-column:1/-1"><span class="attr air">고고도 특화</span><span class="en">궤도 타격</span><span class="why">이 전장에서는 운용 불가 (고고도)</span></div>
+      </div>
+      <div class="pickdetail">
+        <div class="syn" style="border-color:var(--line);background:var(--panel)">
+          <div class="st">대출력 레이저</div>
+          <div class="sd">기체형 · 공격 · 전천후<br>전방 관통 데미지 · 스톡 1</div>
+        </div>
+      </div>
+      <div class="slotrow">
+        <div class="slot"><div class="sl">기체</div><div class="sv">FALCO-7</div></div>
+        <div class="slot"><div class="sl">기본 무기</div><div class="sv">표준 기관총 <span class="attr uni">범용</span></div></div>
+        <div class="slot"><div class="sl">특수 1</div><div class="sv">대공 미사일 <span class="attr air">대공</span></div><span class="keycap">L1</span></div>
+        <div class="slot"><div class="sl">특수 2</div><div class="sv">대지 로켓 <span class="attr gnd">대지</span></div><span class="keycap">R1</span></div>
+        <div class="slot sel"><div class="sl">슈퍼웨폰</div><div class="sv">대출력 레이저</div></div>
+        <div class="slot"><div class="sl">보호막</div><div class="sv">표준 실드</div></div>
+      </div>
+    </div>
+
+    <!-- ───────── B안: 전용 프리뷰 박스 ───────── -->
+    <div class="layout B">
+      <div class="col col1">
+        <div class="colhead">SLOTS</div>
+        <div class="slot"><div class="sl">기체</div><div class="sv">FALCO-7</div></div>
+        <div class="slot"><div class="sl">기본 무기</div><div class="sv">표준 기관총 <span class="attr uni">범용</span></div></div>
+        <div class="slot"><div class="sl">특수 1</div><div class="sv">대공 미사일 <span class="attr air">대공</span></div><span class="keycap">L1</span></div>
+        <div class="slot"><div class="sl">특수 2</div><div class="sv">대지 로켓 <span class="attr gnd">대지</span></div><span class="keycap">R1</span></div>
+        <div class="slot sel"><div class="sl">슈퍼웨폰</div><div class="sv">대출력 레이저</div></div>
+        <div class="slot"><div class="sl">보호막</div><div class="sv">표준 실드</div></div>
+      </div>
+      <div class="col col2">
+        <div class="colhead">EQUIPMENT — 슈퍼웨폰</div>
+        <div class="eqlist">
+          <div class="eq"><span class="attr uni">전천후</span><span class="en">편대 미사일 지원</span></div>
+          <div class="eq sel"><span class="attr uni">전천후</span><span class="en">대출력 레이저</span></div>
+          <div class="eq"><span class="attr gnd">지상전 특화</span><span class="en">포병 지원 사격</span><span class="prem">특화</span></div>
+          <div class="eq locked"><span class="attr air">고고도 특화</span><span class="en">궤도 타격</span><span class="why">운용 불가</span></div>
+        </div>
+      </div>
+      <div class="col col3">
+        <div class="colhead">PREVIEW / DETAIL</div>
+        <div class="preview">
+          <span class="pv-label">동작 프리뷰 — 반복 재생</span>
+          <div class="shipwrap">
+            <span class="beam" style="width:7px"></span><span class="muzzle" style="width:16px;height:16px"></span>
+            <svg class="ship" width="64" height="64" viewBox="0 0 100 100"><polygon points="50,8 62,46 88,58 62,60 56,88 50,74 44,88 38,60 12,58 38,46" fill="#8ea6b8" stroke="#5d7385" stroke-width="1.5"/></svg>
+          </div>
+        </div>
+        <div class="detail">
+          <div class="dn">대출력 레이저</div>
+          <div class="row"><span>분류</span><b>기체형 (필드→확산)</b></div>
+          <div class="row"><span>운용 환경</span><b>전천후</b></div>
+          <div class="row"><span>소비 스톡</span><b>1</b></div>
+          <div class="row" style="margin-top:8px"><span>위력</span><span class="statbar"><i class="f"></i><i class="f"></i><i class="f"></i><i class="f"></i><i class="f"></i><i class="up"></i><i></i><i></i><i></i><i></i></span></div>
+          <div class="cmp" style="margin-top:4px">▲ 현재 장착 대비 +1</div>
+        </div>
+        <div class="syn">
+          <div class="st">활성 시너지</div>
+          <div class="sn">■ 강습 지원 체계</div>
+          <div class="sd">지원 드론 [로켓 포드] 1기 동행</div>
+        </div>
+      </div>
+    </div>
+
+    <!-- ───────── C안: 좌측 기체 뷰 = 프리뷰 무대 ───────── -->
+    <div class="layout C">
+      <div class="left">
+        <div class="shipview">
+          <span class="pv-label">동작 프리뷰 — 반복 재생</span>
+          <div class="pad"></div>
+          <div class="shipwrap">
+            <span class="beam"></span><span class="muzzle"></span>
+            <svg class="ship" width="112" height="112" viewBox="0 0 100 100"><polygon points="50,8 62,46 88,58 62,60 56,88 50,74 44,88 38,60 12,58 38,46" fill="#8ea6b8" stroke="#5d7385" stroke-width="1.5"/></svg>
+          </div>
+        </div>
+        <div class="syn">
+          <div class="st">활성 시너지</div>
+          <div class="sn">■ 강습 지원 체계</div>
+          <div class="sd">지원 드론 [로켓 포드] 1기 동행</div>
+        </div>
+      </div>
+      <div class="right">
+        <div class="slot"><div class="sl">기체</div><div class="sv">FALCO-7</div></div>
+        <div class="slot"><div class="sl">기본 무기</div><div class="sv">표준 기관총 <span class="attr uni">범용</span></div></div>
+        <div class="slot"><div class="sl">특수 1</div><div class="sv">대공 미사일 <span class="attr air">대공</span></div><span class="keycap">L1</span></div>
+        <div class="slot"><div class="sl">특수 2</div><div class="sv">대지 로켓 <span class="attr gnd">대지</span></div><span class="keycap">R1</span></div>
+        <div class="slot sel"><div class="sl">슈퍼웨폰</div><div class="sv">대출력 레이저</div></div>
+        <div class="slot"><div class="sl">보호막</div><div class="sv">표준 실드</div></div>
+      </div>
+      <div class="overlay">
+        <div class="oh">슈퍼웨폰 선택 — 좌측 기체가 동작을 반복 시연</div>
+        <div class="eq"><span class="attr uni">전천후</span><span class="en">편대 미사일 지원</span></div>
+        <div class="eq sel"><span class="attr uni">전천후</span><span class="en">대출력 레이저</span></div>
+        <div class="eq"><span class="attr gnd">지상전 특화</span><span class="en">포병 지원 사격</span><span class="prem">특화 프리미엄</span></div>
+        <div class="eq locked"><span class="attr air">고고도 특화</span><span class="en">궤도 타격</span><span class="why">운용 불가 (고고도)</span></div>
+        <div class="odetail">대출력 레이저 — <b>기체형 · 공격 · 전천후 · 스톡 1</b><br>전방 관통 데미지. 위력 <b>▲+1</b></div>
+      </div>
+    </div>
+
+    <!-- ───────── D안: 무뎁스 3컬럼 + 좌측 프리뷰 무대 ───────── -->
+    <div class="layout D">
+      <div class="colP">
+        <div class="colhead">PREVIEW</div>
+        <div class="stage">
+          <span class="pv-label">동작 프리뷰 — 반복 재생</span>
+          <div class="shipwrap">
+            <span class="beam"></span><span class="muzzle"></span>
+            <svg class="ship" width="86" height="86" viewBox="0 0 100 100"><polygon points="50,8 62,46 88,58 62,60 56,88 50,74 44,88 38,60 12,58 38,46" fill="#8ea6b8" stroke="#5d7385" stroke-width="1.5"/></svg>
+          </div>
+        </div>
+        <div class="pdetail">
+          <div class="dn">대출력 레이저</div>
+          <div class="row"><span>분류</span><b>기체형 · 공격 · 전천후</b></div>
+          <div class="row"><span>효과</span><b>전방 관통 · 스톡 1</b></div>
+          <div class="row" style="margin-top:7px"><span>위력</span><span class="statbar"><i class="f"></i><i class="f"></i><i class="f"></i><i class="f"></i><i class="f"></i><i class="up"></i><i></i><i></i><i></i><i></i></span></div>
+          <div class="cmp">▲ 현재 장착 대비 +1</div>
+        </div>
+      </div>
+      <div class="colS">
+        <div class="colhead">SLOTS</div>
+        <div class="slot"><div class="sl">기체</div><div class="sv">FALCO-7</div></div>
+        <div class="slot"><div class="sl">기본 무기</div><div class="sv">표준 기관총 <span class="attr uni">범용</span></div></div>
+        <div class="slot"><div class="sl">특수 1</div><div class="sv">대공 미사일 <span class="attr air">대공</span></div><span class="keycap">L1</span></div>
+        <div class="slot"><div class="sl">특수 2</div><div class="sv">대지 로켓 <span class="attr gnd">대지</span></div><span class="keycap">R1</span></div>
+        <div class="slot sel"><div class="sl">슈퍼웨폰</div><div class="sv">대출력 레이저</div></div>
+        <div class="slot"><div class="sl">보호막</div><div class="sv">표준 실드</div></div>
+        <div class="syn" style="margin-top:auto">
+          <div class="st">활성 시너지</div>
+          <div class="sn">■ 강습 지원 체계</div>
+          <div class="sd">지원 드론 [로켓 포드] 1기 동행</div>
+        </div>
+      </div>
+      <div class="colE">
+        <div class="colhead">EQUIPMENT — 슈퍼웨폰 (슬롯 포커스에 따라 자동 갱신)</div>
+        <div class="eqlist">
+          <div class="eq"><span class="attr uni">전천후</span><span class="en">편대 미사일 지원</span></div>
+          <div class="eq sel"><span class="attr uni">전천후</span><span class="en">대출력 레이저</span></div>
+          <div class="eq"><span class="attr gnd">지상전 특화</span><span class="en">포병 지원 사격</span><span class="prem">특화 프리미엄</span></div>
+          <div class="eq locked"><span class="attr air">고고도 특화</span><span class="en">궤도 타격</span><span class="why">운용 불가 (고고도)</span></div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <div class="notes">
+    <div class="note" data-note="A">
+      <h3>A안 — 감상형 + 프리뷰 무대</h3>
+      <ul>
+        <li><b>중앙 기체 뷰가 그대로 프리뷰 무대가 됨</b> — 장비를 고르면 화면의 내 기체가 그 무장을 발사. 감상과 정보가 하나로 합쳐짐</li>
+        <li>선택 캐러셀이 좌측으로 비켜나 기체를 가리지 않도록 조정됨</li>
+        <li>상세 스탯 표시 공간이 여전히 좁음 (우하단 소형 카드)</li>
+      </ul>
+    </div>
+    <div class="note" data-note="B">
+      <h3>B안 — 정비 패널형 + 전용 프리뷰 박스</h3>
+      <ul>
+        <li>우측 컬럼 상단에 <b>전용 프리뷰 박스</b> 추가 — 리스트 포커스 이동에 따라 즉시 재생 전환</li>
+        <li>프리뷰+스탯+시너지가 한 컬럼에 수직 정렬 — 정보 완결성 최고</li>
+        <li>프리뷰 무대가 작음 — 슈퍼웨폰의 대형 연출(레터박스 확산 등)은 축소 표현 한계</li>
+      </ul>
+    </div>
+    <div class="note" data-note="C">
+      <h3>C안 — 혼합형 + 프리뷰 무대</h3>
+      <ul>
+        <li><b>좌측 기체 뷰가 상시 프리뷰 무대</b> — 선택 오버레이는 우측만 덮으므로 프리뷰가 절대 가려지지 않음</li>
+        <li>리스트 포커스 이동 → 좌측에서 즉시 동작 재생: "고르면서 본다" 동선이 가장 자연스러움</li>
+        <li>A안 대비 기체 뷰 크기 절반 — 프리뷰 무대도 그만큼 작음</li>
+      </ul>
+    </div>
+    <div class="note" data-note="D">
+      <h3>D안 — 무뎁스 3컬럼 + 프리뷰 무대 (C 개선안)</h3>
+      <ul>
+        <li><b>뎁스 0 (B안 구조)</b> — 슬롯 포커스 이동만으로 우측 리스트 자동 갱신, 열고 닫는 모달 없음</li>
+        <li><b>프리뷰 무대 상시 비가림 (C안 장점)</b> — 좌측 무대가 어떤 상태에서도 가려지지 않음</li>
+        <li>리스트 포커스 이동 → 좌측에서 즉시 동작 재생 + 하단 상세 갱신. "고르면서 본다" 완성형</li>
+        <li>기체 감상 크기는 최소 — 대신 <b>기체 슬롯 포커스 시 무대가 회전 감상 뷰로 전환</b>되어 감상 요구를 흡수 [제안]</li>
+      </ul>
+    </div>
+    <div class="note warn">
+      <h3>동작 프리뷰 — 요구사항 정리</h3>
+      <ul>
+        <li><b>모든 장비는 선택(포커스) 시 실제 동작을 반복 재생으로 보여준다</b> (신규 확정 요건)</li>
+        <li>장비별 프리뷰 내용: 기본무기/특수무장=발사 패턴, 슈퍼웨폰=발동 연출 축소판, 보호막=피격 흡수→파괴 데모, 기체=[정의 필요], 시너지 드론=동행+동작</li>
+        <li>구현 방향 [제안]: 사전 제작 영상이 아닌 <b>실제 게임 데이터 기반 미니 씬 반복 재생</b> — 밸런스 수정이 프리뷰에 자동 반영, 별도 영상 제작 비용 없음</li>
+        <li>목업의 레이저 반복 재생은 예시 — 실제로는 선택 장비에 따라 프리뷰가 전환됨</li>
+        <li><b>UI 뎁스 비교</b>: A +1(캐러셀 모달) / B 0(공간 이동) / C +1(오버레이 모달) / D 0(공간 이동)+프리뷰 상시</li>
+      </ul>
+    </div>
+  </div>
+</div>
+
+<script>
+  const screen=document.getElementById('screen');
+  const btns=document.querySelectorAll('.opt-btn[data-opt]');
+  const notes=document.querySelectorAll('[data-note]');
+  function setOpt(o){
+    screen.classList.remove('optA','optB','optC');
+    screen.classList.add('opt'+o);
+    btns.forEach(b=>b.classList.toggle('on',b.dataset.opt===o));
+    notes.forEach(n=>{n.style.display=(n.dataset.note===o)?'block':'none';});
+  }
+  btns.forEach(b=>b.addEventListener('click',()=>setOpt(b.dataset.opt)));
+  document.getElementById('picker').addEventListener('change',e=>{
+    screen.classList.toggle('picker-on',e.target.checked);
+    screen.classList.toggle('pv-on',e.target.checked);
+  });
+  setOpt('D');
+</script>
+</body>
+</html>

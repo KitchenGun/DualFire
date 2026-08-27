@@ -1,0 +1,305 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>캠페인 맵 배치 3안 비교 — 목업 v0.2</title>
+<style>
+  :root{
+    --bg:#0b0e14; --panel:#11161f; --panel2:#151c27; --line:#1f2836;
+    --hud:#8fe388; --hud-dim:#4a7a52; --amber:#e8b44a;
+    --txt:#cdd6e4; --txt-dim:#5d6b80;
+    --air:#5ab8d4; --gnd:#d49a5a; --lock:#3a4356;
+    --rS:#e8b44a; --rA:#8fe388; --rB:#5ab8d4;
+  }
+  *{margin:0;padding:0;box-sizing:border-box}
+  body{background:var(--bg);color:var(--txt);font-family:ui-monospace,'Cascadia Mono','D2Coding',Consolas,monospace;padding:28px 20px 60px}
+  .wrap{max-width:1100px;margin:0 auto}
+  header{display:flex;align-items:baseline;gap:14px;border-bottom:1px solid var(--line);padding-bottom:14px;margin-bottom:16px;flex-wrap:wrap}
+  header h1{font-size:15px;letter-spacing:.22em;color:var(--hud);font-weight:600}
+  header .doc{font-size:11px;color:var(--txt-dim)}
+  .controls{display:flex;flex-wrap:wrap;gap:10px;align-items:center;margin-bottom:14px}
+  .opt-btn{appearance:none;background:var(--panel);border:1px solid var(--line);color:var(--txt-dim);font:inherit;font-size:12px;letter-spacing:.1em;padding:8px 14px;cursor:pointer}
+  .opt-btn:hover{border-color:var(--hud-dim);color:var(--txt)}
+  .opt-btn:focus-visible{outline:2px solid var(--hud);outline-offset:2px}
+  .opt-btn.on{background:#152218;border-color:var(--hud);color:var(--hud)}
+
+  .screen{position:relative;aspect-ratio:16/9;background:#0d1119;border:1px solid var(--line);overflow:hidden;font-size:10px}
+  .layout{position:absolute;inset:0;display:none}
+  .screen.optA .layout.A{display:block}
+  .screen.optB .layout.B{display:block}
+  .screen.optC .layout.C{display:block}
+
+  .topbar{position:absolute;top:0;left:0;right:0;height:8%;background:rgba(9,12,18,.92);border-bottom:1px solid var(--line);display:flex;align-items:center;gap:16px;padding:0 16px;z-index:5}
+  .topbar .tt{font-size:12px;letter-spacing:.24em;color:#e6eef9}
+  .topbar .cur{margin-left:auto;color:var(--amber);font-size:11px}
+  .botbar{position:absolute;bottom:0;left:0;right:0;height:9%;background:rgba(9,12,18,.92);border-top:1px solid var(--line);display:flex;align-items:center;gap:14px;padding:0 16px;z-index:5;font-size:9px;color:var(--txt-dim)}
+  .botbar .k{border:1px solid var(--line);padding:2px 6px;color:var(--txt);margin-right:3px}
+  .botbar .go{margin-left:auto;background:#152218;border:1px solid var(--hud);color:var(--hud);padding:7px 20px;font-size:11px;letter-spacing:.18em}
+
+  .detail{position:absolute;right:2%;top:11%;bottom:12%;width:26%;background:var(--panel);border:1px solid var(--line);padding:12px;display:flex;flex-direction:column;gap:9px;z-index:4}
+  .detail .dh{font-size:8px;letter-spacing:.22em;color:var(--txt-dim)}
+  .detail .dn{font-size:13px;color:#e6eef9}
+  .detail .tag{display:inline-block;border:1px solid var(--gnd);color:var(--gnd);padding:1px 7px;font-size:8px;letter-spacing:.14em;width:fit-content}
+  .detail .rec{font-size:9px;color:var(--txt-dim);line-height:1.8}
+  .detail .rec b{color:var(--txt);font-weight:400}
+  .diffsel{display:flex;gap:6px;margin-top:2px}
+  .diffsel span{flex:1;text-align:center;border:1px solid var(--line);padding:5px 0;font-size:9px;color:var(--txt-dim)}
+  .diffsel span.on{border-color:var(--hud);color:var(--hud);background:#131d15}
+  .diffsel span.locked{color:var(--lock);border-style:dashed}
+  .detail .foot{margin-top:auto;font-size:8px;color:var(--txt-dim);line-height:1.7}
+
+  /* 노드 공통 */
+  .node{position:absolute;width:42px;height:42px;transform:translate(-50%,-50%);display:flex;align-items:center;justify-content:center;flex-direction:column;gap:1px;background:var(--panel);border:1.5px solid var(--line);border-radius:50%;z-index:3}
+  .node .no{font-size:10px;color:#e6eef9}
+  .node .rr{font-size:9px;font-weight:700}
+  .node.done{border-color:var(--hud-dim)}
+  .node.cur{border-color:var(--hud);box-shadow:0 0 12px rgba(143,227,136,.35)}
+  .node.lockseq{border-color:var(--lock)}
+  .node.lockseq .no{color:var(--lock)}
+  .node .lk{font-size:9px;color:var(--lock)}
+  .node.bdone{border-color:var(--amber)}
+  .node.bhint{border-color:var(--amber);border-style:dashed}
+  .node.bhint .no{color:var(--amber)}
+  .nlabel{position:absolute;transform:translate(-50%,0);font-size:8px;color:var(--txt-dim);text-align:center;white-space:nowrap;z-index:3;line-height:1.5}
+  .rr.S{color:var(--rS)}.rr.A{color:var(--rA)}.rr.B{color:var(--rB)}
+  svg.links{position:absolute;inset:0;width:100%;height:100%}
+  .link{stroke:#31435c;stroke-width:2;stroke-dasharray:6 5}
+  .link.done{stroke:var(--hud-dim);stroke-dasharray:none}
+  .link.branch{stroke:var(--amber);stroke-width:1.5}
+  .link.branch.hint{stroke-dasharray:3 5;opacity:.8}
+
+  /* ── A안: 작전 지도형 ── */
+  .A .map{position:absolute;left:0;top:8%;bottom:9%;width:71%;
+    background:
+      radial-gradient(340px 220px at 22% 34%, rgba(90,140,110,.13), transparent 70%),
+      radial-gradient(300px 240px at 70% 62%, rgba(90,120,160,.11), transparent 70%),
+      radial-gradient(200px 160px at 46% 82%, rgba(150,130,90,.08), transparent 70%),
+      repeating-linear-gradient(0deg,transparent 0 39px,rgba(143,227,136,.04) 39px 40px),
+      repeating-linear-gradient(90deg,transparent 0 39px,rgba(143,227,136,.04) 39px 40px),
+      #10161f}
+  .A .coast{fill:none;stroke:#22304a;stroke-width:1.5}
+
+  /* ── B안: 노드 그래프형 (작전 계통도) ── */
+  .B .graph{position:absolute;left:0;top:8%;bottom:9%;width:71%;
+    background:
+      repeating-linear-gradient(0deg,transparent 0 31px,rgba(143,227,136,.03) 31px 32px),
+      repeating-linear-gradient(90deg,transparent 0 31px,rgba(143,227,136,.03) 31px 32px),
+      #0e131b}
+  .B .glabel{position:absolute;left:3%;top:5%;font-size:8px;letter-spacing:.26em;color:#2a3547}
+
+  /* ── C안: 미션 리스트형 ── */
+  .C .list{position:absolute;left:2%;top:11%;bottom:12%;width:68%;display:flex;flex-direction:column;gap:5px;overflow:hidden}
+  .C .lh{font-size:8px;letter-spacing:.22em;color:var(--txt-dim)}
+  .mrow{display:flex;align-items:center;gap:12px;background:var(--panel);border:1px solid var(--line);padding:8px 13px}
+  .mrow .no{width:36px;color:var(--txt-dim)}
+  .mrow .nm{flex:1;color:#e6eef9;font-size:11px}
+  .mrow .env{font-size:8px;color:var(--gnd);border:1px solid var(--gnd);padding:1px 6px}
+  .mrow .env.sea{color:var(--air);border-color:var(--air)}
+  .mrow .st{width:130px;text-align:right;font-size:9px;color:var(--txt-dim)}
+  .mrow .rr{width:22px;text-align:center;font-size:12px;font-weight:700}
+  .mrow.cur{border-color:var(--hud);background:#131d15}
+  .mrow.lockseq{opacity:.55;border-style:dashed}
+  .mrow.bdone{border-color:var(--amber)}
+  .mrow.bdone .nm{color:var(--amber)}
+  .mrow.bhint{border-color:var(--amber);border-style:dashed}
+  .mrow.bhint .nm{color:var(--amber)}
+  .mrow .sub{width:14px;color:var(--amber);font-size:9px}
+
+  .notes{margin-top:22px;display:grid;grid-template-columns:1fr 1fr;gap:12px}
+  .note{background:var(--panel);border:1px solid var(--line);padding:14px 16px;font-size:12px;line-height:1.75}
+  .note h3{font-size:11px;letter-spacing:.18em;color:var(--hud);margin-bottom:8px;font-weight:600}
+  .note.warn h3{color:var(--amber)}
+  .note ul{list-style:none}
+  .note li{padding-left:14px;position:relative}
+  .note li::before{content:"▸";position:absolute;left:0;color:var(--hud-dim)}
+  .note li b{color:#e6eef9;font-weight:600}
+  [data-note]{display:none}
+  @media (max-width:760px){.notes{grid-template-columns:1fr}}
+</style>
+</head>
+<body>
+<div class="wrap">
+  <header>
+    <h1>캠페인 맵 배치 3안 비교</h1>
+    <span class="doc">UI 기획 5호 목업 v0.2 · 캠페인 중반 (1~4 클리어, 5 진행 가능, 분기 2-B 해금·클리어, 분기 5-B 힌트) · 분기 노출 ③ 반영</span>
+  </header>
+
+  <div class="controls">
+    <button class="opt-btn on" data-opt="A">A안 — 작전 지도형</button>
+    <button class="opt-btn" data-opt="B">B안 — 노드 그래프형 (작전 계통도)</button>
+    <button class="opt-btn" data-opt="C">C안 — 미션 리스트형</button>
+  </div>
+
+  <div class="screen optA" id="screen">
+    <div class="topbar">
+      <span class="tt">CAMPAIGN</span>
+      <span class="cur">CR 12,400</span>
+    </div>
+    <div class="botbar">
+      <span><span class="k">S</span>상점</span>
+      <span><span class="k">C</span>도감</span>
+      <span><span class="k">T</span>도전과제</span>
+      <span><span class="k">R</span>기록실</span>
+      <span><span class="k">P</span>프리셋</span>
+      <span class="go">브리핑 ▶</span>
+    </div>
+
+    <!-- ── A안: 작전 지도형 ── -->
+    <div class="layout A">
+      <div class="map">
+        <svg class="links" viewBox="0 0 100 100" preserveAspectRatio="none">
+          <path class="coast" d="M0,58 C14,52 20,60 30,55 S48,44 58,48 74,42 100,46"/>
+          <path class="coast" d="M36,100 C40,88 52,86 60,92"/>
+          <line class="link done" x1="12" y1="78" x2="26" y2="60"/>
+          <line class="link done" x1="26" y1="60" x2="42" y2="70"/>
+          <line class="link done" x1="42" y1="70" x2="54" y2="46"/>
+          <line class="link done" x1="54" y1="46" x2="66" y2="62"/>
+          <line class="link" x1="66" y1="62" x2="78" y2="40"/>
+          <line class="link" x1="78" y1="40" x2="90" y2="24"/>
+          <line class="link branch" x1="26" y1="60" x2="40" y2="34"/>
+          <line class="link branch hint" x1="66" y1="62" x2="82" y2="80"/>
+        </svg>
+        <div class="node done" style="left:12%;top:78%"><span class="no">01</span><span class="rr A">A</span></div>
+        <div class="node done" style="left:26%;top:60%"><span class="no">02</span><span class="rr S">S</span></div>
+        <div class="node done" style="left:42%;top:70%"><span class="no">03</span><span class="rr B">B</span></div>
+        <div class="node done" style="left:54%;top:46%"><span class="no">04</span><span class="rr A">A</span></div>
+        <div class="node cur" style="left:66%;top:62%"><span class="no">05</span></div>
+        <div class="node lockseq" style="left:78%;top:40%"><span class="no">06</span><span class="lk">잠김</span></div>
+        <div class="node lockseq" style="left:90%;top:24%"><span class="no">07</span><span class="lk">잠김</span></div>
+        <div class="node bdone" style="left:40%;top:34%"><span class="no">2-B</span><span class="rr S">S</span></div>
+        <div class="node bhint" style="left:82%;top:80%"><span class="no">?</span></div>
+        <div class="nlabel" style="left:66%;top:70%">해상 봉쇄선 돌파</div>
+        <div class="nlabel" style="left:40%;top:24%">긴급 요격 임무</div>
+        <div class="nlabel" style="left:82%;top:88%">미확인 작전<br>특정 조건 달성 시 개방</div>
+      </div>
+      <div class="detail">
+        <span class="dh">MISSION DETAIL</span>
+        <span class="dn">05 — 해상 봉쇄선 돌파</span>
+        <span class="tag" style="color:var(--air);border-color:var(--air)">해상전</span>
+        <div class="rec">최고 기록: <b>미클리어</b><br>브리핑: 봉쇄 함대를 뚫고 수송로를 확보하라</div>
+        <div class="dh" style="margin-top:4px">난이도</div>
+        <div class="diffsel"><span class="on">NORMAL</span><span class="locked">HARD</span><span class="locked">NIGHTMARE</span></div>
+        <div class="foot">HARD는 NORMAL 클리어 시 해금</div>
+      </div>
+    </div>
+
+    <!-- ── B안: 노드 그래프형 ── -->
+    <div class="layout B">
+      <div class="graph">
+        <span class="glabel">OPERATION FLOW</span>
+        <svg class="links" viewBox="0 0 100 100" preserveAspectRatio="none">
+          <line class="link done" x1="8" y1="56" x2="22" y2="56"/>
+          <line class="link done" x1="22" y1="56" x2="36" y2="56"/>
+          <line class="link done" x1="36" y1="56" x2="50" y2="56"/>
+          <line class="link done" x1="50" y1="56" x2="64" y2="56"/>
+          <line class="link" x1="64" y1="56" x2="78" y2="56"/>
+          <line class="link" x1="78" y1="56" x2="92" y2="56"/>
+          <line class="link branch" x1="22" y1="56" x2="30" y2="28"/>
+          <line class="link branch hint" x1="64" y1="56" x2="72" y2="84"/>
+        </svg>
+        <div class="node done" style="left:8%;top:56%"><span class="no">01</span><span class="rr A">A</span></div>
+        <div class="node done" style="left:22%;top:56%"><span class="no">02</span><span class="rr S">S</span></div>
+        <div class="node done" style="left:36%;top:56%"><span class="no">03</span><span class="rr B">B</span></div>
+        <div class="node done" style="left:50%;top:56%"><span class="no">04</span><span class="rr A">A</span></div>
+        <div class="node cur" style="left:64%;top:56%"><span class="no">05</span></div>
+        <div class="node lockseq" style="left:78%;top:56%"><span class="no">06</span><span class="lk">잠김</span></div>
+        <div class="node lockseq" style="left:92%;top:56%"><span class="no">07</span><span class="lk">잠김</span></div>
+        <div class="node bdone" style="left:30%;top:28%"><span class="no">2-B</span><span class="rr S">S</span></div>
+        <div class="node bhint" style="left:72%;top:84%"><span class="no">?</span></div>
+        <div class="nlabel" style="left:64%;top:64%">해상 봉쇄선 돌파</div>
+        <div class="nlabel" style="left:30%;top:18%">긴급 요격 임무</div>
+        <div class="nlabel" style="left:72%;top:92%">미확인 작전 — 특정 조건 달성 시 개방</div>
+      </div>
+      <div class="detail">
+        <span class="dh">MISSION DETAIL</span>
+        <span class="dn">05 — 해상 봉쇄선 돌파</span>
+        <span class="tag" style="color:var(--air);border-color:var(--air)">해상전</span>
+        <div class="rec">최고 기록: <b>미클리어</b><br>브리핑: 봉쇄 함대를 뚫고 수송로를 확보하라</div>
+        <div class="dh" style="margin-top:4px">난이도</div>
+        <div class="diffsel"><span class="on">NORMAL</span><span class="locked">HARD</span><span class="locked">NIGHTMARE</span></div>
+        <div class="foot">HARD는 NORMAL 클리어 시 해금</div>
+      </div>
+    </div>
+
+    <!-- ── C안: 미션 리스트형 ── -->
+    <div class="layout C">
+      <div class="list">
+        <span class="lh">MISSIONS</span>
+        <div class="mrow"><span class="no">01</span><span class="nm">첫 출격</span><span class="env">지상전</span><span class="st">클리어</span><span class="rr A">A</span></div>
+        <div class="mrow"><span class="no">02</span><span class="nm">해상 초계</span><span class="env sea">해상전</span><span class="st">클리어</span><span class="rr S">S</span></div>
+        <div class="mrow bdone"><span class="sub">└</span><span class="no">2-B</span><span class="nm">긴급 요격 임무</span><span class="env sea" style="color:var(--air);border-color:var(--air)">고고도</span><span class="st">클리어</span><span class="rr S">S</span></div>
+        <div class="mrow"><span class="no">03</span><span class="nm">협곡 돌파</span><span class="env">지상전</span><span class="st">클리어</span><span class="rr B">B</span></div>
+        <div class="mrow"><span class="no">04</span><span class="nm">협곡 돌파 II</span><span class="env">지상전</span><span class="st">클리어</span><span class="rr A">A</span></div>
+        <div class="mrow cur"><span class="no">05</span><span class="nm">해상 봉쇄선 돌파</span><span class="env sea">해상전</span><span class="st">진행 가능</span></div>
+        <div class="mrow bhint"><span class="sub">└</span><span class="no">?</span><span class="nm">미확인 작전</span><span class="st">특정 조건 달성 시 개방</span></div>
+        <div class="mrow lockseq"><span class="no">06</span><span class="nm">???</span><span class="st">미션 5 클리어 필요</span></div>
+        <div class="mrow lockseq"><span class="no">07</span><span class="nm">???</span><span class="st">미션 6 클리어 필요</span></div>
+      </div>
+      <div class="detail">
+        <span class="dh">MISSION DETAIL</span>
+        <span class="dn">05 — 해상 봉쇄선 돌파</span>
+        <span class="tag" style="color:var(--air);border-color:var(--air)">해상전</span>
+        <div class="rec">최고 기록: <b>미클리어</b><br>브리핑: 봉쇄 함대를 뚫고 수송로를 확보하라</div>
+        <div class="dh" style="margin-top:4px">난이도</div>
+        <div class="diffsel"><span class="on">NORMAL</span><span class="locked">HARD</span><span class="locked">NIGHTMARE</span></div>
+        <div class="foot">HARD는 NORMAL 클리어 시 해금</div>
+      </div>
+    </div>
+  </div>
+
+  <div class="notes">
+    <div class="note" data-note="A">
+      <h3>A안 — 작전 지도형</h3>
+      <ul>
+        <li><b>세계관 몰입 최고.</b> 전역을 훑으며 진군하는 캠페인 서사감. 환경 타입(지상/해상/고고도)이 지형과 대응</li>
+        <li>분기 힌트("?" + 파생선)가 지도 공간에서 갈라져 보임 — ③ 정책 표현력 좋음</li>
+        <li><b>지도 아트 제작 비용 발생</b> — 로우폴리/스타일라이즈 지도로 비용 통제 가능하나 0은 아님</li>
+        <li>미션 배치가 지형에 종속 — 미션 추가/변경 시 공간 재설계</li>
+      </ul>
+    </div>
+    <div class="note" data-note="B">
+      <h3>B안 — 노드 그래프형 (작전 계통도)</h3>
+      <ul>
+        <li><b>분기 구조 시인성 최고.</b> 본선에서 위아래로 갈라지는 파생이 즉각 읽힘 — ③ 정책 표현력 가장 명확</li>
+        <li><b>아트 비용 최소</b> — 배경 없는 계통도. 군사 작전도 스타일링으로 분위기 확보 가능</li>
+        <li>미션 추가/변경에 무한 대응 (노드만 추가)</li>
+        <li>지도형 대비 세계관 몰입 약함 — "어디서 싸우는가"의 공간감 없음</li>
+      </ul>
+    </div>
+    <div class="note" data-note="C">
+      <h3>C안 — 미션 리스트형</h3>
+      <ul>
+        <li><b>정보 밀도·리플레이 대상 탐색 최속.</b> 환경/랭크/상태가 표로 한눈에</li>
+        <li>아트 비용 0, 확장 무한</li>
+        <li>분기가 들여쓰기 행(└)으로 표현 — 구조감이 가장 약하고 "메뉴" 인상</li>
+        <li>캠페인 진행의 공간적 성취감 없음</li>
+      </ul>
+    </div>
+    <div class="note warn">
+      <h3>이 목업으로 확인할 것</h3>
+      <ul>
+        <li>노드 상태 5종이 전부 표시됨: 클리어(랭크) / 현재 / 순차 잠김(조건 공개) / <b>분기 해금·클리어(2-B)</b> / <b>분기 힌트(? — 5-B)</b></li>
+        <li>③ 정책의 핵심인 <b>"? 노드 + 파생 연결선"</b>이 각 배치에서 어떻게 읽히는지 — A/B는 선으로, C는 들여쓰기로</li>
+        <li>중간 절충 [참고]: B안 계통도에 스테이지 테마 썸네일/환경 색상을 입히면 아트 비용을 낮게 유지하면서 공간감 일부 보완 가능</li>
+        <li>리스트형의 랭크 일람성은 A/B 채택 시에도 기록실(7호)이 흡수 가능</li>
+      </ul>
+    </div>
+  </div>
+</div>
+
+<script>
+  const screen=document.getElementById('screen');
+  const btns=document.querySelectorAll('.opt-btn[data-opt]');
+  const notes=document.querySelectorAll('[data-note]');
+  function setOpt(o){
+    screen.classList.remove('optA','optB','optC');
+    screen.classList.add('opt'+o);
+    btns.forEach(b=>b.classList.toggle('on',b.dataset.opt===o));
+    notes.forEach(n=>{n.style.display=(n.dataset.note===o)?'block':'none';});
+  }
+  btns.forEach(b=>b.addEventListener('click',()=>setOpt(b.dataset.opt)));
+  setOpt('A');
+</script>
+</body>
+</html>
