@@ -14,6 +14,7 @@ class UInputAction;
 class UProgressBar;
 class UTexture2D;
 class UVerticalBox;
+class UDualFireMenuButton;
 
 UCLASS(BlueprintType, Blueprintable)
 class DUALFIRE_API UDualFireMissionResultMetricRowWidget : public UCommonUserWidget
@@ -52,10 +53,14 @@ public:
 	void SetMissionResultData(const FDualFireMissionResultData& InResultData);
 
 	UFUNCTION(BlueprintCallable, Category="Mission Result")
-	void ContinueToLobby();
+	void ReturnToMissionSelect();
+
+	UFUNCTION(BlueprintCallable, Category="Mission Result")
+	void ReplayMission();
 
 protected:
 	virtual void NativeOnInitialized() override;
+	virtual UWidget* NativeGetDesiredFocusTarget() const override;
 	virtual bool NativeOnHandleBackAction() override;
 
 	UPROPERTY(EditDefaultsOnly, BlueprintReadOnly, Category="Mission Result|Input")
@@ -92,6 +97,15 @@ protected:
 	TObjectPtr<UCommonTextBlock> Text_Difficulty;
 
 	UPROPERTY(BlueprintReadOnly, Category="Mission Result", meta=(BindWidgetOptional))
+	TObjectPtr<UCommonTextBlock> Text_FailureReason;
+
+	UPROPERTY(BlueprintReadOnly, Category="Mission Result", meta=(BindWidgetOptional))
+	TObjectPtr<UDualFireMenuButton> MissionSelectButton;
+
+	UPROPERTY(BlueprintReadOnly, Category="Mission Result", meta=(BindWidgetOptional))
+	TObjectPtr<UDualFireMenuButton> ReplayButton;
+
+	UPROPERTY(BlueprintReadOnly, Category="Mission Result", meta=(BindWidgetOptional))
 	TObjectPtr<UVerticalBox> MetricsBox;
 
 	UPROPERTY(BlueprintReadOnly, Category="Mission Result", meta=(BindWidgetOptional))
@@ -122,5 +136,5 @@ private:
 
 	FDualFireMissionResultData ResultData;
 	bool bHasResultData = false;
-	bool bLobbyTravelStarted = false;
+	bool bTravelStarted = false;
 };

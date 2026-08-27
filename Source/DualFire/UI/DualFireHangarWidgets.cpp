@@ -15,6 +15,7 @@
 #include "InputAction.h"
 #include "Kismet/GameplayStatics.h"
 #include "Loadout/LoadoutManagerSubsystem.h"
+#include "GameInstance/DualFireMissionFlowSubsystem.h"
 #include "TimerManager.h"
 #include "UI/DualFireMenuButton.h"
 #include "UI/DualFireMenuButtonStyle.h"
@@ -667,13 +668,18 @@ void UDualFireHangarWidget::Sortie()
 
 	FText Error;
 	FName InvalidField;
-	if (!Manager->TrySetActiveLoadout(DraftLoadout, Error, InvalidField))
+	UDualFireMissionFlowSubsystem* Flow = GetGameInstance()
+		? GetGameInstance()->GetSubsystem<UDualFireMissionFlowSubsystem>()
+		: nullptr;
+	if (!IsValid(Flow) || !Flow->TryFinalizeLaunch(DraftLoadout, Error, InvalidField))
 	{
 		SetStatus(Error);
 		SelectInvalidField(InvalidField);
 		return;
 	}
-	if (MissionLevelName.IsNone())
+
+	const FMissionLaunchContext Launch = Flow->GetLaunchContext();
+	if (Launch.Preparation.MissionLevel.IsNull())
 	{
 		SetStatus(NSLOCTEXT("DualFireHangar", "MissionMissing", "MISSION LEVEL IS NOT CONFIGURED."));
 		return;
@@ -681,7 +687,7 @@ void UDualFireHangarWidget::Sortie()
 
 	bSortieRequested = true;
 	UE_LOG(LogDualFire, Log, TEXT("[Hangar] Sortie confirmed. Aircraft=%s"), *DraftLoadout.AircraftID.ToString());
-	UGameplayStatics::OpenLevel(this, MissionLevelName);
+	UGameplayStatics::OpenLevelBySoftObjectPtr(this, Launch.Preparation.MissionLevel);
 }
 
 void UDualFireHangarWidget::ApplyFallbackFocus()

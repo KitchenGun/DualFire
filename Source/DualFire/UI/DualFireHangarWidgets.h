@@ -177,9 +177,6 @@ protected:
 	UPROPERTY(EditDefaultsOnly, BlueprintReadOnly, Category="Hangar")
 	TSubclassOf<UCommonButtonBase> CategoryButtonClass;
 
-	UPROPERTY(EditDefaultsOnly, BlueprintReadOnly, Category="Hangar")
-	FName MissionLevelName = TEXT("/Game/Level/LV_Test");
-
 	UPROPERTY(BlueprintReadOnly, Category="Hangar|Widgets", meta=(BindWidget))
 	TObjectPtr<UDualFireHangarLoadoutPreviewWidget> LoadoutPreview;
 

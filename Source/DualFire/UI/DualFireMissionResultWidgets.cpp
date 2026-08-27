@@ -11,6 +11,7 @@
 #include "Input/CommonUIInputTypes.h"
 #include "InputAction.h"
 #include "Kismet/GameplayStatics.h"
+#include "UI/DualFireMenuButton.h"
 
 void UDualFireMissionResultMetricRowWidget::SetMetricResult(
 	const FDualFireMissionMetricResult& MetricResult,
@@ -64,14 +65,29 @@ void UDualFireMissionResultWidget::NativeOnInitialized()
 		FBindUIActionArgs BindArgs(
 			ConfirmInputAction,
 			true,
-			FSimpleDelegate::CreateUObject(this, &ThisClass::ContinueToLobby));
+			FSimpleDelegate::CreateUObject(this, &ThisClass::ReturnToMissionSelect));
 		BindArgs.OverrideDisplayName = NSLOCTEXT(
 			"DualFireUI", "ContinueToLobbyAction", "CONTINUE TO LOBBY");
 		BindArgs.bConsumeInput = true;
 		RegisterUIActionBinding(BindArgs);
 	}
+	if (IsValid(MissionSelectButton))
+	{
+		MissionSelectButton->SetLabelText(NSLOCTEXT("DualFireUI", "ResultMissionSelect", "MISSION SELECT"));
+		MissionSelectButton->OnClicked().AddUObject(this, &ThisClass::ReturnToMissionSelect);
+	}
+	if (IsValid(ReplayButton))
+	{
+		ReplayButton->SetLabelText(NSLOCTEXT("DualFireUI", "ResultReplay", "REPLAY"));
+		ReplayButton->OnClicked().AddUObject(this, &ThisClass::ReplayMission);
+	}
 
 	RefreshResultView();
+}
+
+UWidget* UDualFireMissionResultWidget::NativeGetDesiredFocusTarget() const
+{
+	return MissionSelectButton;
 }
 
 bool UDualFireMissionResultWidget::NativeOnHandleBackAction()
@@ -120,6 +136,18 @@ void UDualFireMissionResultWidget::RefreshResultView()
 		Text_Difficulty->SetText(FText::Format(
 			NSLOCTEXT("DualFireUI", "Difficulty", "DIFFICULTY  {0}"),
 			ResultData.Difficulty));
+	}
+	if (IsValid(Text_FailureReason))
+	{
+		FText ReasonText = FText::GetEmpty();
+		if (!bCleared)
+		{
+			ReasonText = ResultData.FailureReason == EDualFireMissionFailureReason::PlayerDestroyed
+				? NSLOCTEXT("DualFireUI", "FailurePlayerDestroyed", "PLAYER DESTROYED")
+				: NSLOCTEXT("DualFireUI", "FailureStageCondition", "STAGE CONDITION FAILED");
+		}
+		Text_FailureReason->SetText(ReasonText);
+		Text_FailureReason->SetVisibility(bCleared ? ESlateVisibility::Collapsed : ESlateVisibility::HitTestInvisible);
 	}
 
 	if (IsValid(MetricsBox))
@@ -182,14 +210,14 @@ void UDualFireMissionResultWidget::RefreshResultView()
 	}
 }
 
-void UDualFireMissionResultWidget::ContinueToLobby()
+void UDualFireMissionResultWidget::ReturnToMissionSelect()
 {
-	if (bLobbyTravelStarted)
+	if (bTravelStarted)
 	{
 		return;
 	}
 
-	bLobbyTravelStarted = true;
+	bTravelStarted = true;
 	if (UGameInstance* GameInstance = GetGameInstance())
 	{
 		if (UDualFireMissionFlowSubsystem* Flow =
@@ -198,6 +226,26 @@ void UDualFireMissionResultWidget::ContinueToLobby()
 			Flow->ReturnToMissionSelect();
 		}
 	}
+	UGameplayStatics::OpenLevel(this, FName(TEXT("/Game/Level/LV_Start")));
+}
+
+void UDualFireMissionResultWidget::ReplayMission()
+{
+	if (bTravelStarted)
+	{
+		return;
+	}
+
+	UDualFireMissionFlowSubsystem* Flow = GetGameInstance()
+		? GetGameInstance()->GetSubsystem<UDualFireMissionFlowSubsystem>()
+		: nullptr;
+	FText Error;
+	if (!IsValid(Flow) || !Flow->PrepareReplay(Error))
+	{
+		return;
+	}
+
+	bTravelStarted = true;
 	UGameplayStatics::OpenLevel(this, FName(TEXT("/Game/Level/LV_Start")));
 }
 

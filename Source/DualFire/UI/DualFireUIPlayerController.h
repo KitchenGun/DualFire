@@ -46,6 +46,12 @@ protected:
 	UPROPERTY(EditDefaultsOnly, BlueprintReadOnly, Category = "UI")
 	EDualFireUILayer InitialWidgetLayer = EDualFireUILayer::Menu;
 
+	UPROPERTY(EditDefaultsOnly, BlueprintReadOnly, Category = "UI|Mission Flow")
+	TSubclassOf<UCommonActivatableWidget> CampaignMapWidgetClass;
+
+	UPROPERTY(EditDefaultsOnly, BlueprintReadOnly, Category = "UI|Mission Flow")
+	TSubclassOf<UCommonActivatableWidget> MissionBriefingWidgetClass;
+
 	UPROPERTY(EditDefaultsOnly, BlueprintReadOnly, Category = "UI|Input")
 	TObjectPtr<UInputMappingContext> UIInputMapping;
 
@@ -56,6 +62,7 @@ private:
 	void AddUIInputMapping();
 	void RemoveUIInputMapping();
 	void InitializeRootLayout();
+	void ApplyPendingStartRoute();
 	void RemoveRootLayout();
 
 	UPROPERTY(Transient)

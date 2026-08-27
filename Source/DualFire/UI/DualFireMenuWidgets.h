@@ -44,7 +44,7 @@ protected:
 	TSubclassOf<UCommonActivatableWidget> ExitConfirmWidgetClass;
 
 	UPROPERTY(EditDefaultsOnly, BlueprintReadOnly, Category = "Menu")
-	TSubclassOf<UCommonActivatableWidget> HangarWidgetClass;
+	TSubclassOf<UCommonActivatableWidget> CampaignWidgetClass;
 
 	UPROPERTY(EditDefaultsOnly, BlueprintReadOnly, Category = "Input")
 	TObjectPtr<UInputAction> ConfirmInputAction;

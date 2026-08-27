@@ -7,6 +7,7 @@
 #include "EnhancedInputSubsystems.h"
 #include "Engine/LocalPlayer.h"
 #include "InputMappingContext.h"
+#include "GameInstance/DualFireMissionFlowSubsystem.h"
 
 ADualFireUIPlayerController::ADualFireUIPlayerController()
 {
@@ -128,7 +129,38 @@ void ADualFireUIPlayerController::InitializeRootLayout()
 			*GetNameSafe(InitialWidgetClass));
 	}
 
+	ApplyPendingStartRoute();
+
 	UE_LOG(LogDualFire, Log, TEXT("[UI] Root layout initialized: %s"), *GetNameSafe(RootLayout));
+}
+
+void ADualFireUIPlayerController::ApplyPendingStartRoute()
+{
+	UDualFireMissionFlowSubsystem* Flow = GetGameInstance()
+		? GetGameInstance()->GetSubsystem<UDualFireMissionFlowSubsystem>()
+		: nullptr;
+	if (!IsValid(Flow))
+	{
+		return;
+	}
+
+	const EDualFireStartRoute Route = Flow->ConsumeStartRoute();
+	if (Route == EDualFireStartRoute::None)
+	{
+		return;
+	}
+	if (!IsValid(CampaignMapWidgetClass) ||
+		!IsValid(PushWidgetToLayer(EDualFireUILayer::Menu, CampaignMapWidgetClass)))
+	{
+		UE_LOG(LogDualFire, Error, TEXT("[UI] 시작 경로 Campaign 화면 열기 실패"));
+		return;
+	}
+	if (Route == EDualFireStartRoute::Briefing &&
+		(!IsValid(MissionBriefingWidgetClass) ||
+		 !IsValid(PushWidgetToLayer(EDualFireUILayer::Menu, MissionBriefingWidgetClass))))
+	{
+		UE_LOG(LogDualFire, Error, TEXT("[UI] 시작 경로 Briefing 화면 열기 실패"));
+	}
 }
 
 void ADualFireUIPlayerController::RemoveRootLayout()

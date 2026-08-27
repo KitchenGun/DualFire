@@ -136,15 +136,15 @@ void UDualFireStartMenuWidget::ApplyFallbackFocus()
 void UDualFireStartMenuWidget::StartMission()
 {
 	ADualFireUIPlayerController* Controller = Cast<ADualFireUIPlayerController>(GetOwningPlayer());
-	if (!IsValid(Controller) || !IsValid(HangarWidgetClass))
+	if (!IsValid(Controller) || !IsValid(CampaignWidgetClass))
 	{
-		UE_LOG(LogDualFire, Warning, TEXT("[UI] Hangar screen is not configured."));
+		UE_LOG(LogDualFire, Warning, TEXT("[UI] Campaign screen is not configured."));
 		return;
 	}
 
-	if (!IsValid(Controller->PushWidgetToLayer(EDualFireUILayer::Menu, HangarWidgetClass)))
+	if (!IsValid(Controller->PushWidgetToLayer(EDualFireUILayer::Menu, CampaignWidgetClass)))
 	{
-		UE_LOG(LogDualFire, Error, TEXT("[UI] Failed to open the hangar screen."));
+		UE_LOG(LogDualFire, Error, TEXT("[UI] Failed to open the campaign screen."));
 	}
 }
 
