@@ -73,7 +73,7 @@ namespace
 ADualFireGameModeBase::ADualFireGameModeBase()
 {
     // ── 기본 폰 클래스 ─────────────────────────────────────────────────────────
-    // BP_DualFireGameModeBase에서 BP_DualFirePlayerPawn으로 오버라이드 권장
+    // BP_GM_Test에서 BP_PlayerPawn으로 오버라이드
     DefaultPawnClass = ADualFirePlayerPawn::StaticClass();
 	PlayerControllerClass = ADualFireMissionPlayerController::StaticClass();
 }
@@ -90,12 +90,6 @@ void ADualFireGameModeBase::InitGame(const FString& MapName, const FString& Opti
         return;
     }
 
-    ULoadoutManagerSubsystem* LM = GI->GetSubsystem<ULoadoutManagerSubsystem>();
-    if (!IsValid(LM))
-    {
-        return;
-    }
-
 	UDualFireMissionFlowSubsystem* Flow = GI->GetSubsystem<UDualFireMissionFlowSubsystem>();
 	if (!IsValid(Flow))
 	{
@@ -103,17 +97,8 @@ void ADualFireGameModeBase::InitGame(const FString& MapName, const FString& Opti
 		return;
 	}
 
-	FText LoadoutError;
-	FName InvalidField;
 	if (Flow->HasLaunchContext())
 	{
-		const FMissionLaunchContext Launch = Flow->GetLaunchContext();
-		if (!LM->TrySetActiveLoadout(Launch.Loadout, LoadoutError, InvalidField))
-		{
-			UE_LOG(LogDualFire, Error,
-				TEXT("[GameMode] InitGame: 출격 로드아웃 무효 — Field:%s Error:%s"),
-				*InvalidField.ToString(), *LoadoutError.ToString());
-		}
 		return;
 	}
 
@@ -135,6 +120,8 @@ void ADualFireGameModeBase::InitGame(const FString& MapName, const FString& Opti
 	}
 
 	const FLoadout DirectLoadout = ULoadoutDataLibrary::MakeLoadoutFromRowHandles(TestLoadout);
+	FText LoadoutError;
+	FName InvalidField;
 	if (!Flow->TryFinalizeLaunch(DirectLoadout, LoadoutError, InvalidField))
 	{
 		UE_LOG(LogDualFire, Error,
@@ -296,7 +283,7 @@ void ADualFireGameModeBase::EndMission(
 	const EMissionResult Result,
 	const EDualFireMissionFailureReason FailureReason)
 {
-    // 중복 종료 방지 (잔여 기체 0 사망과 엘리트 타임아웃이 동시에 들어오는 경우 등)
+	// 사망과 스테이지 실패가 같은 프레임에 들어와도 결과는 한 번만 확정한다.
     if (MissionResult != EMissionResult::None)
     {
         return;
@@ -314,10 +301,7 @@ void ADualFireGameModeBase::EndMission(
 
     const TCHAR* ResultText = (Result == EMissionResult::Cleared) ? TEXT("CLEARED") : TEXT("FAILED");
 
-    // §9.4 검증 리포트 (간이판 — 콘솔 로그)
-    UE_LOG(LogDualFire, Warning, TEXT("========================="));
-    UE_LOG(LogDualFire, Warning, TEXT(" Mission Result : %s"), ResultText);
-    UE_LOG(LogDualFire, Warning, TEXT("========================="));
+	UE_LOG(LogDualFire, Log, TEXT("[Mission] End Result=%s"), ResultText);
 
     // 입력 잠금 — 종료 후 플레이어 조작 차단
     if (APlayerController* PC = GetWorld()->GetFirstPlayerController())

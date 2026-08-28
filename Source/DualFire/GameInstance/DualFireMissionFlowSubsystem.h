@@ -35,9 +35,6 @@ public:
 	UFUNCTION(BlueprintPure, Category="Mission Flow")
 	FDualFireMissionResultData GetPendingResult() const { return PendingResult; }
 
-	UFUNCTION(BlueprintCallable, Category="Mission Flow")
-	void ClearPendingResult();
-
 	UFUNCTION(BlueprintPure, Category="Mission Flow")
 	bool HasPreparationContext() const { return bHasPreparationContext; }
 
@@ -54,6 +51,7 @@ public:
 	EDualFireStartRoute ConsumeStartRoute();
 
 private:
+	void ClearPendingResult();
 	const FMissionRow* FindMissionRow(FName MissionID) const;
 	bool ValidateStageReference(const FMissionRow& MissionRow, FText& OutError, FName& OutInvalidField) const;
 

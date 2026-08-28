@@ -13,7 +13,6 @@
 class AStageCameraActor;
 class ADualFirePlayerPawn;
 class AStageController;
-class ULoadoutManagerSubsystem;
 
 /** 미션 종료 시 브로드캐스트. 결과(Cleared/Failed)를 HUD·연출에 전달 */
 DECLARE_DYNAMIC_MULTICAST_DELEGATE_OneParam(FOnMissionEnded, EMissionResult, Result);
@@ -42,13 +41,12 @@ public:
      */
     virtual UClass* GetDefaultPawnClassForController_Implementation(AController* InController) override;
 
-    // ── 테스트용 로드아웃 (격납고 UI 부재 시 폴백) ───────────────────────────────────
+    // ── 에디터 직접 실행 로드아웃 ─────────────────────────────────────────────
 
     /**
-     * 격납고 레벨 등에서 LoadoutManagerSubsystem.TrySetActiveLoadout()을 미리 호출하고 넘어온 게
-     * 아닐 때(= ActiveLoadout이 비어있을 때)만 사용되는 테스트용 기본 로드아웃.
+     * MissionFlow에 출격 컨텍스트가 없을 때만 사용하는 에디터 직접 실행 로드아웃.
      * BP 디테일 패널에서 각 슬롯을 데이터테이블 행 드롭다운으로 선택해 구성한다.
-     * 격납고가 이미 선택해서 넘어온 경우는 절대 덮어쓰지 않는다 (InitGame 참고).
+     * 격납고에서 확정한 출격 컨텍스트는 덮어쓰지 않는다.
      */
     UPROPERTY(EditDefaultsOnly, BlueprintReadOnly, Category="Loadout|Test")
     FLoadoutRowHandles TestLoadout;
@@ -73,43 +71,27 @@ public:
     UPROPERTY(EditDefaultsOnly, BlueprintReadOnly, Category="Mission")
     TSubclassOf<AStageController> StageControllerClass;
 
-    /**
-     * 미션을 시작한다.
-     *   1. LoadoutManager에서 ActiveLoadout을 읽어 PlayerPawn에 주입
-     *   2. StageControllerClass를 스폰해 웨이브/타임라인 시작
-     * BeginPlay 이후 외부(UI 등)에서 호출하거나, BeginPlay 마지막에서 자동 호출 가능.
-     */
-    UFUNCTION(BlueprintCallable, Category="Mission")
-    void StartMission();
-
     UFUNCTION(BlueprintPure, Category="Mission")
     AStageController* GetStageController() const { return ActiveStageController; }
 
     // ── 미션 종료 ───────────────────────────────────────────────────────────────
 
     /** 미션 실패 처리. 플레이어 격추와 스테이지 조건 실패를 결과 데이터에 구분해 기록한다. */
-    UFUNCTION(BlueprintCallable, Category="Mission")
     void OnMissionFail(EDualFireMissionFailureReason FailureReason);
 
     /**
-     * 미션 클리어 처리. 엘리트 격파(§5.5.4) 시 호출.
-     * 검증 리포트 로그 출력. 이미 종료된 경우 무시.
+     * 미션 클리어 처리. 이미 종료된 경우 무시한다.
      */
-    UFUNCTION(BlueprintCallable, Category="Mission")
     void OnMissionClear();
-
-    /** 현재 미션 결과. None=진행 중, Cleared/Failed=종료 */
-    UFUNCTION(BlueprintPure, Category="Mission")
-    EMissionResult GetMissionResult() const { return MissionResult; }
-
-	UFUNCTION(BlueprintPure, Category="Mission")
-	const FDualFireMissionResultData& GetMissionResultData() const { return MissionResultData; }
 
     /** 미션 종료 시 발생. HUD 결과 화면·연출 구독용 */
     UPROPERTY(BlueprintAssignable, Category="Mission")
     FOnMissionEnded OnMissionEnded;
 
 private:
+	/** 검증된 로드아웃을 Pawn에 적용하고 StageController를 시작한다. */
+	void StartMission();
+
     // BeginPlay에서 스폰 후 캐싱한 스테이지 카메라
     UPROPERTY()
     TObjectPtr<AStageCameraActor> StageCamera;
