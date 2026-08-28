@@ -7,6 +7,7 @@
 #include "Components/ProgressBar.h"
 #include "Components/VerticalBox.h"
 #include "Engine/GameInstance.h"
+#include "GameMapsSettings.h"
 #include "GameInstance/DualFireMissionFlowSubsystem.h"
 #include "Input/CommonUIInputTypes.h"
 #include "InputAction.h"
@@ -62,7 +63,7 @@ void UDualFireMissionResultWidget::NativeOnInitialized()
 			true,
 			FSimpleDelegate::CreateUObject(this, &ThisClass::ReturnToMissionSelect));
 		BindArgs.OverrideDisplayName = NSLOCTEXT(
-			"DualFireUI", "ContinueToLobbyAction", "CONTINUE TO LOBBY");
+			"DualFireUI", "ReturnToMissionSelectAction", "MISSION SELECT");
 		BindArgs.bConsumeInput = true;
 		RegisterUIActionBinding(BindArgs);
 	}
@@ -76,8 +77,11 @@ void UDualFireMissionResultWidget::NativeOnInitialized()
 		ReplayButton->SetLabelText(NSLOCTEXT("DualFireUI", "ResultReplay", "REPLAY"));
 		ReplayButton->OnClicked().AddUObject(this, &ThisClass::ReplayMission);
 	}
+	if (IsValid(UnlockPanel))
+	{
+		UnlockPanel->SetVisibility(ESlateVisibility::Collapsed);
+	}
 
-	RefreshResultView();
 }
 
 UWidget* UDualFireMissionResultWidget::NativeGetDesiredFocusTarget() const
@@ -95,17 +99,11 @@ void UDualFireMissionResultWidget::SetMissionResultData(
 	const FDualFireMissionResultData& InResultData)
 {
 	ResultData = InResultData;
-	bHasResultData = true;
 	RefreshResultView();
 }
 
 void UDualFireMissionResultWidget::RefreshResultView()
 {
-	if (!bHasResultData)
-	{
-		return;
-	}
-
 	const bool bCleared = ResultData.Result == EMissionResult::Cleared;
 	if (IsValid(Text_ResultTitle))
 	{
@@ -192,17 +190,6 @@ void UDualFireMissionResultWidget::RefreshResultView()
 				: ESlateVisibility::Collapsed);
 	}
 
-	const bool bShowUnlock = bCleared && ResultData.bHasUnlock;
-	if (IsValid(UnlockPanel))
-	{
-		UnlockPanel->SetVisibility(bShowUnlock
-			? ESlateVisibility::SelfHitTestInvisible
-			: ESlateVisibility::Collapsed);
-	}
-	if (IsValid(Text_Unlock))
-	{
-		Text_Unlock->SetText(ResultData.UnlockText);
-	}
 }
 
 void UDualFireMissionResultWidget::ReturnToMissionSelect()
@@ -221,7 +208,7 @@ void UDualFireMissionResultWidget::ReturnToMissionSelect()
 			Flow->ReturnToMissionSelect();
 		}
 	}
-	UGameplayStatics::OpenLevel(this, FName(TEXT("/Game/Level/LV_Start")));
+	UGameplayStatics::OpenLevel(this, FName(*UGameMapsSettings::GetGameDefaultMap()));
 }
 
 void UDualFireMissionResultWidget::ReplayMission()
@@ -241,7 +228,7 @@ void UDualFireMissionResultWidget::ReplayMission()
 	}
 
 	bTravelStarted = true;
-	UGameplayStatics::OpenLevel(this, FName(TEXT("/Game/Level/LV_Start")));
+	UGameplayStatics::OpenLevel(this, FName(*UGameMapsSettings::GetGameDefaultMap()));
 }
 
 UTexture2D* UDualFireMissionResultWidget::GetRankTexture(EDualFireMissionRank Rank) const

@@ -24,5 +24,5 @@ protected:
 	TSoftClassPtr<UDualFireMissionResultWidget> MissionResultWidgetClass;
 
 private:
-	void OpenLobbyWhenResultIsMissing();
+	void ReturnToMissionSelectWhenResultIsMissing();
 };

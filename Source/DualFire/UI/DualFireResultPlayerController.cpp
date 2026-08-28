@@ -4,6 +4,7 @@
 
 #include "DualFire.h"
 #include "Engine/GameInstance.h"
+#include "GameMapsSettings.h"
 #include "GameInstance/DualFireMissionFlowSubsystem.h"
 #include "InputMappingContext.h"
 #include "Kismet/GameplayStatics.h"
@@ -42,8 +43,8 @@ void ADualFireResultPlayerController::BeginPlay()
 		GetGameInstance() ? GetGameInstance()->GetSubsystem<UDualFireMissionFlowSubsystem>() : nullptr;
 	if (!IsValid(Flow) || !Flow->HasPendingResult())
 	{
-		UE_LOG(LogDualFire, Error, TEXT("[UI] 표시할 미션 결과 데이터가 없어 로비로 복귀"));
-		OpenLobbyWhenResultIsMissing();
+		UE_LOG(LogDualFire, Error, TEXT("[UI] 표시할 미션 결과 데이터가 없어 미션 선택으로 복귀"));
+		ReturnToMissionSelectWhenResultIsMissing();
 		return;
 	}
 
@@ -54,14 +55,14 @@ void ADualFireResultPlayerController::BeginPlay()
 	if (!IsValid(ResultWidget))
 	{
 		UE_LOG(LogDualFire, Error, TEXT("[UI] 미션 결과 화면 Push 실패"));
-		OpenLobbyWhenResultIsMissing();
+		ReturnToMissionSelectWhenResultIsMissing();
 		return;
 	}
 
 	ResultWidget->SetMissionResultData(Flow->GetPendingResult());
 }
 
-void ADualFireResultPlayerController::OpenLobbyWhenResultIsMissing()
+void ADualFireResultPlayerController::ReturnToMissionSelectWhenResultIsMissing()
 {
-	UGameplayStatics::OpenLevel(this, FName(TEXT("/Game/Level/LV_Start")));
+	UGameplayStatics::OpenLevel(this, FName(*UGameMapsSettings::GetGameDefaultMap()));
 }

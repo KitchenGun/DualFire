@@ -155,9 +155,6 @@ protected:
 	virtual bool NativeOnHandleBackAction() override;
 
 	UPROPERTY(EditDefaultsOnly, BlueprintReadOnly, Category="Hangar|Data")
-	FLoadoutRowHandles InitialLoadoutRows;
-
-	UPROPERTY(EditDefaultsOnly, BlueprintReadOnly, Category="Hangar|Data")
 	TSoftObjectPtr<UTexture2D> MissingItemIcon;
 
 	UPROPERTY(EditDefaultsOnly, BlueprintReadOnly, Category="Hangar|Input")
@@ -211,10 +208,8 @@ private:
 	void SetDraftItemID(EDualFireHangarCategory Category, FName ItemID);
 
 	FLoadout DraftLoadout;
+	FLoadout DefaultDraftLoadout;
 	EDualFireHangarCategory ActiveCategory = EDualFireHangarCategory::Aircraft;
-
-	UPROPERTY(Transient)
-	TArray<TObjectPtr<UDualFireHangarItemObject>> VisibleItems;
 
 	bool bSortieRequested = false;
 };

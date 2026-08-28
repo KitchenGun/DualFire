@@ -115,11 +115,9 @@ protected:
 	UPROPERTY(BlueprintReadOnly, Category="Mission Result", meta=(BindWidgetOptional))
 	TObjectPtr<UCommonTextBlock> Text_OverallRankFallback;
 
+	/** WBP에 남아 있는 미구현 해금 영역. 해금 기능 추가 전까지 숨긴다. */
 	UPROPERTY(BlueprintReadOnly, Category="Mission Result", meta=(BindWidgetOptional))
 	TObjectPtr<UWidget> UnlockPanel;
-
-	UPROPERTY(BlueprintReadOnly, Category="Mission Result", meta=(BindWidgetOptional))
-	TObjectPtr<UCommonTextBlock> Text_Unlock;
 
 private:
 	friend class UDualFireMissionResultMetricRowWidget;
@@ -130,6 +128,5 @@ private:
 	static FText FormatElapsedTime(float ElapsedTime);
 
 	FDualFireMissionResultData ResultData;
-	bool bHasResultData = false;
 	bool bTravelStarted = false;
 };

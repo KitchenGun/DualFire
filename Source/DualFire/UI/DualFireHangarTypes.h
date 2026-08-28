@@ -34,9 +34,6 @@ struct DUALFIRE_API FDualFireHangarItemViewData
 	FText DisplayName;
 
 	UPROPERTY(BlueprintReadOnly, Category="Hangar")
-	FText Description;
-
-	UPROPERTY(BlueprintReadOnly, Category="Hangar")
 	TSoftObjectPtr<UTexture2D> Icon;
 
 	bool IsValid() const { return !ItemID.IsNone(); }
@@ -49,7 +46,11 @@ class DUALFIRE_API UDualFireHangarItemObject : public UObject
 	GENERATED_BODY()
 
 public:
-	void Initialize(const FDualFireHangarItemViewData& InItem, bool bInEquipped);
+	void Initialize(const FDualFireHangarItemViewData& InItem, bool bInEquipped)
+	{
+		Item = InItem;
+		bEquipped = bInEquipped;
+	}
 
 	UPROPERTY(BlueprintReadOnly, Category="Hangar")
 	FDualFireHangarItemViewData Item;

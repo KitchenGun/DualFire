@@ -82,10 +82,4 @@ struct DUALFIRE_API FDualFireMissionResultData
 
 	UPROPERTY(BlueprintReadOnly, Category="Mission Result")
 	EDualFireMissionRank OverallRank = EDualFireMissionRank::NotApplicable;
-
-	UPROPERTY(BlueprintReadOnly, Category="Mission Result")
-	FText UnlockText;
-
-	UPROPERTY(BlueprintReadOnly, Category="Mission Result")
-	bool bHasUnlock = false;
 };

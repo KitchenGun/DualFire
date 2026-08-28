@@ -7,8 +7,6 @@
 #include "Components/HorizontalBox.h"
 #include "Components/HorizontalBoxSlot.h"
 #include "Components/Image.h"
-#include "UObject/ConstructorHelpers.h"
-#include "Core/LoadoutDataLibrary.h"
 #include "DualFire.h"
 #include "Engine/DataTable.h"
 #include "Input/CommonUIInputTypes.h"
@@ -281,26 +279,12 @@ UDualFireHangarWidget::UDualFireHangarWidget()
 	SetFocusedButtonConfirmEnabled(false);
 	bIsBackActionDisplayedInActionBar = true;
 
-	static ConstructorHelpers::FObjectFinder<UDataTable> AircraftTable(
-		TEXT("/Game/Data/Loadout/DT_LoadoutAircrafts.DT_LoadoutAircrafts"));
-	static ConstructorHelpers::FObjectFinder<UDataTable> WeaponTable(
-		TEXT("/Game/Data/Loadout/DT_LoadoutWeapons.DT_LoadoutWeapons"));
-	static ConstructorHelpers::FObjectFinder<UDataTable> SuperWeaponTable(
-		TEXT("/Game/Data/Loadout/DT_LoadoutSuperWeapons.DT_LoadoutSuperWeapons"));
-	static ConstructorHelpers::FObjectFinder<UDataTable> ShieldTable(
-		TEXT("/Game/Data/Loadout/DT_LoadoutShields.DT_LoadoutShields"));
-
-	auto SetInitialRow = [](FDataTableRowHandle& Handle, UDataTable* Table, const FName RowName)
-	{
-		Handle.DataTable = Table;
-		Handle.RowName = RowName;
-	};
-	SetInitialRow(InitialLoadoutRows.AircraftRow, AircraftTable.Object, TEXT("F22"));
-	SetInitialRow(InitialLoadoutRows.PrimaryWeaponRow, WeaponTable.Object, TEXT("TEST_AG"));
-	SetInitialRow(InitialLoadoutRows.SpecialWeapon1Row, WeaponTable.Object, TEXT("TEST_AA"));
-	SetInitialRow(InitialLoadoutRows.SpecialWeapon2Row, WeaponTable.Object, TEXT("TEST_AM"));
-	SetInitialRow(InitialLoadoutRows.SuperWeaponRow, SuperWeaponTable.Object, TEXT("TEST_SUPER"));
-	SetInitialRow(InitialLoadoutRows.ShieldRow, ShieldTable.Object, TEXT("TEST_SHIELD"));
+	DefaultDraftLoadout.AircraftID = TEXT("F22");
+	DefaultDraftLoadout.PrimaryWeaponID = TEXT("TEST_AG");
+	DefaultDraftLoadout.SpecialWeapon1ID = TEXT("TEST_AA");
+	DefaultDraftLoadout.SpecialWeapon2ID = TEXT("TEST_AM");
+	DefaultDraftLoadout.SuperWeaponID = TEXT("TEST_SUPER");
+	DefaultDraftLoadout.ShieldID = TEXT("TEST_SHIELD");
 	MissingItemIcon = TSoftObjectPtr<UTexture2D>(
 		FSoftObjectPath(TEXT("/Game/UI/Textures/Hangar/T_UI_Hangar_ItemPlaceholder.T_UI_Hangar_ItemPlaceholder")));
 }
@@ -345,7 +329,7 @@ void UDualFireHangarWidget::NativeOnActivated()
 	const FLoadout& ActiveLoadout = Manager->GetActiveLoadout();
 	DraftLoadout = Manager->ValidateLoadout(ActiveLoadout, ValidationError, InvalidField)
 		? ActiveLoadout
-		: ULoadoutDataLibrary::MakeLoadoutFromRowHandles(InitialLoadoutRows);
+		: DefaultDraftLoadout;
 
 	RefreshLoadoutPreview();
 	CategoryTabs->SelectTabByID(GetCategoryID(EDualFireHangarCategory::Aircraft), true);
@@ -461,7 +445,7 @@ void UDualFireHangarWidget::RefreshItemList()
 	TArray<FDualFireHangarItemViewData> Items;
 	BuildItemsForCategory(ActiveCategory, Items);
 
-	VisibleItems.Reset();
+	TArray<TObjectPtr<UDualFireHangarItemObject>> VisibleItems;
 	for (const FDualFireHangarItemViewData& Item : Items)
 	{
 		UDualFireHangarItemObject* ItemObject = NewObject<UDualFireHangarItemObject>(this);
@@ -506,14 +490,12 @@ void UDualFireHangarWidget::BuildItemsForCategory(
 	auto FinalizeItem = [this, Category, &OutItems](
 		const FName ItemID,
 		const FText& DisplayName,
-		const FText& Description,
 		const TSoftObjectPtr<UTexture2D>& Icon)
 	{
 		FDualFireHangarItemViewData Item;
 		Item.Category = Category;
 		Item.ItemID = ItemID;
 		Item.DisplayName = ResolveDisplayName(DisplayName, ItemID);
-		Item.Description = Description;
 		Item.Icon = Icon.IsNull() ? MissingItemIcon : Icon;
 		OutItems.Add(Item);
 	};
@@ -524,7 +506,7 @@ void UDualFireHangarWidget::BuildItemsForCategory(
 		{
 			if (const FAircraftRow* Row = FindTypedRow<FAircraftRow>(Manager->AircraftDataTable, RowName, TEXT("HangarAircraft")))
 			{
-				FinalizeItem(Row->AircraftID.IsNone() ? RowName : Row->AircraftID, Row->DisplayName, Row->Description, Row->Icon);
+				FinalizeItem(Row->AircraftID.IsNone() ? RowName : Row->AircraftID, Row->DisplayName, Row->Icon);
 			}
 		}
 	}
@@ -540,7 +522,7 @@ void UDualFireHangarWidget::BuildItemsForCategory(
 			if (const FWeaponRow* Row = FindTypedRow<FWeaponRow>(Manager->WeaponDataTable, RowName, TEXT("HangarWeapon"));
 				Row && Row->Category == RequiredCategory)
 			{
-				FinalizeItem(Row->WeaponID.IsNone() ? RowName : Row->WeaponID, Row->DisplayName, Row->Description, Row->Icon);
+				FinalizeItem(Row->WeaponID.IsNone() ? RowName : Row->WeaponID, Row->DisplayName, Row->Icon);
 			}
 		}
 	}
@@ -550,7 +532,7 @@ void UDualFireHangarWidget::BuildItemsForCategory(
 		{
 			if (const FSuperWeaponRow* Row = FindTypedRow<FSuperWeaponRow>(Manager->SuperWeaponDataTable, RowName, TEXT("HangarSuperWeapon")))
 			{
-				FinalizeItem(Row->SuperWeaponID.IsNone() ? RowName : Row->SuperWeaponID, Row->DisplayName, Row->Description, Row->Icon);
+				FinalizeItem(Row->SuperWeaponID.IsNone() ? RowName : Row->SuperWeaponID, Row->DisplayName, Row->Icon);
 			}
 		}
 	}
@@ -560,7 +542,7 @@ void UDualFireHangarWidget::BuildItemsForCategory(
 		{
 			if (const FShieldRow* Row = FindTypedRow<FShieldRow>(Manager->ShieldDataTable, RowName, TEXT("HangarShield")))
 			{
-				FinalizeItem(Row->ShieldID.IsNone() ? RowName : Row->ShieldID, Row->DisplayName, Row->Description, Row->Icon);
+				FinalizeItem(Row->ShieldID.IsNone() ? RowName : Row->ShieldID, Row->DisplayName, Row->Icon);
 			}
 		}
 	}
