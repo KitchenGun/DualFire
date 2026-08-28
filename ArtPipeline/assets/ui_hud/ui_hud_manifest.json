@@ -1,0 +1,110 @@
+{
+  "version": 1,
+  "textures": [
+    {
+      "asset_name": "T_UI_HUD_LifeIcon",
+      "source": "assets/ui_hud/output/textures/T_UI_HUD_LifeIcon.png",
+      "size": [
+        128,
+        128
+      ],
+      "mode": "RGBA",
+      "unreal_destination": "/Game/UI/Textures/HUD",
+      "texture_group": "UI",
+      "mip_gen_settings": "NoMipmaps",
+      "never_stream": true,
+      "srgb": true,
+      "tintable": true
+    },
+    {
+      "asset_name": "T_UI_HUD_HealthSegment",
+      "source": "assets/ui_hud/output/textures/T_UI_HUD_HealthSegment.png",
+      "size": [
+        128,
+        32
+      ],
+      "mode": "RGBA",
+      "unreal_destination": "/Game/UI/Textures/HUD",
+      "texture_group": "UI",
+      "mip_gen_settings": "NoMipmaps",
+      "never_stream": true,
+      "srgb": true,
+      "tintable": true
+    },
+    {
+      "asset_name": "T_UI_HUD_ShieldSegment",
+      "source": "assets/ui_hud/output/textures/T_UI_HUD_ShieldSegment.png",
+      "size": [
+        128,
+        32
+      ],
+      "mode": "RGBA",
+      "unreal_destination": "/Game/UI/Textures/HUD",
+      "texture_group": "UI",
+      "mip_gen_settings": "NoMipmaps",
+      "never_stream": true,
+      "srgb": true,
+      "tintable": true
+    },
+    {
+      "asset_name": "T_UI_HUD_WeaponSlotFrame",
+      "source": "assets/ui_hud/output/textures/T_UI_HUD_WeaponSlotFrame.png",
+      "size": [
+        256,
+        192
+      ],
+      "mode": "RGBA",
+      "unreal_destination": "/Game/UI/Textures/HUD",
+      "texture_group": "UI",
+      "mip_gen_settings": "NoMipmaps",
+      "never_stream": true,
+      "srgb": true,
+      "tintable": true
+    },
+    {
+      "asset_name": "T_UI_HUD_ChainGaugeFrame",
+      "source": "assets/ui_hud/output/textures/T_UI_HUD_ChainGaugeFrame.png",
+      "size": [
+        512,
+        32
+      ],
+      "mode": "RGBA",
+      "unreal_destination": "/Game/UI/Textures/HUD",
+      "texture_group": "UI",
+      "mip_gen_settings": "NoMipmaps",
+      "never_stream": true,
+      "srgb": true,
+      "tintable": true
+    },
+    {
+      "asset_name": "T_UI_HUD_BossBarFrame",
+      "source": "assets/ui_hud/output/textures/T_UI_HUD_BossBarFrame.png",
+      "size": [
+        1024,
+        64
+      ],
+      "mode": "RGBA",
+      "unreal_destination": "/Game/UI/Textures/HUD",
+      "texture_group": "UI",
+      "mip_gen_settings": "NoMipmaps",
+      "never_stream": true,
+      "srgb": true,
+      "tintable": true
+    },
+    {
+      "asset_name": "T_UI_HUD_SystemBannerFrame",
+      "source": "assets/ui_hud/output/textures/T_UI_HUD_SystemBannerFrame.png",
+      "size": [
+        768,
+        160
+      ],
+      "mode": "RGBA",
+      "unreal_destination": "/Game/UI/Textures/HUD",
+      "texture_group": "UI",
+      "mip_gen_settings": "NoMipmaps",
+      "never_stream": true,
+      "srgb": true,
+      "tintable": true
+    }
+  ]
+}
