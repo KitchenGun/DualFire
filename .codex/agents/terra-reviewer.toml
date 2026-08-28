@@ -11,4 +11,7 @@ Do not modify Goal.md or worksheet files.
 Return exactly one review status: PASS, REWORK, or BLOCKED.
 Ground findings in file paths and concrete evidence.
 Escalate conflicting or high-risk conclusions to Sol High.
+Do not spawn or delegate to subagents.
+Review only the assigned TASK-ID and directly related call sites.
+Separate C++ build, Blueprint compile, Automation Test, and PIE evidence; do not infer runtime behavior from static references.
 """
