@@ -17,20 +17,16 @@ void UHealthComponent::BeginPlay()
 	CurrentHealth = MaxHealth;
 	CurrentShield = bUseShield ? MaxShield : 0;
 	CurrentLife = MaxLife;
-	ShieldRecoveryAccumulator = 0.0f;
+	bIsDead = false;
+	InvincibilityRemainingBySource.Reset();
+	bIsInvincible = false;
+	ResetShieldRecovery(false);
 
 	if (AActor* Owner = GetOwner())
 	{
-		// 리스폰 복귀 지점 = 시작 위치 (외부에서 SetRespawnLocation으로 변경 가능)
-		RespawnLocation = Owner->GetActorLocation();
-
-		if (bBindToActorDamage)
-		{
-			Owner->OnTakeAnyDamage.AddDynamic(this, &UHealthComponent::OnActorTakeAnyDamage);
-		}
+		Owner->OnTakeAnyDamage.AddDynamic(this, &UHealthComponent::OnActorTakeAnyDamage);
 	}
 
-	RefreshTickEnabled();
 }
 
 void UHealthComponent::TickComponent(float DeltaTime, ELevelTick TickType, FActorComponentTickFunction* ThisTickFunction)
@@ -42,7 +38,7 @@ void UHealthComponent::TickComponent(float DeltaTime, ELevelTick TickType, FActo
 		TickInvincibility(DeltaTime);
 	}
 
-	if (bUseShield && CurrentShield < MaxShield)
+	if (bUseShield && !bIsDead && CurrentShield < MaxShield)
 	{
 		TickShieldRecovery(DeltaTime);
 	}
@@ -52,33 +48,33 @@ void UHealthComponent::TickComponent(float DeltaTime, ELevelTick TickType, FActo
 
 void UHealthComponent::ApplyDamage(int32 Damage)
 {
-	if (bUseInvincibility && bIsInvincible)
+	if (bIsDead || (bUseInvincibility && bIsInvincible))
 	{
 		return;
 	}
 
 	const int32 FinalDamage = FMath::Max(Damage, 1);
+	ResetShieldRecovery(true);
+	OnDamageReceived.Broadcast();
 
 	// Shield 흡수 레이어
 	if (bUseShield && CurrentShield >= 1)
 	{
 		const int32 ShieldDamage = FMath::Min(CurrentShield, FinalDamage);
 		CurrentShield -= ShieldDamage;
+		RefreshTickEnabled();
 
 		OnShieldChanged.Broadcast(CurrentShield, MaxShield);
 
 		if (CurrentShield == 0)
 		{
 			// 보호막 파괴 무적 (초과 데미지는 차단)
-			if (bUseInvincibility && BreakInvincibilityDuration > 0.0f)
-			{
-				StartInvincibility(BreakInvincibilityDuration);
-			}
 			OnShieldBroken.Broadcast();
+			StartInvincibility(EInvincibilitySource::ShieldBreak, BreakInvincibilityDuration);
 
 			UE_LOG(LogDualFire, Log, TEXT("[Health] Shield 파괴 — %s"), *GetOwner()->GetName());
 		}
-		// ★ Shield가 데미지를 흡수한 경우 HP에 전달하지 않음
+		// Shield가 흡수한 피해는 HP에 전달하지 않는다.
 		return;
 	}
 
@@ -88,24 +84,25 @@ void UHealthComponent::ApplyDamage(int32 Damage)
 
 	OnHealthChanged.Broadcast(CurrentHealth, MaxHealth);
 
-	if (bUseInvincibility && HitInvincibilityDuration > 0.0f)
-	{
-		StartInvincibility(HitInvincibilityDuration);
-	}
-
 	UE_LOG(LogDualFire, Log, TEXT("[Health] 피격 — %s HP: %d / %d"),
 		*GetOwner()->GetName(), CurrentHealth, MaxHealth);
 
 	if (CurrentHealth <= 0)
 	{
 		HandleDeath();
+		return;
 	}
+
+	StartInvincibility(EInvincibilitySource::Hit, HitInvincibilityDuration);
 }
 
 void UHealthComponent::HandleDeath()
 {
 	AActor* Owner = GetOwner();
 	const FString OwnerName = IsValid(Owner) ? Owner->GetName() : TEXT("Unknown");
+	bIsDead = true;
+	ClearAllInvincibility();
+	ResetShieldRecovery(false);
 
 	// 잔여 기체가 남아있으면 부활, 없으면 최종 사망
 	if (bUseLife && CurrentLife > 0)
@@ -113,8 +110,8 @@ void UHealthComponent::HandleDeath()
 		CurrentLife -= 1;
 		OnLifeChanged.Broadcast(CurrentLife);
 
-		UE_LOG(LogDualFire, Log, TEXT("[Health] %s 사망 → 리스폰 (잔여 기체 %d 남음)"), *OwnerName, CurrentLife);
-		Respawn();
+		UE_LOG(LogDualFire, Log, TEXT("[Health] %s 사망 → 리스폰 요청 (잔여 기체 %d 남음)"), *OwnerName, CurrentLife);
+		OnRespawnRequested.Broadcast();
 		return;
 	}
 
@@ -122,32 +119,27 @@ void UHealthComponent::HandleDeath()
 	OnDeath.Broadcast();
 }
 
-void UHealthComponent::Respawn()
+void UHealthComponent::CompleteRespawn()
 {
-	// HP / Shield 풀충전 (사양 §5.3.7)
+	if (!bIsDead)
+	{
+		return;
+	}
+
 	CurrentHealth = MaxHealth;
 	CurrentShield = bUseShield ? MaxShield : 0;
-	ShieldRecoveryAccumulator = 0.0f;
+	bIsDead = false;
+	ResetShieldRecovery(false);
 
 	OnHealthChanged.Broadcast(CurrentHealth, MaxHealth);
 	OnShieldChanged.Broadcast(CurrentShield, MaxShield);
 
-	// 리스폰 무적
-	StartInvincibility(RespawnInvincibilityDuration);
-
-	// 시작 위치로 복귀
-	if (AActor* Owner = GetOwner())
-	{
-		Owner->SetActorLocation(RespawnLocation);
-	}
-
-	OnRespawn.Broadcast();
-	RefreshTickEnabled();
+	StartInvincibility(EInvincibilitySource::Respawn, RespawnInvincibilityDuration);
 }
 
 void UHealthComponent::RecoverHealth(int32 Amount)
 {
-	if (Amount <= 0 || CurrentHealth >= MaxHealth)
+	if (bIsDead || Amount <= 0 || CurrentHealth >= MaxHealth)
 	{
 		return;
 	}
@@ -156,62 +148,61 @@ void UHealthComponent::RecoverHealth(int32 Amount)
 	OnHealthChanged.Broadcast(CurrentHealth, MaxHealth);
 }
 
-void UHealthComponent::FullRecoverHealth()
-{
-	CurrentHealth = MaxHealth;
-	OnHealthChanged.Broadcast(CurrentHealth, MaxHealth);
-}
-
 void UHealthComponent::FullRecoverShield()
 {
-	if (!bUseShield)
+	if (bIsDead || !bUseShield)
 	{
 		return;
 	}
 
 	CurrentShield = MaxShield;
-	ShieldRecoveryAccumulator = 0.0f;
+	ResetShieldRecovery(false);
 	OnShieldChanged.Broadcast(CurrentShield, MaxShield);
-
-	RefreshTickEnabled();
 }
 
-void UHealthComponent::StartInvincibility(float Duration)
+void UHealthComponent::StartInvincibility(EInvincibilitySource Source, float Duration)
 {
-	if (!bUseInvincibility || Duration <= 0.0f)
+	if (bIsDead || !bUseInvincibility || Duration <= 0.0f)
 	{
 		return;
 	}
 
-	// 최장 우선 정책 — 짧은 Duration이 더 긴 것을 덮지 않음
-	InvincibilityRemaining = FMath::Max(InvincibilityRemaining, Duration);
-
-	if (!bIsInvincible)
-	{
-		bIsInvincible = true;
-		OnInvincibilityChanged.Broadcast(true);
-	}
-
+	float& Remaining = InvincibilityRemainingBySource.FindOrAdd(Source);
+	Remaining = FMath::Max(Remaining, Duration);
+	RefreshInvincibilityState();
 	RefreshTickEnabled();
 }
 
-void UHealthComponent::InitFromData(int32 InMaxHealth, int32 InMaxShield, float InShieldRecoveryDuration, float InBreakInvincibilityDuration)
+void UHealthComponent::ClearAllInvincibility()
+{
+	InvincibilityRemainingBySource.Reset();
+	RefreshInvincibilityState();
+	RefreshTickEnabled();
+}
+
+void UHealthComponent::InitFromData(
+	int32 InMaxHealth,
+	int32 InMaxShield,
+	float InShieldRecoveryDelay,
+	float InShieldRecoveryDuration,
+	float InBreakInvincibilityDuration)
 {
 	MaxHealth = FMath::Max(InMaxHealth, 1);
 	MaxShield = FMath::Max(InMaxShield, 0);
+	ShieldRecoveryDelay = FMath::Max(InShieldRecoveryDelay, 0.0f);
 	ShieldRecoveryDuration = FMath::Max(InShieldRecoveryDuration, 0.1f);
 	BreakInvincibilityDuration = FMath::Max(InBreakInvincibilityDuration, 0.0f);
 
 	CurrentHealth = MaxHealth;
 	CurrentShield = bUseShield ? MaxShield : 0;
 	CurrentLife = MaxLife;
-	ShieldRecoveryAccumulator = 0.0f;
+	bIsDead = false;
+	ClearAllInvincibility();
+	ResetShieldRecovery(false);
 
 	OnHealthChanged.Broadcast(CurrentHealth, MaxHealth);
 	OnShieldChanged.Broadcast(CurrentShield, MaxShield);
 	OnLifeChanged.Broadcast(CurrentLife);
-
-	RefreshTickEnabled();
 }
 
 float UHealthComponent::GetHealthPercent() const
@@ -238,21 +229,35 @@ void UHealthComponent::OnActorTakeAnyDamage(
 
 void UHealthComponent::TickInvincibility(float DeltaTime)
 {
-	InvincibilityRemaining -= DeltaTime;
-
-	if (InvincibilityRemaining <= 0.0f)
+	for (auto It = InvincibilityRemainingBySource.CreateIterator(); It; ++It)
 	{
-		InvincibilityRemaining = 0.0f;
-		bIsInvincible = false;
-		OnInvincibilityChanged.Broadcast(false);
-
-		RefreshTickEnabled();
+		It.Value() -= DeltaTime;
+		if (It.Value() <= 0.0f)
+		{
+			It.RemoveCurrent();
+		}
 	}
+
+	RefreshInvincibilityState();
+	RefreshTickEnabled();
 }
 
 void UHealthComponent::TickShieldRecovery(float DeltaTime)
 {
-	ShieldRecoveryAccumulator += DeltaTime;
+	float RecoveryDelta = DeltaTime;
+	if (ShieldRecoveryDelayRemaining > 0.0f)
+	{
+		if (RecoveryDelta < ShieldRecoveryDelayRemaining)
+		{
+			ShieldRecoveryDelayRemaining -= RecoveryDelta;
+			return;
+		}
+
+		RecoveryDelta -= ShieldRecoveryDelayRemaining;
+		ShieldRecoveryDelayRemaining = 0.0f;
+	}
+
+	ShieldRecoveryAccumulator += RecoveryDelta;
 
 	const int32 ElapsedIntervals = FMath::FloorToInt(ShieldRecoveryAccumulator / ShieldRecoveryDuration);
 	if (ElapsedIntervals > 0)
@@ -269,12 +274,29 @@ void UHealthComponent::TickShieldRecovery(float DeltaTime)
 	}
 }
 
+void UHealthComponent::ResetShieldRecovery(bool bStartDelay)
+{
+	ShieldRecoveryDelayRemaining = bStartDelay ? ShieldRecoveryDelay : 0.0f;
+	ShieldRecoveryAccumulator = 0.0f;
+	RefreshTickEnabled();
+}
+
+void UHealthComponent::RefreshInvincibilityState()
+{
+	const bool bWasInvincible = bIsInvincible;
+	bIsInvincible = bUseInvincibility && InvincibilityRemainingBySource.Num() > 0;
+	if (bWasInvincible != bIsInvincible)
+	{
+		OnInvincibilityChanged.Broadcast(bIsInvincible);
+	}
+}
+
 void UHealthComponent::RefreshTickEnabled()
 {
 	// Shield 재생 대기 중이거나 무적 카운트다운 중일 때만 Tick 활성화
 	const bool bNeedsTick =
 		(bUseInvincibility && bIsInvincible) ||
-		(bUseShield && CurrentShield < MaxShield);
+		(bUseShield && !bIsDead && CurrentShield < MaxShield);
 
 	SetComponentTickEnabled(bNeedsTick);
 }

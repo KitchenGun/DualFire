@@ -39,9 +39,6 @@ public:
 	UFUNCTION(BlueprintPure, Category="Loadout")
 	const FLoadout& GetActiveLoadout() const { return ActiveLoadout; }
 
-	UFUNCTION(BlueprintPure, Category="Loadout")
-	bool HasActiveLoadout() const { return bHasActiveLoadout; }
-
 	// ── DataTable 참조 (생성자에서 자동 할당, 에디터에서 오버라이드 가능) ────────
 
 	UPROPERTY(EditDefaultsOnly, BlueprintReadOnly, Category="Loadout|Data")

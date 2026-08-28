@@ -13,13 +13,12 @@ UWeaponComponent::UWeaponComponent()
 {
 	PrimaryComponentTick.bCanEverTick = false;
 
-	PrimaryWeaponSlot.Reset(ELoadoutSlot::PrimaryWeapon);
-	SpecialWeapon1Slot.Reset(ELoadoutSlot::SpecialWeapon1);
-	SpecialWeapon2Slot.Reset(ELoadoutSlot::SpecialWeapon2);
+	PrimaryWeaponSlot.Reset();
+	SpecialWeapon1Slot.Reset();
+	SpecialWeapon2Slot.Reset();
 }
 
 bool UWeaponComponent::TryApplyResolvedLoadout(
-	const FLoadout& Loadout,
 	const FWeaponRow& PrimaryWeaponRow,
 	const FWeaponRow& SpecialWeapon1Row,
 	const FWeaponRow& SpecialWeapon2Row,
@@ -33,7 +32,7 @@ bool UWeaponComponent::TryApplyResolvedLoadout(
 	if (!BuildWeaponSlotState(
 		ELoadoutSlot::PrimaryWeapon,
 		TEXT("PrimaryWeapon"),
-		Loadout.PrimaryWeaponID,
+		PrimaryWeaponRow.WeaponID,
 		PrimaryWeaponRow,
 		NewPrimaryWeaponSlot,
 		OutError,
@@ -41,7 +40,7 @@ bool UWeaponComponent::TryApplyResolvedLoadout(
 		!BuildWeaponSlotState(
 		ELoadoutSlot::SpecialWeapon1,
 		TEXT("SpecialWeapon1"),
-		Loadout.SpecialWeapon1ID,
+		SpecialWeapon1Row.WeaponID,
 		SpecialWeapon1Row,
 		NewSpecialWeapon1Slot,
 		OutError,
@@ -49,7 +48,7 @@ bool UWeaponComponent::TryApplyResolvedLoadout(
 		!BuildWeaponSlotState(
 		ELoadoutSlot::SpecialWeapon2,
 		TEXT("SpecialWeapon2"),
-		Loadout.SpecialWeapon2ID,
+		SpecialWeapon2Row.WeaponID,
 		SpecialWeapon2Row,
 		NewSpecialWeapon2Slot,
 		OutError,
@@ -58,11 +57,10 @@ bool UWeaponComponent::TryApplyResolvedLoadout(
 		return false;
 	}
 
-	ClearActiveCooldowns();
+	ResetCooldowns();
 	PrimaryWeaponSlot = MoveTemp(NewPrimaryWeaponSlot);
 	SpecialWeapon1Slot = MoveTemp(NewSpecialWeapon1Slot);
 	SpecialWeapon2Slot = MoveTemp(NewSpecialWeapon2Slot);
-	ActiveLoadout = Loadout;
 	return true;
 }
 
@@ -222,24 +220,25 @@ bool UWeaponComponent::BuildWeaponSlotState(
 		return Fail(NSLOCTEXT("DualFireLoadout", "WeaponProjectileInvalid", "THE WEAPON PROJECTILE CLASS IS INVALID."));
 	}
 
-	OutState.Reset(Slot);
+	OutState.Reset();
 	OutState.WeaponID = WeaponID;
 	OutState.WeaponData = WeaponRow;
 	OutState.ProjectileClass = ProjectileClass;
 	return true;
 }
 
-void UWeaponComponent::ClearActiveCooldowns()
+void UWeaponComponent::ResetCooldowns()
 {
 	UWorld* World = GetWorld();
-	if (!IsValid(World))
+	if (IsValid(World))
 	{
-		return;
+		World->GetTimerManager().ClearTimer(PrimaryWeaponSlot.CooldownHandle);
+		World->GetTimerManager().ClearTimer(SpecialWeapon1Slot.CooldownHandle);
+		World->GetTimerManager().ClearTimer(SpecialWeapon2Slot.CooldownHandle);
 	}
-
-	World->GetTimerManager().ClearTimer(PrimaryWeaponSlot.CooldownHandle);
-	World->GetTimerManager().ClearTimer(SpecialWeapon1Slot.CooldownHandle);
-	World->GetTimerManager().ClearTimer(SpecialWeapon2Slot.CooldownHandle);
+	PrimaryWeaponSlot.bCooldownActive = false;
+	SpecialWeapon1Slot.bCooldownActive = false;
+	SpecialWeapon2Slot.bCooldownActive = false;
 }
 
 void UWeaponComponent::OnLoadoutSlotCooldownExpired(ELoadoutSlot Slot)

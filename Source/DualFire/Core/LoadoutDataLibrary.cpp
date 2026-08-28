@@ -2,84 +2,16 @@
 
 #include "Core/LoadoutDataLibrary.h"
 
+#include "Core/DualFireCollisionChannels.h"
 #include "Engine/DataTable.h"
 
-namespace
-{
-	template <typename RowType>
-	FName GetRowID(const RowType& Row)
-	{
-		return NAME_None;
-	}
-
-	template <>
-	FName GetRowID<FWeaponRow>(const FWeaponRow& Row)
-	{
-		return Row.WeaponID;
-	}
-
-	template <>
-	FName GetRowID<FAircraftRow>(const FAircraftRow& Row)
-	{
-		return Row.AircraftID;
-	}
-
-	template <>
-	FName GetRowID<FShieldRow>(const FShieldRow& Row)
-	{
-		return Row.ShieldID;
-	}
-
-	template <>
-	FName GetRowID<FSuperWeaponRow>(const FSuperWeaponRow& Row)
-	{
-		return Row.SuperWeaponID;
-	}
-
-	template <typename RowType>
-	void EnsureRowID(RowType& Row, FName RowID)
-	{
-	}
-
-	template <>
-	void EnsureRowID<FWeaponRow>(FWeaponRow& Row, FName RowID)
-	{
-		if (Row.WeaponID.IsNone())
-		{
-			Row.WeaponID = RowID;
-		}
-	}
-
-	template <>
-	void EnsureRowID<FAircraftRow>(FAircraftRow& Row, FName RowID)
-	{
-		if (Row.AircraftID.IsNone())
-		{
-			Row.AircraftID = RowID;
-		}
-	}
-
-	template <>
-	void EnsureRowID<FShieldRow>(FShieldRow& Row, FName RowID)
-	{
-		if (Row.ShieldID.IsNone())
-		{
-			Row.ShieldID = RowID;
-		}
-	}
-
-	template <>
-	void EnsureRowID<FSuperWeaponRow>(FSuperWeaponRow& Row, FName RowID)
-	{
-		if (Row.SuperWeaponID.IsNone())
-		{
-			Row.SuperWeaponID = RowID;
-		}
-	}
-}
-
 template <typename RowType>
-bool ULoadoutDataLibrary::FindRowByID(UDataTable* DataTable, FName RowID, RowType& OutRow, const TCHAR* Context)
+bool ULoadoutDataLibrary::FindRowByID(
+	UDataTable* DataTable,
+	FName RowID,
+	FName RowType::* IDMember,
+	RowType& OutRow,
+	const TCHAR* Context)
 {
 	if (!IsValid(DataTable) || RowID.IsNone())
 	{
@@ -89,7 +21,10 @@ bool ULoadoutDataLibrary::FindRowByID(UDataTable* DataTable, FName RowID, RowTyp
 	if (const RowType* DirectRow = DataTable->FindRow<RowType>(RowID, Context, false))
 	{
 		OutRow = *DirectRow;
-		EnsureRowID(OutRow, RowID);
+		if ((OutRow.*IDMember).IsNone())
+		{
+			OutRow.*IDMember = RowID;
+		}
 		return true;
 	}
 
@@ -97,7 +32,7 @@ bool ULoadoutDataLibrary::FindRowByID(UDataTable* DataTable, FName RowID, RowTyp
 	DataTable->GetAllRows(Context, Rows);
 	for (const RowType* Row : Rows)
 	{
-		if (Row && GetRowID(*Row) == RowID)
+		if (Row && Row->*IDMember == RowID)
 		{
 			OutRow = *Row;
 			return true;
@@ -109,22 +44,27 @@ bool ULoadoutDataLibrary::FindRowByID(UDataTable* DataTable, FName RowID, RowTyp
 
 bool ULoadoutDataLibrary::FindWeaponRow(UDataTable* WeaponTable, FName WeaponID, FWeaponRow& OutWeaponRow)
 {
-	return FindRowByID(WeaponTable, WeaponID, OutWeaponRow, TEXT("FindWeaponRow"));
+	return FindRowByID(WeaponTable, WeaponID, &FWeaponRow::WeaponID, OutWeaponRow, TEXT("FindWeaponRow"));
 }
 
 bool ULoadoutDataLibrary::FindAircraftRow(UDataTable* AircraftTable, FName AircraftID, FAircraftRow& OutAircraftRow)
 {
-	return FindRowByID(AircraftTable, AircraftID, OutAircraftRow, TEXT("FindAircraftRow"));
+	return FindRowByID(AircraftTable, AircraftID, &FAircraftRow::AircraftID, OutAircraftRow, TEXT("FindAircraftRow"));
 }
 
 bool ULoadoutDataLibrary::FindShieldRow(UDataTable* ShieldTable, FName ShieldID, FShieldRow& OutShieldRow)
 {
-	return FindRowByID(ShieldTable, ShieldID, OutShieldRow, TEXT("FindShieldRow"));
+	return FindRowByID(ShieldTable, ShieldID, &FShieldRow::ShieldID, OutShieldRow, TEXT("FindShieldRow"));
 }
 
 bool ULoadoutDataLibrary::FindSuperWeaponRow(UDataTable* SuperWeaponTable, FName SuperWeaponID, FSuperWeaponRow& OutSuperWeaponRow)
 {
-	return FindRowByID(SuperWeaponTable, SuperWeaponID, OutSuperWeaponRow, TEXT("FindSuperWeaponRow"));
+	return FindRowByID(
+		SuperWeaponTable,
+		SuperWeaponID,
+		&FSuperWeaponRow::SuperWeaponID,
+		OutSuperWeaponRow,
+		TEXT("FindSuperWeaponRow"));
 }
 
 bool ULoadoutDataLibrary::IsWeaponCategoryCompatible(ELoadoutSlot Slot, EWeaponCategory Category)
@@ -149,6 +89,8 @@ FProjectileRuntimeConfig ULoadoutDataLibrary::MakeProjectileRuntimeConfig(const 
 	RuntimeConfig.ProjectileSpeed = FMath::Max(1.0f, WeaponRow.ProjectileSpeed);
 	RuntimeConfig.HitBehavior = WeaponRow.HitBehavior;
 	RuntimeConfig.PenetrationLimit = FMath::Max(0, WeaponRow.PenetrationLimit);
+	RuntimeConfig.CollisionProfileName = DualFireProfile::PlayerBullet;
+	RuntimeConfig.TargetChannel = DualFireChannel::EnemyBody;
 	return RuntimeConfig;
 }
 

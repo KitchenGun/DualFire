@@ -68,25 +68,16 @@ public:
 	bool CountsTowardMissionMetrics() const { return bCountsTowardMissionMetrics; }
 	FName GetRuntimeEnemyID() const { return RuntimeEnemyID; }
 
-	// ── IEnemyAttributeInterface ──────────────────────────────────────────────
-
 	virtual FEnemyAttribute GetEnemyAttributes_Implementation() const override
 	{
 		return EnemyAttribute;
-	}
-
-	virtual EDualFireAttribute GetEnemyAttribute_Implementation() const override
-	{
-		if (EnemyAttribute.bGround) return EDualFireAttribute::Ground;
-		if (EnemyAttribute.bAir)    return EDualFireAttribute::Air;
-		return EDualFireAttribute::None;
 	}
 
 private:
 	UPROPERTY(VisibleInstanceOnly, Category="Enemy|Runtime")
 	FName RuntimeEnemyID = NAME_None;
 
-	/** HealthComp.OnDeath 콜백. 적은 잔여 기체 없이 즉시 격파 → Destroy */
+	/** HealthComp.OnDeath 콜백. 격파 통계를 기록한 뒤 풀로 반환한다. */
 	UFUNCTION()
 	void OnEnemyDeath();
 

@@ -40,5 +40,10 @@ public:
 
 private:
 	template <typename RowType>
-	static bool FindRowByID(UDataTable* DataTable, FName RowID, RowType& OutRow, const TCHAR* Context);
+	static bool FindRowByID(
+		UDataTable* DataTable,
+		FName RowID,
+		FName RowType::* IDMember,
+		RowType& OutRow,
+		const TCHAR* Context);
 };

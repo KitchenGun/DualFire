@@ -6,6 +6,14 @@
 #include "Components/ActorComponent.h"
 #include "HealthComponent.generated.h"
 
+UENUM(BlueprintType)
+enum class EInvincibilitySource : uint8
+{
+	Hit,
+	ShieldBreak,
+	Respawn,
+};
+
 // ── 델리게이트 ────────────────────────────────────────────────────────────────
 
 /** HP 변화 시 브로드캐스트. Current / Max */
@@ -13,6 +21,7 @@ DECLARE_DYNAMIC_MULTICAST_DELEGATE_TwoParams(FOnHealthChanged, int32, CurrentHea
 
 /** Shield 변화 시 브로드캐스트. Current / Max */
 DECLARE_DYNAMIC_MULTICAST_DELEGATE_TwoParams(FOnShieldChanged, int32, CurrentShield, int32, MaxShield);
+DECLARE_DYNAMIC_MULTICAST_DELEGATE(FOnDamageReceived);
 
 /** Shield가 0이 된 순간 1회 브로드캐스트 */
 DECLARE_DYNAMIC_MULTICAST_DELEGATE(FOnShieldBroken);
@@ -23,8 +32,8 @@ DECLARE_DYNAMIC_MULTICAST_DELEGATE_OneParam(FOnInvincibilityChanged, bool, bActi
 /** 잔여 기체 수 변화 시 브로드캐스트. HUD 잔여 기체 표시 갱신용 */
 DECLARE_DYNAMIC_MULTICAST_DELEGATE_OneParam(FOnLifeChanged, int32, CurrentLife);
 
-/** 리스폰(잔여 기체 차감 후 부활) 시 브로드캐스트. 리스폰 이펙트/연출용 */
-DECLARE_DYNAMIC_MULTICAST_DELEGATE(FOnRespawn);
+/** 잔여 기체를 소비해 리스폰 연출을 시작해야 할 때 브로드캐스트 */
+DECLARE_DYNAMIC_MULTICAST_DELEGATE(FOnRespawnRequested);
 
 /**
  * 최종 사망(잔여 기체 소진 후 HP 0) 시 1회 브로드캐스트.
@@ -39,7 +48,6 @@ DECLARE_DYNAMIC_MULTICAST_DELEGATE(FOnDeath);
  * 플레이어·적 모두 재사용 가능하도록 기능을 플래그로 opt-in:
  *   bUseShield          — 보호막 흡수 레이어 사용 여부
  *   bUseInvincibility   — 피격 후 무적 / 보호막 파괴 무적 사용 여부
- *   bBindToActorDamage  — true 시 BeginPlay에서 OnTakeAnyDamage 자동 구독
  */
 UCLASS(ClassGroup=Health, meta=(BlueprintSpawnableComponent))
 class DUALFIRE_API UHealthComponent : public UActorComponent
@@ -61,10 +69,6 @@ public:
 	/** true: 피격 / Shield 파괴 후 무적 시간 부여 */
 	UPROPERTY(EditDefaultsOnly, BlueprintReadOnly, Category="Health|Flags")
 	bool bUseInvincibility = true;
-
-	/** true: BeginPlay에서 Owner의 OnTakeAnyDamage에 자동 구독 (적 재사용용) */
-	UPROPERTY(EditDefaultsOnly, BlueprintReadOnly, Category="Health|Flags")
-	bool bBindToActorDamage = false;
 
 	// ── HP ───────────────────────────────────────────────────────────────────
 
@@ -90,6 +94,10 @@ public:
 	UPROPERTY(EditDefaultsOnly, BlueprintReadOnly, Category="Health|Shield", meta=(ClampMin="0.1"))
 	float ShieldRecoveryDuration = 5.0f;
 
+	/** 유효 피해 후 Shield 재생을 시작하기까지의 대기 시간 */
+	UPROPERTY(EditDefaultsOnly, BlueprintReadOnly, Category="Health|Shield", meta=(ClampMin="0.0"))
+	float ShieldRecoveryDelay = 2.0f;
+
 	// ── 무적 ─────────────────────────────────────────────────────────────────
 
 	/** Shield 파괴 직후 부여되는 무적 시간(초). 0이면 미적용 */
@@ -104,13 +112,9 @@ public:
 	UPROPERTY(EditDefaultsOnly, BlueprintReadOnly, Category="Health|Invincibility", meta=(ClampMin="0.0"))
 	float RespawnInvincibilityDuration = 3.0f;
 
-	/** 현재 무적 여부. 런타임 전용 — 피격/보호막 파괴 시 true */
+	/** 하나 이상의 무적 출처가 활성화되어 있는지 여부 */
 	UPROPERTY(VisibleInstanceOnly, BlueprintReadOnly, Category="Health|Invincibility")
 	bool bIsInvincible = false;
-
-	/** 무적 잔여 시간(초). Tick마다 감소하며 0이 되면 무적 해제. 런타임 전용 */
-	UPROPERTY(VisibleInstanceOnly, BlueprintReadOnly, Category="Health|Invincibility")
-	float InvincibilityRemaining = 0.0f;
 
 	// ── 잔여 기체 / 리스폰 ────────────────────────────────────────────────
 
@@ -126,6 +130,10 @@ public:
 	UPROPERTY(VisibleInstanceOnly, BlueprintReadOnly, Category="Health|Life")
 	int32 CurrentLife = 1;
 
+	/** 사망 후 최종 사망 또는 리스폰 진입이 끝나기 전인 상태 */
+	UPROPERTY(VisibleInstanceOnly, BlueprintReadOnly, Category="Health|Life")
+	bool bIsDead = false;
+
 	// ── 델리게이트 (HUD·이펙트 구독용) ──────────────────────────────────────
 
 	/** HP가 변할 때마다 발생. HUD 체력바 갱신용 */
@@ -135,6 +143,10 @@ public:
 	/** Shield가 변할 때마다 발생. HUD 보호막 표시 갱신용 */
 	UPROPERTY(BlueprintAssignable, Category="Health|Events")
 	FOnShieldChanged OnShieldChanged;
+
+	/** 사망·무적으로 무시되지 않은 피해 요청마다 한 번 발생 */
+	UPROPERTY(BlueprintAssignable, Category="Health|Events")
+	FOnDamageReceived OnDamageReceived;
 
 	/** Shield가 0이 되는 순간 발생. 파괴 이펙트/사운드용 */
 	UPROPERTY(BlueprintAssignable, Category="Health|Events")
@@ -148,9 +160,9 @@ public:
 	UPROPERTY(BlueprintAssignable, Category="Health|Events")
 	FOnLifeChanged OnLifeChanged;
 
-	/** 리스폰 시 발생. 부활 연출/위치 이동 후 알림용 */
+	/** 잔여 기체 차감 후 Pawn이 사망 대기/진입 연출을 시작하는 지점 */
 	UPROPERTY(BlueprintAssignable, Category="Health|Events")
-	FOnRespawn OnRespawn;
+	FOnRespawnRequested OnRespawnRequested;
 
 	/** 최종 사망(잔여 기체 소진) 시 발생. 플레이어→미션 실패, 적→파괴 연결 지점 */
 	UPROPERTY(BlueprintAssignable, Category="Health|Events")
@@ -170,31 +182,33 @@ public:
 	UFUNCTION(BlueprintCallable, Category="Health")
 	void RecoverHealth(int32 Amount);
 
-	/** HP를 MaxHealth로 즉시 회복 */
-	UFUNCTION(BlueprintCallable, Category="Health")
-	void FullRecoverHealth();
-
 	/** Shield를 MaxShield로 즉시 회복 */
 	UFUNCTION(BlueprintCallable, Category="Health")
 	void FullRecoverShield();
 
 	/**
-	 * 무적 시작. 현재 잔여 시간보다 짧으면 무시(최장 우선 정책).
-	 * 이미 무적 중이어도 더 긴 Duration이면 연장.
+	 * 출처별 무적 시작. 같은 출처는 현재 잔여 시간과 새 시간 중 긴 값을 유지한다.
 	 */
 	UFUNCTION(BlueprintCallable, Category="Health")
-	void StartInvincibility(float Duration);
+	void StartInvincibility(EInvincibilitySource Source, float Duration);
+
+	UFUNCTION(BlueprintCallable, Category="Health")
+	void ClearAllInvincibility();
 
 	/**
 	 * 외부 데이터(DataTable 등)에서 스탯을 주입하는 초기화 함수.
 	 * LoadoutManager가 AircraftRow/ShieldRow 기반으로 호출. HP/Shield/잔여 기체 모두 리셋.
 	 */
 	UFUNCTION(BlueprintCallable, Category="Health")
-	void InitFromData(int32 InMaxHealth, int32 InMaxShield, float InShieldRecoveryDuration, float InBreakInvincibilityDuration);
+	void InitFromData(
+		int32 InMaxHealth,
+		int32 InMaxShield,
+		float InShieldRecoveryDelay,
+		float InShieldRecoveryDuration,
+		float InBreakInvincibilityDuration);
 
-	/** 리스폰 복귀 지점을 외부에서 갱신 (기본은 BeginPlay 시작 위치) */
-	UFUNCTION(BlueprintCallable, Category="Health|Life")
-	void SetRespawnLocation(const FVector& InLocation) { RespawnLocation = InLocation; }
+	/** 진입 연출 종료 시 생존 자원 복구와 리스폰 무적을 적용한다. */
+	void CompleteRespawn();
 
 	// ── BlueprintPure 게터 (HUD용) ────────────────────────────────────────────
 
@@ -211,16 +225,16 @@ private:
 	/** Shield 재생 누적 타이머(초). ShieldRecoveryDuration 도달 시 1칸 회복 후 차감 */
 	float ShieldRecoveryAccumulator = 0.0f;
 
-	/** 리스폰 복귀 좌표. BeginPlay에서 Owner의 시작 위치로 캐싱 */
-	FVector RespawnLocation = FVector::ZeroVector;
+	/** 유효 피해 후 Shield 재생 시작까지 남은 대기 시간 */
+	float ShieldRecoveryDelayRemaining = 0.0f;
+
+	/** 출처별 무적 잔여 시간 */
+	TMap<EInvincibilitySource, float> InvincibilityRemainingBySource;
 
 	/** HP 0 도달 시 호출. 잔여 기체 있으면 Respawn, 없으면 OnDeath 브로드캐스트 */
 	void HandleDeath();
 
-	/** 부활 처리 — HP/Shield 풀충전, 리스폰 무적, 시작 위치 복귀 (사양 §5.3.7) */
-	void Respawn();
-
-	/** OnTakeAnyDamage 콜백 (bBindToActorDamage=true 일 때만 바인딩) */
+	/** Owner의 OnTakeAnyDamage 콜백 */
 	UFUNCTION()
 	void OnActorTakeAnyDamage(
 		AActor* DamagedActor,
@@ -234,6 +248,12 @@ private:
 
 	/** Shield 자동 재생 누적 처리. Tick에서 Shield 미충전 시에만 호출 */
 	void TickShieldRecovery(float DeltaTime);
+
+	/** 유효 피해/사망/초기화 시 재생 대기와 누적값을 함께 초기화 */
+	void ResetShieldRecovery(bool bStartDelay);
+
+	/** 출처 타이머 변경 후 전체 무적 상태와 이벤트를 갱신 */
+	void RefreshInvincibilityState();
 
 	/** Shield 재생/무적 카운트다운 필요 여부에 따라 컴포넌트 Tick을 켜고 끔 */
 	void RefreshTickEnabled();

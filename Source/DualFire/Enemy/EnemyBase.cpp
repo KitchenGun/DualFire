@@ -31,7 +31,6 @@ AEnemyBase::AEnemyBase()
 	HealthComp = CreateDefaultSubobject<UHealthComponent>(TEXT("HealthComp"));
 	HealthComp->bUseShield       = false;
 	HealthComp->bUseInvincibility = false;
-	HealthComp->bBindToActorDamage = true;
 
 	AIComp = CreateDefaultSubobject<UEnemyAIComponent>(TEXT("AIComp"));
 }
@@ -44,7 +43,7 @@ void AEnemyBase::BeginPlay()
 	HealthComp->OnDeath.AddDynamic(this, &AEnemyBase::OnEnemyDeath);
 
 	// 컴포넌트 BeginPlay가 Actor BeginPlay보다 먼저 실행되므로 InitFromData로 재초기화
-	HealthComp->InitFromData(MaxHealth, 0, 1.0f, 0.0f);
+	HealthComp->InitFromData(MaxHealth, 0, 0.0f, 1.0f, 0.0f);
 }
 
 void AEnemyBase::EndPlay(const EEndPlayReason::Type EndPlayReason)
@@ -59,8 +58,8 @@ void AEnemyBase::OnAcquiredFromPool_Implementation()
 	SetActorEnableCollision(true);
 	if (HitboxComp)
 	{
-		HitboxComp->SetCollisionEnabled(ECollisionEnabled::QueryOnly);
-		HitboxComp->SetGenerateOverlapEvents(true);
+		HitboxComp->SetGenerateOverlapEvents(false);
+		HitboxComp->SetCollisionEnabled(ECollisionEnabled::NoCollision);
 	}
 	if (AIComp)
 	{
@@ -101,8 +100,10 @@ bool AEnemyBase::InitFromEnemyRow(const FEnemyRow& Row)
 	RuntimeEnemyID = Row.EnemyID;
 	EnemyAttribute = Row.Attribute;
 	Mesh->SetSkeletalMesh(LoadedMesh);
-	HealthComp->InitFromData(MaxHealth, 0, 1.0f, 0.0f);
+	HealthComp->InitFromData(MaxHealth, 0, 0.0f, 1.0f, 0.0f);
 	AIComp->InitFromEnemyRow(Row);
+	HitboxComp->SetCollisionEnabled(ECollisionEnabled::QueryOnly);
+	HitboxComp->SetGenerateOverlapEvents(true);
 	return true;
 }
 

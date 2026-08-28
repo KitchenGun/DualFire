@@ -50,7 +50,7 @@ enum class ESuperWeaponEffectType : uint8
 	Attack       UMETA(DisplayName = "Attack"),
 };
 
-/** Prototype screen-space spawn anchors. These are logical in-screen entry points, not exact screen bounds. */
+/** 화면 내부의 3x3 스폰 기준점. */
 UENUM(BlueprintType)
 enum class ESpawnAnchor : uint8
 {
@@ -68,9 +68,9 @@ enum class ESpawnAnchor : uint8
 UENUM(BlueprintType)
 enum class EStageState : uint8
 {
-	Timeline    UMETA(DisplayName = "Timeline"),
-	EliteCombat UMETA(DisplayName = "Elite Combat"),
-	Ended       UMETA(DisplayName = "Ended"),
+	Timeline     UMETA(DisplayName = "Timeline"),
+	BossSequence UMETA(DisplayName = "Boss Sequence"),
+	Ended        UMETA(DisplayName = "Ended"),
 };
 
 UENUM(BlueprintType)
@@ -136,47 +136,9 @@ struct DUALFIRE_API FEnemyAttribute
 
 	bool HasGround() const { return bGround; }
 	bool HasAir() const { return bAir; }
-	bool IsMixed() const { return bGround && bAir; }
-	bool IsNone() const { return !bGround && !bAir; }
-	bool Matches(EDualFireAttribute Attribute) const
-	{
-		switch (Attribute)
-		{
-		case EDualFireAttribute::Ground:
-			return bGround;
-		case EDualFireAttribute::Air:
-			return bAir;
-		default:
-			return false;
-		}
-	}
 	bool MatchesAny(const TArray<EDualFireAttribute>& Attributes) const
 	{
-		for (const EDualFireAttribute Attribute : Attributes)
-		{
-			if (Matches(Attribute))
-			{
-				return true;
-			}
-		}
-		return false;
-	}
-	static FEnemyAttribute FromAttribute(EDualFireAttribute Attribute)
-	{
-		FEnemyAttribute Result;
-		Result.bGround = Attribute == EDualFireAttribute::Ground;
-		Result.bAir = Attribute == EDualFireAttribute::Air;
-		return Result;
-	}
-	static FEnemyAttribute FromAttributes(const TArray<EDualFireAttribute>& Attributes)
-	{
-		FEnemyAttribute Result;
-		Result.bGround = Attributes.Contains(EDualFireAttribute::Ground);
-		Result.bAir = Attributes.Contains(EDualFireAttribute::Air);
-		return Result;
-	}
-	static bool IsMatch(const TArray<EDualFireAttribute>& ProjectileAttributes, const FEnemyAttribute& EnemyAttribute)
-	{
-		return EnemyAttribute.MatchesAny(ProjectileAttributes);
+		return (bGround && Attributes.Contains(EDualFireAttribute::Ground)) ||
+			(bAir && Attributes.Contains(EDualFireAttribute::Air));
 	}
 };

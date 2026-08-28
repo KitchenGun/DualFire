@@ -151,8 +151,10 @@ bool ULoadoutManagerSubsystem::ValidateLoadout(
 	FShieldRow ShieldRow;
 	if (!ULoadoutDataLibrary::FindShieldRow(ShieldDataTable, Loadout.ShieldID, ShieldRow) ||
 		ShieldRow.MaxShield < 0 ||
-		ShieldRow.ShieldRecoveryDuration <= 0.f ||
-		ShieldRow.BreakInvincibilityDuration < 0.f)
+		(ShieldRow.MaxShield > 0 &&
+			(ShieldRow.ShieldRecoveryDelay < 0.f ||
+			 ShieldRow.ShieldRecoveryDuration <= 0.f ||
+			 ShieldRow.BreakInvincibilityDuration < 0.f)))
 	{
 		return Fail(TEXT("Shield"), NSLOCTEXT("DualFireLoadout", "ShieldInvalid", "THE SELECTED SHIELD IS UNAVAILABLE."));
 	}
@@ -218,7 +220,6 @@ bool ULoadoutManagerSubsystem::TryApplyActiveLoadout(
 	}
 
 	if (!WeaponComp->TryApplyResolvedLoadout(
-		ActiveLoadout,
 		PrimaryWeaponRow,
 		SpecialWeapon1Row,
 		SpecialWeapon2Row,
@@ -235,6 +236,7 @@ bool ULoadoutManagerSubsystem::TryApplyActiveLoadout(
 	HealthComp->InitFromData(
 		MaxHealth,
 		MaxShield,
+		ShieldRow.ShieldRecoveryDelay,
 		ShieldRow.ShieldRecoveryDuration,
 		ShieldRow.BreakInvincibilityDuration);
 

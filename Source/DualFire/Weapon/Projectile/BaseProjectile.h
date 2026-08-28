@@ -53,7 +53,7 @@ struct DUALFIRE_API FProjectileRuntimeConfig
 	/**
 	 * 오버랩 대상으로 허용할 Object Channel.
 	 * 플레이어 탄 = EnemyBody(Ch4), 적 탄 = PlayerHitbox(Ch1)
-	 * 기본값 0 → BeginPlay/ApplyRuntimeConfig에서 변경되지 않으면 생성자 기본값 유지.
+	 * ECC_MAX이면 ApplyRuntimeConfig에서 생성자 기본값을 유지한다.
 	 */
 	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category="Weapon")
 	TEnumAsByte<ECollisionChannel> TargetChannel = ECC_MAX;
@@ -141,6 +141,9 @@ public:
 	UFUNCTION(BlueprintCallable, Category="Weapon")
 	void ApplyRuntimeConfig(const FProjectileRuntimeConfig& RuntimeConfig);
 
+	/** 활성 적탄이면 효과 없이 풀로 반환하고 true를 반환한다. */
+	bool ClearForPlayerRespawn();
+
 protected:
 	// ── BP 확장 포인트 ────────────────────────────────────────────────────────
 
@@ -163,7 +166,7 @@ private:
 		bool                 bFromSweep,
 		const FHitResult&    SweepResult);
 
-	/** 탄환 속성 배열 중 하나라도 적 속성과 일치하는지 확인. 속성 인터페이스가 없으면 true. */
+	/** 탄환 속성 배열 중 하나라도 적 속성과 일치하는지 확인. 속성 인터페이스가 없으면 false. */
 	bool CheckAttributeMatch(AActor* OtherActor) const;
 
 	/** 관통 탄환이 같은 적에게 반복 피격되지 않도록 캐싱 */

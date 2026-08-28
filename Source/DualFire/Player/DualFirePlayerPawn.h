@@ -80,6 +80,7 @@ public:
     // ── APawn 오버라이드 ─────────────────────────────────────────────────────
 
     virtual void BeginPlay() override;
+    virtual void Tick(float DeltaSeconds) override;
     virtual void SetupPlayerInputComponent(UInputComponent* PlayerInputComponent) override;
 
     /** MovementComp를 반환. AIController 등 외부 시스템이 이동 컴포넌트를 찾을 때 사용 */
@@ -87,7 +88,7 @@ public:
 
     // ── Enhanced Input 에셋 참조 ─────────────────────────────────────────────
     // TSoftObjectPtr: 패키징 크기 절약. MissionPlayerController가 빙의 시 로드한다.
-    // BP_DualFirePlayerPawn의 Details 패널에서 에셋 직접 할당.
+    // BP_PlayerPawn의 Details 패널에서 에셋 직접 할당.
 
     UPROPERTY(EditDefaultsOnly, BlueprintReadOnly, Category="Input")
     TSoftObjectPtr<UInputMappingContext> IMC_Player;
@@ -116,6 +117,18 @@ public:
     UInputMappingContext* ResolveInputMappingContext() const;
 
     int32 GetInputMappingPriority() const { return InputMappingPriority; }
+
+    /** 격추 후 기체가 사라져 있는 시간 */
+    UPROPERTY(EditDefaultsOnly, BlueprintReadOnly, Category="Respawn", meta=(ClampMin="0.0"))
+    float DeathDelay = 0.75f;
+
+    /** 화면 밖 하단에서 시작 앵커까지 진입하는 시간 */
+    UPROPERTY(EditDefaultsOnly, BlueprintReadOnly, Category="Respawn", meta=(ClampMin="0.01"))
+    float RespawnEntryDuration = 1.0f;
+
+    /** 카메라 하단 경계보다 아래에 배치할 거리 */
+    UPROPERTY(EditDefaultsOnly, BlueprintReadOnly, Category="Respawn", meta=(ClampMin="0.0"))
+    float RespawnEntryOffset = 128.0f;
 
     // ── 컴포넌트 접근자 (LoadoutManager 등 외부 시스템에서 사용) ────────────────
 
@@ -185,21 +198,36 @@ protected:
     void OnPlayerFinalDeath();
 
 	UFUNCTION()
-	void OnPlayerRespawn();
+	void OnPlayerRespawnRequested();
 
 	UFUNCTION()
-	void OnMissionHealthChanged(int32 CurrentHealth, int32 MaxHealth);
-
-	UFUNCTION()
-	void OnMissionShieldChanged(int32 CurrentShield, int32 MaxShield);
+	void OnMissionDamageReceived();
 
 private:
+	enum class ELifeFlowState : uint8
+	{
+		Alive,
+		DeathDelay,
+		Entering,
+		FinalDead,
+	};
+
 	int32 MissionHitCount = 0;
 	int32 MissionDeathCount = 0;
-	int32 LastRecordedHealth = 0;
-	int32 LastRecordedShield = 0;
+	ELifeFlowState LifeFlowState = ELifeFlowState::Alive;
+	FTimerHandle RespawnDelayHandle;
+	float RespawnEntryElapsed = 0.0f;
+	FVector RespawnAnchor = FVector::ZeroVector;
 
     /** 좌우 입력 세기를 15/30/45도 뱅킹 포즈로 변환한다. */
     void UpdateAircraftBankPose(float HorizontalInput);
+
+	void EnterDeathState(bool bFinalDeath);
+	void BeginRespawnEntry();
+	void FinishRespawnEntry();
+	void SetGameplayLocked(bool bLocked);
+	FVector ResolveRespawnAnchor() const;
+	void ClearActiveEnemyProjectiles();
+	bool IsGameplayLocked() const { return LifeFlowState != ELifeFlowState::Alive; }
 
 };

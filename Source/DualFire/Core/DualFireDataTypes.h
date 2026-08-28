@@ -15,11 +15,6 @@ class ADualFirePlayerPawn;
 class UCurveFloat;
 class UWorld;
 
-namespace DualFireLoadout
-{
-	constexpr int32 MaxPresetCount = 50;
-}
-
 USTRUCT(BlueprintType)
 struct DUALFIRE_API FWeaponRow : public FTableRowBase
 {
@@ -149,6 +144,10 @@ struct DUALFIRE_API FShieldRow : public FTableRowBase
 	/** 보호막 1칸이 재생되는 데 걸리는 시간(초) */
 	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Shield", meta = (ClampMin = "0.0"))
 	float ShieldRecoveryDuration = 0.0f;
+
+	/** 유효 피해 후 보호막 재생을 시작하기까지의 대기 시간(초) */
+	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Shield", meta = (ClampMin = "0.0"))
+	float ShieldRecoveryDelay = 2.0f;
 
 	/** 보호막이 0이 되는 순간 부여되는 무적 시간(초). 0이면 미적용 */
 	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Shield", meta = (ClampMin = "0.0"))
@@ -427,24 +426,6 @@ struct DUALFIRE_API FLoadout
 			&& !ShieldID.IsNone();
 	}
 
-	FName GetEquipmentID(ELoadoutSlot Slot) const
-	{
-		switch (Slot)
-		{
-		case ELoadoutSlot::PrimaryWeapon:
-			return PrimaryWeaponID;
-		case ELoadoutSlot::SpecialWeapon1:
-			return SpecialWeapon1ID;
-		case ELoadoutSlot::SpecialWeapon2:
-			return SpecialWeapon2ID;
-		case ELoadoutSlot::SuperWeapon:
-			return SuperWeaponID;
-		case ELoadoutSlot::Shield:
-			return ShieldID;
-		default:
-			return NAME_None;
-		}
-	}
 };
 
 /**
@@ -475,24 +456,4 @@ struct DUALFIRE_API FLoadoutRowHandles
 
 	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Loadout", meta = (RowType = "/Script/DualFire.ShieldRow"))
 	FDataTableRowHandle ShieldRow;
-};
-
-USTRUCT(BlueprintType)
-struct DUALFIRE_API FLoadoutPreset
-{
-	GENERATED_BODY()
-
-	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Loadout")
-	FName PresetID = NAME_None;
-
-	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Loadout")
-	FText PresetName;
-
-	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Loadout")
-	FLoadout Loadout;
-
-	bool IsComplete() const
-	{
-		return !PresetID.IsNone() && Loadout.IsComplete();
-	}
 };

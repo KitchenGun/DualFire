@@ -21,6 +21,8 @@ ABaseProjectile::ABaseProjectile()
 	CollisionComp = CreateDefaultSubobject<USphereComponent>(TEXT("CollisionComp"));
 	CollisionComp->InitSphereRadius(8.f);
 	CollisionComp->SetCollisionProfileName(DualFireProfile::PlayerBullet);
+	CollisionComp->SetCollisionEnabled(ECollisionEnabled::NoCollision);
+	CollisionComp->SetGenerateOverlapEvents(false);
 	RootComponent = CollisionComp;
 
 	ProjectileMovement = CreateDefaultSubobject<UProjectileMovementComponent>(TEXT("ProjectileMovement"));
@@ -88,8 +90,7 @@ void ABaseProjectile::OnAcquiredFromPool_Implementation()
 
 	if (CollisionComp)
 	{
-		CollisionComp->SetCollisionEnabled(ECollisionEnabled::QueryOnly);
-		CollisionComp->SetGenerateOverlapEvents(true);
+		CollisionComp->SetGenerateOverlapEvents(false);
 		CollisionComp->ClearMoveIgnoreActors();
 	}
 
@@ -165,6 +166,20 @@ void ABaseProjectile::ApplyRuntimeConfig(const FProjectileRuntimeConfig& Runtime
 		ProjectileMovement->Velocity = Dir * ProjectileSpeed;
 	}
 }
+
+bool ABaseProjectile::ClearForPlayerRespawn()
+{
+	if (TargetChannel != DualFireChannel::PlayerHitbox || IsHidden() ||
+		!IsValid(CollisionComp) ||
+		CollisionComp->GetCollisionEnabled() == ECollisionEnabled::NoCollision)
+	{
+		return false;
+	}
+
+	ReturnToPoolOrDestroy();
+	return true;
+}
+
 void ABaseProjectile::OnProjectileOverlapBegin(
 	UPrimitiveComponent* OverlappedComp,
 	AActor*              OtherActor,
@@ -229,18 +244,11 @@ bool ABaseProjectile::CheckAttributeMatch(AActor* OtherActor) const
 		return true;
 	}
 
-	// Enemies without the interface remain hittable for prototype compatibility.
 	if (!OtherActor || !OtherActor->Implements<UEnemyAttributeInterface>())
 	{
-		return true;
+		return false;
 	}
-	FEnemyAttribute EnemyAttributes = IEnemyAttributeInterface::Execute_GetEnemyAttributes(OtherActor);
-	if (EnemyAttributes.IsNone())
-	{
-		// Temporary bridge for Blueprint assets that still implement only the legacy enum function.
-		EnemyAttributes = FEnemyAttribute::FromAttribute(IEnemyAttributeInterface::Execute_GetEnemyAttribute(OtherActor));
-	}
-	return FEnemyAttribute::IsMatch(AttributeArray, EnemyAttributes);
+	return IEnemyAttributeInterface::Execute_GetEnemyAttributes(OtherActor).MatchesAny(AttributeArray);
 }
 
 void ABaseProjectile::ReturnToPoolOrDestroy()

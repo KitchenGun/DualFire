@@ -3,11 +3,15 @@
 #include "DualFirePlayerPawn.h"
 
 #include "DualFireMovementComponent.h"
+#include "Camera/StageCameraActor.h"
 #include "Core/DualFireCollisionChannels.h"
 #include "GameModes/DualFireGameModeBase.h"
+#include "Weapon/Projectile/BaseProjectile.h"
 #include "DualFire.h"
 
+#include "EngineUtils.h"
 #include "Kismet/GameplayStatics.h"
+#include "TimerManager.h"
 
 #include "Components/SceneComponent.h"
 #include "Components/SphereComponent.h"
@@ -20,8 +24,9 @@
 
 ADualFirePlayerPawn::ADualFirePlayerPawn()
 {
-    // 중력/물리 없는 2D 슈팅 — Tick 불필요
-    PrimaryActorTick.bCanEverTick = false;
+    // 평상시 Tick은 끄고 리스폰 진입 중에만 사용한다.
+    PrimaryActorTick.bCanEverTick = true;
+    PrimaryActorTick.bStartWithTickEnabled = false;
 
     // 카메라를 StageCameraActor로 이관 — Pawn Possess 시 카메라 탐색 비활성화
     bFindCameraComponentWhenViewTarget = false;
@@ -58,7 +63,6 @@ ADualFirePlayerPawn::ADualFirePlayerPawn()
     // ── HealthComp ────────────────────────────────────────────────────────────
     HealthComp = CreateDefaultSubobject<UHealthComponent>(TEXT("HealthComp"));
     HealthComp->bUseLife = true;   // 플레이어는 잔여 기체/리스폰 사용
-    HealthComp->bBindToActorDamage = true;
 }
 
 // ── APawn 오버라이드 ──────────────────────────────────────────────────────────
@@ -70,13 +74,33 @@ void ADualFirePlayerPawn::BeginPlay()
     // 최종 사망(잔여 기체 소진) → 미션 실패 연결
     if (IsValid(HealthComp))
     {
-        HealthComp->OnDeath.AddDynamic(this, &ADualFirePlayerPawn::OnPlayerFinalDeath);
-		HealthComp->OnRespawn.AddDynamic(this, &ADualFirePlayerPawn::OnPlayerRespawn);
-		HealthComp->OnHealthChanged.AddDynamic(this, &ADualFirePlayerPawn::OnMissionHealthChanged);
-		HealthComp->OnShieldChanged.AddDynamic(this, &ADualFirePlayerPawn::OnMissionShieldChanged);
-		LastRecordedHealth = HealthComp->CurrentHealth;
-		LastRecordedShield = HealthComp->CurrentShield;
+		HealthComp->OnDeath.AddDynamic(this, &ADualFirePlayerPawn::OnPlayerFinalDeath);
+		HealthComp->OnRespawnRequested.AddDynamic(this, &ADualFirePlayerPawn::OnPlayerRespawnRequested);
+		HealthComp->OnDamageReceived.AddDynamic(this, &ADualFirePlayerPawn::OnMissionDamageReceived);
     }
+}
+
+void ADualFirePlayerPawn::Tick(float DeltaSeconds)
+{
+	Super::Tick(DeltaSeconds);
+
+	if (LifeFlowState != ELifeFlowState::Entering)
+	{
+		SetActorTickEnabled(false);
+		return;
+	}
+
+	RespawnEntryElapsed += DeltaSeconds;
+	const float Alpha = FMath::Clamp(
+		RespawnEntryElapsed / FMath::Max(RespawnEntryDuration, UE_SMALL_NUMBER), 0.0f, 1.0f);
+	const float EasedAlpha = FMath::InterpEaseOut(0.0f, 1.0f, Alpha, 2.0f);
+	const FVector EntryStart = RespawnAnchor - FVector(RespawnEntryOffset, 0.0f, 0.0f);
+	SetActorLocation(FMath::Lerp(EntryStart, RespawnAnchor, EasedAlpha));
+
+	if (Alpha >= 1.0f)
+	{
+		FinishRespawnEntry();
+	}
 }
 
 void ADualFirePlayerPawn::SetupPlayerInputComponent(UInputComponent* PlayerInputComponent)
@@ -86,7 +110,7 @@ void ADualFirePlayerPawn::SetupPlayerInputComponent(UInputComponent* PlayerInput
     UEnhancedInputComponent* EIC = Cast<UEnhancedInputComponent>(PlayerInputComponent);
     if (!IsValid(EIC))
     {
-        UE_LOG(LogTemp, Error,
+        UE_LOG(LogDualFire, Error,
             TEXT("ADualFirePlayerPawn: EnhancedInputComponent가 없습니다. "
                  "프로젝트 설정 > Input > Default Input Component Class를 확인하세요."));
         return;
@@ -104,7 +128,7 @@ void ADualFirePlayerPawn::SetupPlayerInputComponent(UInputComponent* PlayerInput
     }
     else
     {
-        UE_LOG(LogTemp, Warning,
+        UE_LOG(LogDualFire, Warning,
             TEXT("ADualFirePlayerPawn: IA_Move 에셋이 할당되지 않았습니다."));
     }
 
@@ -116,7 +140,7 @@ void ADualFirePlayerPawn::SetupPlayerInputComponent(UInputComponent* PlayerInput
     }
     else
     {
-        UE_LOG(LogTemp, Warning,
+        UE_LOG(LogDualFire, Warning,
             TEXT("ADualFirePlayerPawn: IA_FirePrimary 에셋이 할당되지 않았습니다."));
     }
 
@@ -127,7 +151,7 @@ void ADualFirePlayerPawn::SetupPlayerInputComponent(UInputComponent* PlayerInput
     }
     else
     {
-        UE_LOG(LogTemp, Warning,
+        UE_LOG(LogDualFire, Warning,
             TEXT("ADualFirePlayerPawn: IA_FireSpecial1 에셋이 할당되지 않았습니다."));
     }
 
@@ -138,7 +162,7 @@ void ADualFirePlayerPawn::SetupPlayerInputComponent(UInputComponent* PlayerInput
     }
     else
     {
-        UE_LOG(LogTemp, Warning,
+        UE_LOG(LogDualFire, Warning,
             TEXT("ADualFirePlayerPawn: IA_FireSpecial2 에셋이 할당되지 않았습니다."));
     }
 }
@@ -152,6 +176,11 @@ UPawnMovementComponent* ADualFirePlayerPawn::GetMovementComponent() const
 
 void ADualFirePlayerPawn::OnMoveInput(const FInputActionValue& Value)
 {
+	if (IsGameplayLocked())
+	{
+		return;
+	}
+
     // IA_Move Axis2D: X=좌우 입력 → 월드 Y축, Y=앞뒤 입력 → 월드 X축
     const FVector2D Axis = Value.Get<FVector2D>();
 
@@ -162,6 +191,11 @@ void ADualFirePlayerPawn::OnMoveInput(const FInputActionValue& Value)
 
 void ADualFirePlayerPawn::OnMoveInputCompleted(const FInputActionValue& Value)
 {
+	if (IsGameplayLocked())
+	{
+		return;
+	}
+
     SetAircraftBankPose(EAircraftBankPose::Neutral);
 }
 
@@ -241,7 +275,7 @@ void ADualFirePlayerPawn::UpdateAircraftBankPose(float HorizontalInput)
 
 void ADualFirePlayerPawn::OnFirePrimaryInput(const FInputActionValue& Value)
 {
-    if (IsValid(WeaponComp))
+	if (!IsGameplayLocked() && IsValid(WeaponComp))
     {
         WeaponComp->FirePrimary();
     }
@@ -249,7 +283,7 @@ void ADualFirePlayerPawn::OnFirePrimaryInput(const FInputActionValue& Value)
 
 void ADualFirePlayerPawn::OnFireSpecial1Input(const FInputActionValue& Value)
 {
-    if (IsValid(WeaponComp))
+	if (!IsGameplayLocked() && IsValid(WeaponComp))
     {
         WeaponComp->FireSpecial1();
     }
@@ -257,7 +291,7 @@ void ADualFirePlayerPawn::OnFireSpecial1Input(const FInputActionValue& Value)
 
 void ADualFirePlayerPawn::OnFireSpecial2Input(const FInputActionValue& Value)
 {
-    if (IsValid(WeaponComp))
+	if (!IsGameplayLocked() && IsValid(WeaponComp))
     {
         WeaponComp->FireSpecial2();
     }
@@ -278,7 +312,7 @@ void ADualFirePlayerPawn::DF_RecoverHealth()
 {
     if (IsValid(HealthComp))
     {
-        HealthComp->FullRecoverHealth();
+        HealthComp->RecoverHealth(HealthComp->MaxHealth);
         UE_LOG(LogDualFire, Log, TEXT("[Debug] DF_RecoverHealth — HP 만회"));
     }
 }
@@ -298,7 +332,7 @@ void ADualFirePlayerPawn::DF_Kill()
     {
         UE_LOG(LogDualFire, Log, TEXT("[Debug] DF_Kill — 즉사 데미지"));
         // 무적/보호막을 무시하고 HP를 직접 0으로: 무적 해제 + 보호막 제거 후 대형 데미지
-        HealthComp->bIsInvincible = false;
+		HealthComp->ClearAllInvincibility();
         HealthComp->CurrentShield = 0;
         HealthComp->ApplyDamage(9999);
     }
@@ -309,6 +343,7 @@ void ADualFirePlayerPawn::DF_Kill()
 void ADualFirePlayerPawn::OnPlayerFinalDeath()
 {
 	++MissionDeathCount;
+	EnterDeathState(true);
     UE_LOG(LogDualFire, Warning, TEXT("[Player] 최종 사망 → 미션 실패 요청"));
 
     if (ADualFireGameModeBase* GameMode =
@@ -318,27 +353,141 @@ void ADualFirePlayerPawn::OnPlayerFinalDeath()
     }
 }
 
-void ADualFirePlayerPawn::OnPlayerRespawn()
+void ADualFirePlayerPawn::OnPlayerRespawnRequested()
 {
 	++MissionDeathCount;
+	EnterDeathState(false);
 }
 
-void ADualFirePlayerPawn::OnMissionHealthChanged(int32 CurrentHealth, int32 /*MaxHealth*/)
+void ADualFirePlayerPawn::EnterDeathState(bool bFinalDeath)
 {
-	if (CurrentHealth < LastRecordedHealth)
+	LifeFlowState = bFinalDeath ? ELifeFlowState::FinalDead : ELifeFlowState::DeathDelay;
+	SetGameplayLocked(true);
+	SetAircraftBankPose(EAircraftBankPose::Neutral);
+
+	if (IsValid(AircraftVisual))
 	{
-		++MissionHitCount;
+		AircraftVisual->SetHiddenInGame(true);
 	}
-	LastRecordedHealth = CurrentHealth;
+
+	UE_LOG(LogDualFire, Log, TEXT("[Player] 사망 상태 진입 — Final:%s"), bFinalDeath ? TEXT("true") : TEXT("false"));
+	if (!bFinalDeath)
+	{
+		GetWorldTimerManager().SetTimer(
+			RespawnDelayHandle,
+			this,
+			&ADualFirePlayerPawn::BeginRespawnEntry,
+			DeathDelay,
+			false);
+	}
 }
 
-void ADualFirePlayerPawn::OnMissionShieldChanged(int32 CurrentShield, int32 /*MaxShield*/)
+void ADualFirePlayerPawn::BeginRespawnEntry()
 {
-	if (CurrentShield < LastRecordedShield)
+	if (LifeFlowState != ELifeFlowState::DeathDelay)
 	{
-		++MissionHitCount;
+		return;
 	}
-	LastRecordedShield = CurrentShield;
+
+	LifeFlowState = ELifeFlowState::Entering;
+	RespawnEntryElapsed = 0.0f;
+	RespawnAnchor = ResolveRespawnAnchor();
+	SetActorLocation(RespawnAnchor - FVector(RespawnEntryOffset, 0.0f, 0.0f));
+
+	if (IsValid(AircraftVisual))
+	{
+		AircraftVisual->SetHiddenInGame(false);
+	}
+
+	SetActorTickEnabled(true);
+	UE_LOG(LogDualFire, Log, TEXT("[Player] 리스폰 진입 시작 — Duration:%.2f"), RespawnEntryDuration);
+}
+
+void ADualFirePlayerPawn::FinishRespawnEntry()
+{
+	SetActorLocation(RespawnAnchor);
+	SetActorTickEnabled(false);
+
+	if (IsValid(HealthComp))
+	{
+		HealthComp->CompleteRespawn();
+	}
+	if (IsValid(WeaponComp))
+	{
+		WeaponComp->ResetCooldowns();
+	}
+	ClearActiveEnemyProjectiles();
+
+	LifeFlowState = ELifeFlowState::Alive;
+	SetGameplayLocked(false);
+
+	UE_LOG(LogDualFire, Log, TEXT("[Player] 리스폰 완료 — 입력/충돌 복구"));
+}
+
+void ADualFirePlayerPawn::SetGameplayLocked(bool bLocked)
+{
+	if (IsValid(HitboxComp))
+	{
+		HitboxComp->SetCollisionEnabled(bLocked ? ECollisionEnabled::NoCollision : ECollisionEnabled::QueryOnly);
+	}
+
+	if (IsValid(MovementComp))
+	{
+		MovementComp->StopMovementImmediately();
+		MovementComp->ConsumeInputVector();
+		if (bLocked)
+		{
+			MovementComp->Deactivate();
+		}
+		else
+		{
+			MovementComp->Activate(true);
+		}
+	}
+
+}
+
+FVector ADualFirePlayerPawn::ResolveRespawnAnchor() const
+{
+	if (const UWorld* World = GetWorld())
+	{
+		if (const ADualFireGameModeBase* GameMode = World->GetAuthGameMode<ADualFireGameModeBase>())
+		{
+			if (const AStageCameraActor* Camera = GameMode->GetStageCamera())
+			{
+				const FBox2D Bounds = Camera->GetPlayableBounds();
+				return FVector(Bounds.Min.X, Bounds.GetCenter().Y, GetActorLocation().Z);
+			}
+		}
+	}
+
+	UE_LOG(LogDualFire, Warning, TEXT("[Player] 리스폰 앵커 계산 실패 — 현재 위치 사용"));
+	return GetActorLocation();
+}
+
+void ADualFirePlayerPawn::ClearActiveEnemyProjectiles()
+{
+	TArray<TWeakObjectPtr<ABaseProjectile>> Projectiles;
+	for (TActorIterator<ABaseProjectile> It(GetWorld()); It; ++It)
+	{
+		Projectiles.Add(*It);
+	}
+
+	int32 ClearedCount = 0;
+	for (const TWeakObjectPtr<ABaseProjectile>& Projectile : Projectiles)
+	{
+		if (Projectile.IsValid() && Projectile->ClearForPlayerRespawn())
+		{
+			++ClearedCount;
+		}
+	}
+
+	UE_LOG(LogDualFire, Log, TEXT("[Player] 리스폰 적탄 소거 — Count:%d"), ClearedCount);
+}
+
+void ADualFirePlayerPawn::OnMissionDamageReceived()
+{
+	++MissionHitCount;
 }
 
 UInputMappingContext* ADualFirePlayerPawn::ResolveInputMappingContext() const
@@ -348,7 +497,7 @@ UInputMappingContext* ADualFirePlayerPawn::ResolveInputMappingContext() const
     {
         UE_LOG(LogDualFire, Warning,
             TEXT("ADualFirePlayerPawn: IMC_Player 에셋이 할당되지 않았습니다. "
-                 "BP_DualFirePlayerPawn Details > Input > IMC_Player를 설정하세요."));
+                 "BP_PlayerPawn Details > Input > IMC_Player를 설정하세요."));
     }
 
     return MappingContext;
