@@ -56,7 +56,7 @@ public:
     UPROPERTY(EditAnywhere, BlueprintReadWrite, Category="Scroll")
     float ScrollSpeed = 200.f;
 
-    // GetPlayableBounds() 적용 마진. X=좌우, Y=상하 (월드 단위)
+    // GetPlayableBounds() 마진. X=화면 가로(월드 Y), Y=화면 세로(월드 X)
     UPROPERTY(EditAnywhere, BlueprintReadWrite, Category="Scroll")
     FVector2D PlayableInset = FVector2D(64.f, 64.f);
 
@@ -75,7 +75,7 @@ public:
     /**
      * 현재 카메라 프러스텀에서 XY 이동 가능 영역 반환.
      * FBox2D.X = 월드 X(앞뒤), FBox2D.Y = 월드 Y(좌우).
-     * OrthoWidth + 고정 종횡비(꺼진 경우 뷰포트 폴백) + PlayableInset 적용.
+     * OrthoWidth + 고정 종횡비 + PlayableInset 적용.
      */
     UFUNCTION(BlueprintPure, Category="Scroll")
     FBox2D GetPlayableBounds() const;

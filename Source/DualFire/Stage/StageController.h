@@ -36,11 +36,11 @@ public:
 
 	// ── 상태 ─────────────────────────────────────────────────────────────────
 
-	/** 현재 스테이지 단계. Timeline → EliteCombat → Ended. 런타임 전용 */
+	/** 현재 스테이지 단계. Timeline → BossSequence → Ended. */
 	UPROPERTY(VisibleInstanceOnly, BlueprintReadOnly, Category="Stage")
 	EStageState CurrentState = EStageState::Timeline;
 
-	/** Timeline 시작 후 누적 경과 시간(초). 웨이브·엘리트 트리거 기준 */
+	/** 스테이지 누적 경과 시간(초). Pause 트리거 동안에는 증가하지 않는다. */
 	UPROPERTY(VisibleInstanceOnly, BlueprintReadOnly, Category="Stage")
 	float ElapsedTime = 0.0f;
 
@@ -50,9 +50,9 @@ public:
 
 	// ── 스테이지 파라미터 ─────────────────────────────────────────────────────
 
-	/** 이 시간(초) 경과 후 EliteCombat으로 전환 */
+	/** 이 시간(초) 경과 후 보스 시퀀스로 전환 */
 	UPROPERTY(EditDefaultsOnly, BlueprintReadWrite, Category="Stage", meta=(ClampMin="1.0"))
-	float EliteTriggerTime = 80.0f;
+	float BossTriggerTime = 80.0f;
 
 	/** 프로토타입 보스가 화면 안으로 내려오는 시간 */
 	UPROPERTY(EditDefaultsOnly, BlueprintReadWrite, Category="Stage|Prototype Boss", meta=(ClampMin="0.1"))
@@ -82,14 +82,11 @@ public:
 
 	// ── 적 스폰 ───────────────────────────────────────────────────────────────
 
-	/**
-	 * 웨이브에서 EnemyID를 찾지 못할 때 사용하는 기본 적 클래스.
-	 * BP_EnemyBase 등을 할당하면 DataTable 없이도 테스트 가능.
-	 */
+	/** EnemyClassMap에서 EnemyID를 찾지 못할 때 사용하는 클래스 폴백. */
 	UPROPERTY(EditDefaultsOnly, BlueprintReadOnly, Category="Stage|Spawn")
 	TSubclassOf<AEnemyBase> DefaultEnemyClass;
 
-	/** EnemyID → 적 클래스 매핑. DataTable 없이 BP에서 직접 지정 */
+	/** EnemyID → 적 클래스 매핑. */
 	UPROPERTY(EditDefaultsOnly, BlueprintReadWrite, Category="Stage|Spawn")
 	TMap<FName, TSubclassOf<AEnemyBase>> EnemyClassMap;
 
@@ -117,10 +114,6 @@ public:
 	UFUNCTION(BlueprintPure, Category="Stage")
 	float GetElapsedTime() const { return ElapsedTime; }
 
-	/** 에셋 기본값을 바꾸지 않고 PIE에서 빠른 종료 흐름을 검증한다. */
-	UFUNCTION(BlueprintCallable, Category="Stage|Debug")
-	bool SetEliteTriggerTimeForPIE(float InTriggerTime);
-
 	UFUNCTION(BlueprintPure, Category="Stage|Result")
 	int32 GetAirEnemiesSpawned() const { return AirEnemiesSpawned; }
 
@@ -140,13 +133,13 @@ public:
 	static float EvaluateScrollSpeed(const FStageRow& StageRow, float StageTime);
 	static bool ShouldResumePause(
 		const FStagePauseTrigger& Trigger,
-		float PauseRealTime,
+		float PauseElapsedTime,
 		int32 ActiveScopedEnemies,
 		int32 PendingScopedSpawns,
 		bool bTargetEnemyDefeated);
 	static FVector2D GetSpawnAnchorRatios(ESpawnAnchor Anchor);
 	static float FindNextTimelineBoundary(
-		float InEliteTriggerTime,
+		float InBossTriggerTime,
 		const TArray<FStagePauseTrigger>& PauseTriggers,
 		int32 PauseTriggerIndex,
 		const TArray<FWaveRow>& Waves,
@@ -166,7 +159,7 @@ private:
 	int32 NextPauseTriggerIndex = 0;
 	FStagePauseTrigger ActivePauseTrigger;
 	TSet<TWeakObjectPtr<AEnemyBase>> PauseScopedEnemies;
-	float PauseRealTime = 0.0f;
+	float PauseElapsedTime = 0.0f;
 	int32 PendingPauseScopedSpawns = 0;
 	int32 PauseScopeGeneration = 0;
 	bool bTargetEnemyDefeated = false;
@@ -195,7 +188,7 @@ private:
 	bool ValidateStageRow(FName InStageID, const FStageRow& Row, const TArray<FWaveRow>& Waves, FText& OutError, FName& OutField) const;
 	void LogConfigurationError(FName InStageID, FName Field, const FText& Error) const;
 
-	/** Timeline 단계 Tick — 경과 시간 누적, 웨이브·엘리트 트리거 */
+	/** Timeline 단계 Tick — 경과 시간 누적, 웨이브·보스 트리거 */
 	void TickTimeline(float DeltaTime);
 
 	/** 단일 웨이브 발동 — 순차 스폰 시작 */
@@ -230,6 +223,7 @@ private:
 	void HandlePrototypeBossArrivalTimeout();
 
 	void PrewarmPools();
+	void ClearSequenceSpawnTimers();
 	void RegisterPlacedEnemies();
 	bool FindEnemyRow(FName EnemyID, FEnemyRow& OutEnemyRow) const;
 	void TickEnemyAI(float DeltaTime);

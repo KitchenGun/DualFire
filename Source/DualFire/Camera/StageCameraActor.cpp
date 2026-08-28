@@ -2,10 +2,8 @@
 
 #include "StageCameraActor.h"
 
-#include "DualFire.h"
 #include "Camera/CameraComponent.h"
 #include "Components/SceneComponent.h"
-#include "Engine/GameViewportClient.h"
 
 AStageCameraActor::AStageCameraActor()
 {
@@ -70,22 +68,7 @@ FVector AStageCameraActor::GetScrollVelocity() const
 
 FBox2D AStageCameraActor::GetPlayableBounds() const
 {
-    // ── 뷰포트 종횡비 계산 ───────────────────────────────────────────────────────
-    // 고정 종횡비가 꺼진 경우만 뷰포트 종횡비를 사용한다.
-    float DesiredAspectRatio = (CameraComp && CameraComp->bConstrainAspectRatio)
-        ? CameraComp->AspectRatio
-        : 16.f / 9.f;
-
-    if ((!CameraComp || !CameraComp->bConstrainAspectRatio) && GEngine && GEngine->GameViewport)
-    {
-        FVector2D ViewportSize;
-        GEngine->GameViewport->GetViewportSize(ViewportSize);
-        if (!ViewportSize.IsNearlyZero() && ViewportSize.Y > SMALL_NUMBER)
-        {
-            DesiredAspectRatio = ViewportSize.X / ViewportSize.Y;
-        }
-    }
-    DesiredAspectRatio = FMath::Max(DesiredAspectRatio, SMALL_NUMBER);
+    const float DesiredAspectRatio = FMath::Max(AspectRatio, SMALL_NUMBER);
 
     // OrthoWidth  → 월드 Y 축 범위 (좌우, 화면 수평)
     // OrthoHeight = OrthoWidth / AspectRatio → 월드 X 축 범위 (앞뒤, 화면 수직)

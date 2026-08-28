@@ -16,8 +16,6 @@
  * 구현된 패턴:
  *   이동: Linear (X- 방향 등속 이동), EnterStop (진입 후 정지)
  *   공격: None / Single (일정 간격 단발 발사)
- *
- * 미구현: Hover, Spread3, Rotate3
  */
 UCLASS(ClassGroup=Enemy, meta=(BlueprintSpawnableComponent))
 class DUALFIRE_API UEnemyAIComponent : public UActorComponent
@@ -64,7 +62,7 @@ public:
 	UPROPERTY(EditDefaultsOnly, BlueprintReadWrite, Category="AI|Attack", meta=(ClampMin="0.1"))
 	float AttackInterval = 2.0f;
 
-	/** 최초 공격까지 대기 시간. 0이면 즉시 */
+	/** 최초 공격까지 대기 시간. 0이면 AttackInterval을 사용 */
 	UPROPERTY(EditDefaultsOnly, BlueprintReadWrite, Category="AI|Attack", meta=(ClampMin="0.0"))
 	float FirstAttackDelay = 0.5f;
 

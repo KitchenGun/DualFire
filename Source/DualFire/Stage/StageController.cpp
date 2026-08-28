@@ -110,11 +110,7 @@ void AStageController::EndPlay(const EEndPlayReason::Type EndPlayReason)
 		PC->OnPossessedPawnChanged.RemoveDynamic(this, &AStageController::HandlePossessedPawnChanged);
 	}
 
-	for (FTimerHandle& Handle : SequenceSpawnTimerHandles)
-	{
-		GetWorld()->GetTimerManager().ClearTimer(Handle);
-	}
-	SequenceSpawnTimerHandles.Reset();
+	ClearSequenceSpawnTimers();
 	GetWorld()->GetTimerManager().ClearTimer(PrototypeBossArrivalTimeoutHandle);
 
 	if (IsValid(ActivePrototypeBoss))
@@ -146,24 +142,10 @@ void AStageController::Tick(float DeltaTime)
 			TickEnemyAI(DeltaTime);
 		}
 	}
-	else if (CurrentState == EStageState::EliteCombat)
+	else if (CurrentState == EStageState::BossSequence)
 	{
 		ElapsedTime += DeltaTime;
 	}
-}
-
-bool AStageController::SetEliteTriggerTimeForPIE(float InTriggerTime)
-{
-#if WITH_EDITOR
-	if (GetWorld() && GetWorld()->WorldType == EWorldType::PIE &&
-		CurrentState == EStageState::Timeline)
-	{
-		EliteTriggerTime = FMath::Max(InTriggerTime, 0.1f);
-		return true;
-	}
-#endif
-
-	return false;
 }
 
 bool AStageController::BuildValidatedWaves(
@@ -339,9 +321,9 @@ void AStageController::TickTimeline(float DeltaTime)
 			TickStagePause(RemainingTime);
 			continue;
 		}
-		if (ElapsedTime >= EliteTriggerTime - KINDA_SMALL_NUMBER)
+		if (ElapsedTime >= BossTriggerTime - KINDA_SMALL_NUMBER)
 		{
-			SetState(EStageState::EliteCombat);
+			SetState(EStageState::BossSequence);
 			break;
 		}
 
@@ -397,17 +379,17 @@ void AStageController::ProcessTimelineBoundary()
 	}
 	EvaluateStagePause();
 
-	if (!bStagePaused && ElapsedTime >= EliteTriggerTime - KINDA_SMALL_NUMBER &&
+	if (!bStagePaused && ElapsedTime >= BossTriggerTime - KINDA_SMALL_NUMBER &&
 		CurrentState == EStageState::Timeline)
 	{
-		SetState(EStageState::EliteCombat);
+		SetState(EStageState::BossSequence);
 	}
 }
 
 float AStageController::GetNextTimelineBoundary() const
 {
 	return FindNextTimelineBoundary(
-		EliteTriggerTime,
+		BossTriggerTime,
 		ActivePauseTriggers,
 		NextPauseTriggerIndex,
 		ActiveWaves,
@@ -418,7 +400,7 @@ float AStageController::GetNextTimelineBoundary() const
 void AStageController::BeginStagePause(const FStagePauseTrigger& Trigger)
 {
 	ActivePauseTrigger = Trigger;
-	PauseRealTime = 0.0f;
+	PauseElapsedTime = 0.0f;
 	PendingPauseScopedSpawns = 0;
 	PauseScopedEnemies.Reset();
 	bTargetEnemyDefeated = false;
@@ -440,9 +422,9 @@ void AStageController::TickStagePause(float& RemainingTime)
 		return;
 	}
 
-	const float Needed = FMath::Max(ActivePauseTrigger.ResumeDelay - PauseRealTime, 0.0f);
+	const float Needed = FMath::Max(ActivePauseTrigger.ResumeDelay - PauseElapsedTime, 0.0f);
 	const float Advance = FMath::Min(RemainingTime, Needed);
-	PauseRealTime += Advance;
+	PauseElapsedTime += Advance;
 	RemainingTime -= Advance;
 	EvaluateStagePause();
 }
@@ -462,7 +444,7 @@ void AStageController::EvaluateStagePause()
 	}
 	if (ShouldResumePause(
 		ActivePauseTrigger,
-		PauseRealTime,
+		PauseElapsedTime,
 		PauseScopedEnemies.Num(),
 		PendingPauseScopedSpawns,
 		bTargetEnemyDefeated))
@@ -502,7 +484,7 @@ float AStageController::EvaluateScrollSpeed(const FStageRow& StageRow, const flo
 
 bool AStageController::ShouldResumePause(
 	const FStagePauseTrigger& Trigger,
-	const float InPauseRealTime,
+	const float InPauseElapsedTime,
 	const int32 ActiveScopedEnemies,
 	const int32 PendingScopedSpawns,
 	const bool bInTargetEnemyDefeated)
@@ -510,7 +492,7 @@ bool AStageController::ShouldResumePause(
 	switch (Trigger.ResumeCondition)
 	{
 	case EStagePauseResumeCondition::RealTime:
-		return InPauseRealTime >= Trigger.ResumeDelay - KINDA_SMALL_NUMBER;
+		return InPauseElapsedTime >= Trigger.ResumeDelay - KINDA_SMALL_NUMBER;
 	case EStagePauseResumeCondition::WaveDefeated:
 		return ActiveScopedEnemies == 0 && PendingScopedSpawns == 0;
 	case EStagePauseResumeCondition::EnemyDefeated:
@@ -649,23 +631,19 @@ void AStageController::SetState(EStageState NewState)
 
 	UE_LOG(LogDualFire, Log, TEXT("[Stage] 상태 전환 → %s"),
 		NewState == EStageState::Timeline    ? TEXT("Timeline") :
-		NewState == EStageState::EliteCombat ? TEXT("EliteCombat") :
+		NewState == EStageState::BossSequence ? TEXT("BossSequence") :
 		                                       TEXT("Ended"));
 
 	switch (NewState)
 	{
-	case EStageState::EliteCombat:
+	case EStageState::BossSequence:
 		BeginPrototypeBossSequence();
 		break;
 
 	case EStageState::Ended:
 		SetActorTickEnabled(false);
 		GetWorld()->GetTimerManager().ClearTimer(PrototypeBossArrivalTimeoutHandle);
-		for (FTimerHandle& Handle : SequenceSpawnTimerHandles)
-		{
-			GetWorld()->GetTimerManager().ClearTimer(Handle);
-		}
-		SequenceSpawnTimerHandles.Reset();
+		ClearSequenceSpawnTimers();
 		break;
 
 	default:
@@ -727,11 +705,7 @@ void AStageController::StopCombatForPrototypeBoss()
 		Camera->SetPaused(true);
 	}
 
-	for (FTimerHandle& Handle : SequenceSpawnTimerHandles)
-	{
-		GetWorld()->GetTimerManager().ClearTimer(Handle);
-	}
-	SequenceSpawnTimerHandles.Reset();
+	ClearSequenceSpawnTimers();
 
 	for (AEnemyBase* Enemy : ActiveEnemies)
 	{
@@ -744,7 +718,7 @@ void AStageController::StopCombatForPrototypeBoss()
 
 void AStageController::HandlePrototypeBossDestinationReached()
 {
-	if (CurrentState != EStageState::EliteCombat)
+	if (CurrentState != EStageState::BossSequence)
 	{
 		return;
 	}
@@ -761,7 +735,7 @@ void AStageController::HandlePrototypeBossDestinationReached()
 
 void AStageController::HandlePrototypeBossArrivalTimeout()
 {
-	if (CurrentState != EStageState::EliteCombat)
+	if (CurrentState != EStageState::BossSequence)
 	{
 		return;
 	}
@@ -832,14 +806,14 @@ FVector2D AStageController::GetSpawnAnchorRatios(ESpawnAnchor Anchor)
 }
 
 float AStageController::FindNextTimelineBoundary(
-	const float InEliteTriggerTime,
+	const float InBossTriggerTime,
 	const TArray<FStagePauseTrigger>& PauseTriggers,
 	const int32 PauseTriggerIndex,
 	const TArray<FWaveRow>& Waves,
 	const int32 WaveIndex,
 	const float InElapsedTime)
 {
-	float Boundary = InEliteTriggerTime;
+	float Boundary = InBossTriggerTime;
 	if (PauseTriggers.IsValidIndex(PauseTriggerIndex))
 	{
 		Boundary = FMath::Min(Boundary, PauseTriggers[PauseTriggerIndex].TriggerTime);
@@ -874,11 +848,11 @@ void AStageController::RegisterEnemy(AEnemyBase* Enemy)
 		return;
 	}
 
-	ActiveEnemies.AddUnique(Enemy);
+	ActiveEnemies.Add(Enemy);
 
 	if (Enemy->CountsTowardMissionMetrics())
 	{
-		RecordEnemySpawned(Enemy->GetEnemyAttributes_Implementation());
+		RecordEnemySpawned(IEnemyAttributeInterface::Execute_GetEnemyAttributes(Enemy));
 	}
 }
 
@@ -915,7 +889,7 @@ void AStageController::NotifyEnemyDefeated(AEnemyBase* Enemy)
 		return;
 	}
 
-	const FEnemyAttribute Attribute = Enemy->GetEnemyAttributes_Implementation();
+	const FEnemyAttribute Attribute = IEnemyAttributeInterface::Execute_GetEnemyAttributes(Enemy);
 	AirEnemiesDefeated += Attribute.HasAir() ? 1 : 0;
 	GroundEnemiesDefeated += Attribute.HasGround() ? 1 : 0;
 }
@@ -966,6 +940,18 @@ void AStageController::PrewarmPools()
 			Pool->Prewarm(ProjectileClass, PlayerProjectilePrewarmCountPerClass);
 		}
 	}
+}
+
+void AStageController::ClearSequenceSpawnTimers()
+{
+	if (UWorld* World = GetWorld())
+	{
+		for (FTimerHandle& Handle : SequenceSpawnTimerHandles)
+		{
+			World->GetTimerManager().ClearTimer(Handle);
+		}
+	}
+	SequenceSpawnTimerHandles.Reset();
 }
 
 bool AStageController::FindEnemyRow(FName EnemyID, FEnemyRow& OutEnemyRow) const
