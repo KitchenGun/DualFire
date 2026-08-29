@@ -30,7 +30,7 @@
 | --- | --- | --- | --- |
 | `P0-SLOW-INPUT` | 사용자 설정 기반 Hold/Toggle 저속 이동 | completed | PASS: Editor 빌드, SlowInput Automation 2건, IA/IMC/BP 참조 |
 | `P0-ATTRIBUTE-VISUAL` | 데이터 기반 Ground/Air 렌더 높이 | completed | PASS: Editor 빌드, RenderHeight Automation, DT 행·그림자 참조 |
-| `P0-LOADOUT-PRESENTATION` | 격납고 속성·입력 표시 | pending | not_run |
+| `P0-LOADOUT-PRESENTATION` | 격납고 속성·입력 표시 | completed | PASS: Editor 빌드, Hangar Automation, WBP 컴파일·액션 참조 |
 | `P0-COMBAT-HUD` | 생존·Special 1/2 전투 HUD | pending | not_run |
 | `P0-INTEGRATION-VERIFY` | 빌드·Blueprint·Automation 회귀 | pending | not_run |
 

@@ -3,6 +3,7 @@
 #pragma once
 
 #include "CoreMinimal.h"
+#include "Core/DualFireTypes.h"
 #include "UObject/Object.h"
 #include "DualFireHangarTypes.generated.h"
 
@@ -35,6 +36,21 @@ struct DUALFIRE_API FDualFireHangarItemViewData
 
 	UPROPERTY(BlueprintReadOnly, Category="Hangar")
 	TSoftObjectPtr<UTexture2D> Icon;
+
+	/** 무기가 공격 가능한 대상 속성의 로컬라이즈된 격납고 표시 텍스트다. */
+	UPROPERTY(BlueprintReadOnly, Category="Hangar|Presentation")
+	FText TargetAttributeLabel;
+
+	/** TargetAttributeLabel에 함께 적용할 색상이다. */
+	UPROPERTY(BlueprintReadOnly, Category="Hangar|Presentation")
+	FLinearColor TargetAttributeColor = FLinearColor::White;
+
+	/** 무기 항목일 때만 true이며, 비무기 항목은 WBP에서 속성 레이블을 숨긴다. */
+	UPROPERTY(BlueprintReadOnly, Category="Hangar|Presentation")
+	bool bHasTargetAttributePresentation = false;
+
+	/** FWeaponRow::AttributeArray를 격납고용 대상 속성 텍스트와 색상으로 변환한다. */
+	void SetTargetAttributePresentation(const TArray<EDualFireAttribute>& Attributes);
 
 	bool IsValid() const { return !ItemID.IsNone(); }
 };
