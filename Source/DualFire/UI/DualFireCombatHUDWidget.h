@@ -13,8 +13,10 @@ class UHorizontalBox;
 class UImage;
 class UInputAction;
 class UProgressBar;
+class UScaleBox;
 class UTexture2D;
 class UWeaponComponent;
+enum class EDualFireAttribute : uint8;
 
 /** Game 레이어에서 플레이어 생존 자원과 특수무장 두 슬롯만 표시한다. */
 UCLASS(BlueprintType, Blueprintable)
@@ -33,10 +35,16 @@ public:
 	UFUNCTION(BlueprintPure, Category="Combat HUD")
 	APawn* GetObservedPawn() const { return ObservedPawn.Get(); }
 
+	static FText GetAttributeBadgeLabel(const TArray<EDualFireAttribute>& Attributes);
+	static FLinearColor GetAttributeBadgeColor(const TArray<EDualFireAttribute>& Attributes);
+
 protected:
 	virtual void NativeOnInitialized() override;
 	virtual void NativeDestruct() override;
 	virtual void NativeTick(const FGeometry& MyGeometry, float InDeltaTime) override;
+
+	UPROPERTY(BlueprintReadOnly, Category="Combat HUD|Widgets", meta=(BindWidget))
+	TObjectPtr<UScaleBox> PlayableFieldHost;
 
 	UPROPERTY(BlueprintReadOnly, Category="Combat HUD|Widgets", meta=(BindWidget))
 	TObjectPtr<UHorizontalBox> HealthSegmentContainer;
@@ -73,7 +81,7 @@ protected:
 	UPROPERTY(EditDefaultsOnly, BlueprintReadOnly, Category="Combat HUD|Presentation")
 	TObjectPtr<UTexture2D> ShieldSegmentTexture;
 	UPROPERTY(EditDefaultsOnly, BlueprintReadOnly, Category="Combat HUD|Presentation")
-	FVector2D SegmentDesiredSize = FVector2D(28.0f, 12.0f);
+	FVector2D SegmentDesiredSize = FVector2D(24.0f, 10.0f);
 
 private:
 	UFUNCTION()
@@ -90,6 +98,7 @@ private:
 	void UnbindObservedWeapon();
 	void RefreshSpecialPresentation();
 	void RefreshCooldowns();
+	void RefreshViewportLayout(const FGeometry& MyGeometry);
 	void SetSegments(
 		UHorizontalBox* Container,
 		int32 Current,
@@ -101,4 +110,5 @@ private:
 	TWeakObjectPtr<APawn> ObservedPawn;
 	TWeakObjectPtr<UHealthComponent> ObservedHealthComponent;
 	TWeakObjectPtr<UWeaponComponent> ObservedWeaponComponent;
+	FIntPoint CachedViewportSize = FIntPoint::ZeroValue;
 };

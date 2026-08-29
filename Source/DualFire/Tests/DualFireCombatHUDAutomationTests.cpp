@@ -24,6 +24,16 @@ bool FDualFireCombatHUDWeaponContractTest::RunTest(const FString& Parameters)
 		TestEqual(TEXT("combat HUD preserves gameplay input"), InputConfig->GetInputMode(), ECommonInputMode::Game);
 	}
 
+	TestEqual(TEXT("ground attribute uses the AG badge"),
+		UDualFireCombatHUDWidget::GetAttributeBadgeLabel({ EDualFireAttribute::Ground }).ToString(), FString(TEXT("AG")));
+	TestEqual(TEXT("air attribute uses the AA badge"),
+		UDualFireCombatHUDWidget::GetAttributeBadgeLabel({ EDualFireAttribute::Air }).ToString(), FString(TEXT("AA")));
+	TestEqual(TEXT("dual attribute uses the AA/AG badge"),
+		UDualFireCombatHUDWidget::GetAttributeBadgeLabel({ EDualFireAttribute::Ground, EDualFireAttribute::Air }).ToString(), FString(TEXT("AA/AG")));
+	TestTrue(TEXT("ground and air badges have distinct colors"),
+		UDualFireCombatHUDWidget::GetAttributeBadgeColor({ EDualFireAttribute::Ground }) !=
+		UDualFireCombatHUDWidget::GetAttributeBadgeColor({ EDualFireAttribute::Air }));
+
 	UWeaponComponent* WeaponComponent = NewObject<UWeaponComponent>();
 	FWeaponRow SlotData;
 	TestFalse(TEXT("an unresolved special slot has no HUD data"), WeaponComponent->GetResolvedSlotData(ELoadoutSlot::SpecialWeapon1, SlotData));

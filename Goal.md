@@ -1,7 +1,7 @@
 # Goal: DualFire P0 코어 완결
 
 - Goal ID: `GOAL-P0-CORE-CLOSURE-20260829`
-- 상태: `in_progress`
+- 상태: `awaiting_user_pie`
 - 소유자: Sol
 - 시작일: 2026-08-29
 
@@ -37,14 +37,19 @@
 | `P0-LOADOUT-PRESENTATION` | 격납고 속성·입력 표시 | cancelled | 사용자 결정으로 C++·WBP·Automation 변경 초기화 |
 | `P0-COMBAT-HUD` | 생존·Special 1/2 전투 HUD | completed | PASS: Editor 빌드, CombatHUD Automation, WBP 컴파일, HUD 텍스처 알파·참조 검사 |
 | `P0-INPUT-REGRESSION` | CombatHUD 활성화 후 gameplay input 유지 | completed | PASS: PIE 로그 원인 확인, Game 입력 모드 Automation, Editor 빌드 |
-| `P0-INTEGRATION-VERIFY` | 빌드·Blueprint·Automation 회귀 | completed | PASS: Editor 빌드, Blueprint 오류·경고·로드 실패 0, DualFire Automation 7/7 |
-| `P0-VIEWPORT-FRAME` | 전체 뷰와 중앙 3:4 판정 필드 분리 | in_progress | pending |
-| `P0-FIELD-BOUNDARY` | 좌우 딤 플레인과 그림자·에지 밴드 | pending | pending |
-| `P0-HUD-MOCKUP-LAYOUT` | 필드 내부 좌하·우하 전투 HUD 재배치 | pending | pending |
-| `P0-FRAMING-VERIFY` | 빌드·Blueprint·Automation 회귀 | pending | pending |
+| `P0-INTEGRATION-VERIFY` | 빌드·Blueprint·Automation 회귀 | completed | PASS: Editor 빌드, Blueprint 오류·경고·로드 실패 0, DualFire Automation 8/8 |
+| `P0-VIEWPORT-FRAME` | 전체 뷰와 중앙 3:4 판정 필드 분리 | completed | PASS: 4:3·16:9·21:9 화면 Rect, 고정 900x1200 판정 필드, 9개 앵커 회귀 |
+| `P0-FIELD-BOUNDARY` | 좌우 딤 플레인과 그림자·에지 밴드 | completed | PASS: 대칭 위치, NoCollision·그림자 비활성, BP_TestCam 머티리얼 참조·컴파일 |
+| `P0-HUD-MOCKUP-LAYOUT` | 필드 내부 좌하·우하 전투 HUD 재배치 | completed | PASS: 중앙 필드 호스트, AA/AG 변환, BottomToTop 쿨다운 마스크, Game 입력 모드 |
+| `P0-FRAMING-VERIFY` | 빌드·Blueprint·Automation 회귀 | completed | PASS: Editor 빌드, Blueprint 0/0/0, DualFire Automation 8/8 |
 
 ## PIE 인계
 
 - 담당: 사용자
 - 상태: `not_run`
 - 확인 항목: 16:9 좌우 월드 노출, 중앙 3:4 이동·스폰·탄환 경계, 스크롤 중 경계 밴드 정렬과 투명 정렬, 필드 내부 HUD 배치, 기존 이동·발사·저속 입력, 생존 HUD 갱신, Special 1/2 독립 쿨다운, Cube 자동 클리어
+
+## 상태 변경 이력
+
+- 2026-08-29 `code_complete`: C++·Material·Blueprint·Widget Blueprint 구현 완료
+- 2026-08-29 `awaiting_user_pie`: Editor 빌드, Blueprint 0/0/0, DualFire Automation 8/8 통과

@@ -5,10 +5,13 @@
 #include "Blueprint/WidgetTree.h"
 #include "CommonActionWidget.h"
 #include "CommonTextBlock.h"
+#include "Components/CanvasPanelSlot.h"
 #include "Components/HorizontalBox.h"
 #include "Components/HorizontalBoxSlot.h"
 #include "Components/Image.h"
 #include "Components/ProgressBar.h"
+#include "Components/ScaleBox.h"
+#include "Core/DualFireViewportLayout.h"
 #include "Engine/Texture2D.h"
 #include "Health/HealthComponent.h"
 #include "Input/CommonUIInputTypes.h"
@@ -21,32 +24,44 @@ constexpr FLinearColor HealthColor(0.9f, 0.15f, 0.15f, 1.0f);
 constexpr FLinearColor ShieldColor(0.1f, 0.7f, 1.0f, 1.0f);
 constexpr FLinearColor EmptySegmentColor(0.08f, 0.08f, 0.08f, 0.8f);
 
-struct FCombatHUDAttributePresentation
-{
-	FText Label;
-	FLinearColor Color = FLinearColor::White;
-	bool bVisible = false;
-};
+}
 
-FCombatHUDAttributePresentation ResolveAttributePresentation(
-	const TArray<EDualFireAttribute>& Attributes)
+FText UDualFireCombatHUDWidget::GetAttributeBadgeLabel(const TArray<EDualFireAttribute>& Attributes)
 {
 	const bool bGround = Attributes.Contains(EDualFireAttribute::Ground);
 	const bool bAir = Attributes.Contains(EDualFireAttribute::Air);
 	if (bGround && bAir)
 	{
-		return { NSLOCTEXT("DualFireCombatHUD", "GroundAndAir", "GROUND / AIR"), FLinearColor::White, true };
+		return NSLOCTEXT("DualFireCombatHUD", "AntiAirAndGround", "AA/AG");
 	}
 	if (bGround)
 	{
-		return { NSLOCTEXT("DualFireCombatHUD", "Ground", "GROUND"), FLinearColor(1.0f, 0.5f, 0.0f), true };
+		return NSLOCTEXT("DualFireCombatHUD", "AntiGround", "AG");
 	}
 	if (bAir)
 	{
-		return { NSLOCTEXT("DualFireCombatHUD", "Air", "AIR"), FLinearColor(0.0f, 0.8f, 1.0f), true };
+		return NSLOCTEXT("DualFireCombatHUD", "AntiAir", "AA");
 	}
-	return {};
+	return FText::GetEmpty();
 }
+
+FLinearColor UDualFireCombatHUDWidget::GetAttributeBadgeColor(const TArray<EDualFireAttribute>& Attributes)
+{
+	const bool bGround = Attributes.Contains(EDualFireAttribute::Ground);
+	const bool bAir = Attributes.Contains(EDualFireAttribute::Air);
+	if (bGround && bAir)
+	{
+		return FLinearColor::White;
+	}
+	if (bGround)
+	{
+		return FLinearColor(1.0f, 0.42f, 0.05f);
+	}
+	if (bAir)
+	{
+		return FLinearColor(0.05f, 0.82f, 0.9f);
+	}
+	return FLinearColor::White;
 }
 
 TOptional<FUIInputConfig> UDualFireCombatHUDWidget::GetDesiredInputConfig() const
@@ -94,6 +109,7 @@ void UDualFireCombatHUDWidget::SetObservedPawn(APawn* InPawn)
 void UDualFireCombatHUDWidget::NativeTick(const FGeometry& MyGeometry, const float InDeltaTime)
 {
 	Super::NativeTick(MyGeometry, InDeltaTime);
+	RefreshViewportLayout(MyGeometry);
 	// 쿨다운은 델리게이트가 아니라 이 HUD의 단일 Tick에서만 폴링한다.
 	RefreshCooldowns();
 }
@@ -112,7 +128,9 @@ void UDualFireCombatHUDWidget::HandleLifeChanged(const int32 CurrentLife)
 {
 	if (IsValid(LivesText))
 	{
-		LivesText->SetText(FText::AsNumber(CurrentLife));
+		LivesText->SetText(FText::Format(
+			NSLOCTEXT("DualFireCombatHUD", "RemainingLives", "×{0}"),
+			FText::AsNumber(CurrentLife)));
 	}
 }
 
@@ -192,6 +210,37 @@ void UDualFireCombatHUDWidget::RefreshCooldowns()
 	}
 }
 
+void UDualFireCombatHUDWidget::RefreshViewportLayout(const FGeometry& MyGeometry)
+{
+	if (!IsValid(PlayableFieldHost))
+	{
+		return;
+	}
+
+	const FVector2D LocalSize = MyGeometry.GetLocalSize();
+	const FIntPoint ViewportSize(
+		FMath::Max(0, FMath::RoundToInt(LocalSize.X)),
+		FMath::Max(0, FMath::RoundToInt(LocalSize.Y)));
+	if (ViewportSize == CachedViewportSize || ViewportSize.X <= 0 || ViewportSize.Y <= 0)
+	{
+		return;
+	}
+
+	CachedViewportSize = ViewportSize;
+	const FIntRect PlayfieldRect = DualFireViewportLayout::MakeCenteredPlayfieldScreenRect(ViewportSize);
+	if (UCanvasPanelSlot* HostSlot = Cast<UCanvasPanelSlot>(PlayableFieldHost->Slot))
+	{
+		HostSlot->SetAnchors(FAnchors(0.0f, 0.0f));
+		HostSlot->SetAlignment(FVector2D::ZeroVector);
+		HostSlot->SetPosition(FVector2D(
+			static_cast<float>(PlayfieldRect.Min.X),
+			static_cast<float>(PlayfieldRect.Min.Y)));
+		HostSlot->SetSize(FVector2D(
+			static_cast<float>(PlayfieldRect.Width()),
+			static_cast<float>(PlayfieldRect.Height())));
+	}
+}
+
 void UDualFireCombatHUDWidget::SetSegments(
 	UHorizontalBox* Container,
 	const int32 Current,
@@ -236,10 +285,10 @@ void UDualFireCombatHUDWidget::SetSpecialPresentation(const int32 SpecialIndex)
 	}
 	if (IsValid(AttributeText))
 	{
-		const FCombatHUDAttributePresentation Presentation = ResolveAttributePresentation(WeaponData.AttributeArray);
-		AttributeText->SetText(Presentation.Label);
-		AttributeText->SetColorAndOpacity(FSlateColor(Presentation.Color));
-		AttributeText->SetVisibility(bHasWeapon && Presentation.bVisible
+		const FText Label = GetAttributeBadgeLabel(WeaponData.AttributeArray);
+		AttributeText->SetText(Label);
+		AttributeText->SetColorAndOpacity(FSlateColor(GetAttributeBadgeColor(WeaponData.AttributeArray)));
+		AttributeText->SetVisibility(bHasWeapon && !Label.IsEmpty()
 			? ESlateVisibility::HitTestInvisible
 			: ESlateVisibility::Collapsed);
 	}
