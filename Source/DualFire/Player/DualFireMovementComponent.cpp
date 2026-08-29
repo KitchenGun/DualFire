@@ -46,7 +46,7 @@ void UDualFireMovementComponent::TickComponent(
 
     // XY 평면 정규화 후 속도 적용 (대각선 포함 모든 방향 동일 속도 보장)
     const FVector InputDir = FVector(InputVector.X, InputVector.Y, 0.f).GetSafeNormal();
-    const FVector TargetVelocity = InputDir * MoveSpeed;
+    const FVector TargetVelocity = InputDir * GetEffectiveMoveSpeed();
 
     Velocity = TargetVelocity;
     Velocity.Z = 0.f; // bConstrainToPlane 이중 보장
@@ -85,6 +85,11 @@ void UDualFireMovementComponent::TickComponent(
     Velocity = (DeltaTime > SMALL_NUMBER) ? (ActualDelta / DeltaTime) : FVector::ZeroVector;
 
     UpdateComponentVelocity();
+}
+
+float UDualFireMovementComponent::GetEffectiveMoveSpeed() const
+{
+	return MoveSpeed * (bSlowMovementActive ? SlowSpeedRatio : 1.0f);
 }
 
 // ── 화면 경계 클램핑 ──────────────────────────────────────────────────────────

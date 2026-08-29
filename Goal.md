@@ -28,7 +28,7 @@
 
 | TASK-ID | 작업 | 상태 | 자동 검증 |
 | --- | --- | --- | --- |
-| `P0-SLOW-INPUT` | 사용자 설정 기반 Hold/Toggle 저속 이동 | pending | not_run |
+| `P0-SLOW-INPUT` | 사용자 설정 기반 Hold/Toggle 저속 이동 | completed | PASS: Editor 빌드, SlowInput Automation 2건, IA/IMC/BP 참조 |
 | `P0-ATTRIBUTE-VISUAL` | 데이터 기반 Ground/Air 렌더 높이 | pending | not_run |
 | `P0-LOADOUT-PRESENTATION` | 격납고 속성·입력 표시 | pending | not_run |
 | `P0-COMBAT-HUD` | 생존·Special 1/2 전투 HUD | pending | not_run |

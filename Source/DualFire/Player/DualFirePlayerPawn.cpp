@@ -3,6 +3,7 @@
 #include "DualFirePlayerPawn.h"
 
 #include "DualFireMovementComponent.h"
+#include "GameInstance/DualFireGameUserSettings.h"
 #include "Camera/StageCameraActor.h"
 #include "Core/DualFireCollisionChannels.h"
 #include "GameModes/DualFireGameModeBase.h"
@@ -19,6 +20,7 @@
 #include "PaperFlipbookComponent.h"
 
 #include "EnhancedInputComponent.h"
+#include "Engine/Engine.h"
 #include "InputMappingContext.h"
 #include "InputAction.h"
 
@@ -70,6 +72,11 @@ ADualFirePlayerPawn::ADualFirePlayerPawn()
 void ADualFirePlayerPawn::BeginPlay()
 {
     Super::BeginPlay();
+	if (IsValid(AircraftVisual))
+	{
+		NormalAircraftTint = AircraftVisual->GetSpriteColor();
+	}
+	ResetSlowMovement();
 
     // 최종 사망(잔여 기체 소진) → 미션 실패 연결
     if (IsValid(HealthComp))
@@ -131,6 +138,18 @@ void ADualFirePlayerPawn::SetupPlayerInputComponent(UInputComponent* PlayerInput
         UE_LOG(LogDualFire, Warning,
             TEXT("ADualFirePlayerPawn: IA_Move 에셋이 할당되지 않았습니다."));
     }
+
+	if (UInputAction* SlowIA = IA_Slow.LoadSynchronous())
+	{
+		EIC->BindAction(SlowIA, ETriggerEvent::Started, this, &ADualFirePlayerPawn::OnSlowInputStarted);
+		EIC->BindAction(SlowIA, ETriggerEvent::Triggered, this, &ADualFirePlayerPawn::OnSlowInputTriggered);
+		EIC->BindAction(SlowIA, ETriggerEvent::Completed, this, &ADualFirePlayerPawn::OnSlowInputCompleted);
+		EIC->BindAction(SlowIA, ETriggerEvent::Canceled, this, &ADualFirePlayerPawn::OnSlowInputCompleted);
+	}
+	else
+	{
+		UE_LOG(LogDualFire, Warning, TEXT("ADualFirePlayerPawn: IA_Slow 에셋이 할당되지 않았습니다."));
+	}
 
     // 발사 입력 — Triggered: 키를 누르는 동안 연사 (쿨다운으로 발사 간격 제어)
     if (UInputAction* PrimaryIA = IA_FirePrimary.LoadSynchronous())
@@ -197,6 +216,48 @@ void ADualFirePlayerPawn::OnMoveInputCompleted(const FInputActionValue& Value)
 	}
 
     SetAircraftBankPose(EAircraftBankPose::Neutral);
+}
+
+void ADualFirePlayerPawn::OnSlowInputStarted(const FInputActionValue& Value)
+{
+	if (IsGameplayLocked())
+	{
+		return;
+	}
+
+	if (GetSlowInputMode() == ESlowInputMode::Toggle)
+	{
+		if (IsValid(MovementComp))
+		{
+			MovementComp->ToggleSlowMovement();
+			ApplySlowMovementVisual(MovementComp->IsSlowMovementActive());
+		}
+	}
+	else
+	{
+		SetSlowMovementActive(true);
+	}
+}
+
+void ADualFirePlayerPawn::OnSlowInputTriggered(const FInputActionValue& Value)
+{
+	if (!IsGameplayLocked() && GetSlowInputMode() == ESlowInputMode::Hold)
+	{
+		SetSlowMovementActive(true);
+	}
+}
+
+void ADualFirePlayerPawn::OnSlowInputCompleted(const FInputActionValue& Value)
+{
+	if (GetSlowInputMode() == ESlowInputMode::Hold)
+	{
+		ResetSlowMovement();
+	}
+}
+
+bool ADualFirePlayerPawn::IsSlowMovementActive() const
+{
+	return IsValid(MovementComp) && MovementComp->IsSlowMovementActive();
 }
 
 void ADualFirePlayerPawn::ApplyAircraftVisual(UPaperFlipbook* InFlipbook)
@@ -362,6 +423,7 @@ void ADualFirePlayerPawn::OnPlayerRespawnRequested()
 void ADualFirePlayerPawn::EnterDeathState(bool bFinalDeath)
 {
 	LifeFlowState = bFinalDeath ? ELifeFlowState::FinalDead : ELifeFlowState::DeathDelay;
+	ResetSlowMovement();
 	SetGameplayLocked(true);
 	SetAircraftBankPose(EAircraftBankPose::Neutral);
 
@@ -405,6 +467,7 @@ void ADualFirePlayerPawn::BeginRespawnEntry()
 
 void ADualFirePlayerPawn::FinishRespawnEntry()
 {
+	ResetSlowMovement();
 	SetActorLocation(RespawnAnchor);
 	SetActorTickEnabled(false);
 
@@ -445,6 +508,41 @@ void ADualFirePlayerPawn::SetGameplayLocked(bool bLocked)
 		}
 	}
 
+}
+
+void ADualFirePlayerPawn::SetSlowMovementActive(bool bActive)
+{
+	if (IsValid(MovementComp))
+	{
+		MovementComp->SetSlowMovementActive(bActive);
+	}
+
+	ApplySlowMovementVisual(bActive);
+}
+
+void ADualFirePlayerPawn::ApplySlowMovementVisual(bool bActive)
+{
+	if (IsValid(AircraftVisual))
+	{
+		AircraftVisual->SetSpriteColor(bActive ? SlowMovementTint : NormalAircraftTint);
+	}
+}
+
+void ADualFirePlayerPawn::ResetSlowMovement()
+{
+	if (IsValid(MovementComp))
+	{
+		MovementComp->ResetSlowMovement();
+	}
+	ApplySlowMovementVisual(false);
+}
+
+ESlowInputMode ADualFirePlayerPawn::GetSlowInputMode() const
+{
+	const UDualFireGameUserSettings* Settings = GEngine
+		? Cast<UDualFireGameUserSettings>(GEngine->GetGameUserSettings())
+		: nullptr;
+	return IsValid(Settings) ? Settings->GetSlowInputMode() : ESlowInputMode::Hold;
 }
 
 FVector ADualFirePlayerPawn::ResolveRespawnAnchor() const

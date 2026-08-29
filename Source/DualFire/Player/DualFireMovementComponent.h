@@ -30,7 +30,27 @@ public:
     UPROPERTY(EditAnywhere, BlueprintReadWrite, Category="Movement")
     float MoveSpeed = 300.f;
 
+    /** Multiplier applied while the player holds or toggles slow movement. */
+    UPROPERTY(EditAnywhere, BlueprintReadWrite, Category="Movement", meta=(ClampMin="0.01", ClampMax="1.0"))
+    float SlowSpeedRatio = 0.5f;
+
+    UFUNCTION(BlueprintCallable, Category="Movement")
+    void SetSlowMovementActive(bool bActive) { bSlowMovementActive = bActive; }
+
+    UFUNCTION(BlueprintCallable, Category="Movement")
+    void ToggleSlowMovement() { bSlowMovementActive = !bSlowMovementActive; }
+
+    UFUNCTION(BlueprintCallable, Category="Movement")
+    void ResetSlowMovement() { bSlowMovementActive = false; }
+
+    UFUNCTION(BlueprintPure, Category="Movement")
+    bool IsSlowMovementActive() const { return bSlowMovementActive; }
+
+    UFUNCTION(BlueprintPure, Category="Movement")
+    float GetEffectiveMoveSpeed() const;
+
 private:
+	bool bSlowMovementActive = false;
     /**
      * StageCameraActor::GetPlayableBounds() 기반 XY 클램핑.
      * StageCamera가 아직 없으면 InLocation을 그대로 반환 + 경고 로그.

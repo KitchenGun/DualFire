@@ -3,6 +3,7 @@
 #pragma once
 
 #include "CoreMinimal.h"
+#include "Core/DualFireTypes.h"
 #include "GameFramework/Pawn.h"
 #include "Health/HealthComponent.h"
 #include "Weapon/WeaponComponent.h"
@@ -96,6 +97,10 @@ public:
     UPROPERTY(EditDefaultsOnly, BlueprintReadOnly, Category="Input")
     TSoftObjectPtr<UInputAction> IA_Move;
 
+    /** Low-speed movement action. Assign IA_Slow in BP_PlayerPawn. */
+    UPROPERTY(EditDefaultsOnly, BlueprintReadOnly, Category="Input")
+    TSoftObjectPtr<UInputAction> IA_Slow;
+
     /** 기본 무기 슬롯 발사 (키보드 Z/Space, 게임패드 A) */
     UPROPERTY(EditDefaultsOnly, BlueprintReadOnly, Category="Input")
     TSoftObjectPtr<UInputAction> IA_FirePrimary;
@@ -146,6 +151,9 @@ public:
     UFUNCTION(BlueprintCallable, Category="Aircraft")
     void SetAircraftBankPose(EAircraftBankPose Pose);
 
+	UFUNCTION(BlueprintPure, Category="Movement")
+	bool IsSlowMovementActive() const;
+
     // ── 디버그 콘솔 명령 (Exec — 에디터 PIE 콘솔에서 호출) ───────────────────
 
     /** ex) DF_Damage 3  →  HealthComp에 데미지 3 즉시 적용 */
@@ -178,6 +186,10 @@ protected:
 
     /** 이동 입력 종료 시 기체 포즈를 중립으로 되돌린다. */
     void OnMoveInputCompleted(const FInputActionValue& Value);
+
+	void OnSlowInputStarted(const FInputActionValue& Value);
+	void OnSlowInputTriggered(const FInputActionValue& Value);
+	void OnSlowInputCompleted(const FInputActionValue& Value);
 
     /** 기본 무기 슬롯 발사 (Triggered=연사) */
     void OnFirePrimaryInput(const FInputActionValue& Value);
@@ -226,8 +238,17 @@ private:
 	void BeginRespawnEntry();
 	void FinishRespawnEntry();
 	void SetGameplayLocked(bool bLocked);
+	void SetSlowMovementActive(bool bActive);
+	void ApplySlowMovementVisual(bool bActive);
+	void ResetSlowMovement();
+	ESlowInputMode GetSlowInputMode() const;
 	FVector ResolveRespawnAnchor() const;
 	void ClearActiveEnemyProjectiles();
 	bool IsGameplayLocked() const { return LifeFlowState != ELifeFlowState::Alive; }
+
+	UPROPERTY(EditDefaultsOnly, Category="Movement")
+	FLinearColor SlowMovementTint = FLinearColor(0.72f, 0.88f, 1.0f, 1.0f);
+
+	FLinearColor NormalAircraftTint = FLinearColor::White;
 
 };

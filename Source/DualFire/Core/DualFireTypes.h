@@ -97,6 +97,14 @@ enum class EDualFireStartRoute : uint8
 	Briefing  UMETA(DisplayName = "Briefing"),
 };
 
+/** Preferred input behavior for the player slow-movement action. */
+UENUM(BlueprintType)
+enum class ESlowInputMode : uint8
+{
+	Hold UMETA(DisplayName = "Hold"),
+	Toggle UMETA(DisplayName = "Toggle"),
+};
+
 UENUM(BlueprintType)
 enum class EStagePauseResumeCondition : uint8
 {
