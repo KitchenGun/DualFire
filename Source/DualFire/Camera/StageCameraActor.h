@@ -9,6 +9,9 @@
 // Forward declarations — 헤더 인클루드 최소화
 class USceneComponent;
 class UCameraComponent;
+class UStaticMeshComponent;
+class UMaterialInterface;
+class UMaterialInstanceDynamic;
 
 /**
  * 스테이지 전용 직교 카메라 액터.
@@ -41,15 +44,6 @@ public:
 
     // ── 카메라 설정 ──────────────────────────────────────────────────────────────
 
-    // 직교 투영 너비 (월드 단위). 4:3 기준 1600x1200 플레이 영역
-    UPROPERTY(EditDefaultsOnly, BlueprintReadWrite, Category="Camera",
-        meta=(ClampMin="256.0"))
-    float OrthoWidth = 1600.f;
-
-    UPROPERTY(EditDefaultsOnly, BlueprintReadWrite, Category="Camera",
-        meta=(ClampMin="0.1"))
-    float AspectRatio = 4.f / 3.f;
-
     // ── 스크롤 설정 ──────────────────────────────────────────────────────────────
 
     // +X 방향 자동 이동 속도 (units/s). 0 = 정지
@@ -73,15 +67,12 @@ public:
     FVector GetScrollVelocity() const;
 
     /**
-     * 현재 카메라 프러스텀에서 XY 이동 가능 영역 반환.
+     * 중앙 900x1200 플레이필드의 XY 이동 가능 영역 반환.
      * FBox2D.X = 월드 X(앞뒤), FBox2D.Y = 월드 Y(좌우).
-     * OrthoWidth + 고정 종횡비 + PlayableInset 적용.
+     * 전체 프러스텀이 아닌 고정 플레이필드 + PlayableInset을 적용한다.
      */
     UFUNCTION(BlueprintPure, Category="Scroll")
     FBox2D GetPlayableBounds() const;
-
-    /** 직교 카메라가 보이는 플레이필드의 월드 높이를 계산한다. */
-    static float CalculatePlayableWorldHeight(float InOrthoWidth, float InAspectRatio);
 
     /**
      * RenderHeightRatio를 월드 Z 높이와 투영 보정을 포함한 오프셋으로 변환한다.
@@ -89,16 +80,65 @@ public:
      */
     static FVector CalculateRenderHeightOffset(
         float InRenderHeightRatio,
-        float InOrthoWidth,
-        float InAspectRatio,
         const FRotator& InCameraRotation);
 
     /** 현재 카메라 설정과 회전으로 시각 메시 보정 오프셋을 계산한다. */
     UFUNCTION(BlueprintPure, Category="Camera")
     FVector GetRenderHeightOffset(float InRenderHeightRatio) const;
 
+    /** Test and tooling access to the four fixed viewport-overlay components. */
+    void GetViewportOverlayComponents(TArray<UStaticMeshComponent*>& OutComponents) const;
+
+    UFUNCTION(BlueprintPure, Category="Viewport Layout")
+    float GetCurrentViewportAspectRatio() const { return CurrentViewportAspectRatio; }
+
+    UPROPERTY(EditDefaultsOnly, BlueprintReadWrite, Category="Viewport Layout|Materials")
+    TObjectPtr<UMaterialInterface> DimMaterial;
+
+    UPROPERTY(EditDefaultsOnly, BlueprintReadWrite, Category="Viewport Layout|Materials")
+    TObjectPtr<UMaterialInterface> BoundaryMaterial;
+
+    UPROPERTY(EditAnywhere, BlueprintReadWrite, Category="Viewport Layout|Appearance")
+    FLinearColor DimTint = FLinearColor::Black;
+
+    UPROPERTY(EditAnywhere, BlueprintReadWrite, Category="Viewport Layout|Appearance", meta=(ClampMin="0.0", ClampMax="1.0"))
+    float DimOpacity = 0.42f;
+
+    UPROPERTY(EditAnywhere, BlueprintReadWrite, Category="Viewport Layout|Appearance", meta=(ClampMin="0.0"))
+    float BoundaryBandWidth = 52.0f;
+
+    UPROPERTY(EditAnywhere, BlueprintReadWrite, Category="Viewport Layout|Appearance", meta=(ClampMin="0.0"))
+    float BoundaryEdgeWidth = 4.0f;
+
+    UPROPERTY(EditAnywhere, BlueprintReadWrite, Category="Viewport Layout|Appearance")
+    FLinearColor BoundaryEdgeColor = FLinearColor(0.72f, 0.64f, 0.36f, 1.0f);
+
 private:
     void ApplyCameraSettings();
+    void RefreshViewportLayout(bool bForceRefresh);
+    float ResolveViewportAspectRatio() const;
+    void RefreshMaterialInstances(float EffectiveBandWidth);
+    void ConfigureOverlayComponent(UStaticMeshComponent* Component, int32 SortPriority);
+
+    UPROPERTY(VisibleAnywhere, BlueprintReadOnly, Category="Components", meta=(AllowPrivateAccess="true"))
+    TObjectPtr<UStaticMeshComponent> LeftDimPlane;
+
+    UPROPERTY(VisibleAnywhere, BlueprintReadOnly, Category="Components", meta=(AllowPrivateAccess="true"))
+    TObjectPtr<UStaticMeshComponent> RightDimPlane;
+
+    UPROPERTY(VisibleAnywhere, BlueprintReadOnly, Category="Components", meta=(AllowPrivateAccess="true"))
+    TObjectPtr<UStaticMeshComponent> LeftBoundaryBand;
+
+    UPROPERTY(VisibleAnywhere, BlueprintReadOnly, Category="Components", meta=(AllowPrivateAccess="true"))
+    TObjectPtr<UStaticMeshComponent> RightBoundaryBand;
+
+    UPROPERTY(Transient)
+    TObjectPtr<UMaterialInstanceDynamic> DimMaterialInstance;
+
+    UPROPERTY(Transient)
+    TObjectPtr<UMaterialInstanceDynamic> BoundaryMaterialInstance;
+
+    float CurrentViewportAspectRatio = 0.0f;
 
     // SetPaused로만 변경
     UPROPERTY(BlueprintReadOnly, Category="Scroll", meta=(AllowPrivateAccess="true"))
