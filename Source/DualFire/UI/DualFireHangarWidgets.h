@@ -13,7 +13,6 @@
 #include "DualFireHangarWidgets.generated.h"
 
 class UCommonListView;
-class UCommonActionWidget;
 class UCommonTextBlock;
 class UHorizontalBox;
 class UImage;
@@ -57,9 +56,6 @@ protected:
 	UPROPERTY(BlueprintReadOnly, Category="Hangar|Widgets", meta=(BindWidget))
 	TObjectPtr<UCommonTextBlock> ItemName;
 
-	UPROPERTY(BlueprintReadOnly, Category="Hangar|Widgets", meta=(BindWidgetOptional))
-	TObjectPtr<UCommonTextBlock> TargetAttributeLabel;
-
 	UPROPERTY(BlueprintReadOnly, Category="Hangar|Widgets", meta=(BindWidget))
 	TObjectPtr<UWidget> PreviewIndicator;
 };
@@ -101,20 +97,6 @@ protected:
 	UPROPERTY(BlueprintReadOnly, Category="Hangar|Widgets", meta=(BindWidget))
 	TObjectPtr<UDualFireHangarLoadoutSlotWidget> ShieldSlot;
 
-	/** Optional WBP bindings that show the current device icon for the special weapon inputs. */
-	UPROPERTY(BlueprintReadOnly, Category="Hangar|Widgets", meta=(BindWidgetOptional))
-	TObjectPtr<UCommonActionWidget> Special1ActionWidget;
-
-	UPROPERTY(BlueprintReadOnly, Category="Hangar|Widgets", meta=(BindWidgetOptional))
-	TObjectPtr<UCommonActionWidget> Special2ActionWidget;
-
-	/** Enhanced Input actions used by the optional special-slot action widgets. */
-	UPROPERTY(EditDefaultsOnly, BlueprintReadOnly, Category="Hangar|Input")
-	TObjectPtr<UInputAction> Special1InputAction;
-
-	UPROPERTY(EditDefaultsOnly, BlueprintReadOnly, Category="Hangar|Input")
-	TObjectPtr<UInputAction> Special2InputAction;
-
 private:
 	void ApplyItem(const FDualFireHangarItemViewData& Item, bool bIsPreview);
 	void RestoreCommittedItems();
@@ -140,9 +122,6 @@ protected:
 
 	UPROPERTY(BlueprintReadOnly, Category="Hangar|Widgets", meta=(BindWidget))
 	TObjectPtr<UCommonTextBlock> ItemName;
-
-	UPROPERTY(BlueprintReadOnly, Category="Hangar|Widgets", meta=(BindWidgetOptional))
-	TObjectPtr<UCommonTextBlock> TargetAttributeLabel;
 
 	UPROPERTY(BlueprintReadOnly, Category="Hangar|Widgets", meta=(BindWidget))
 	TObjectPtr<UWidget> EquippedIndicator;

@@ -12,7 +12,6 @@
 #include "Engine/Texture2D.h"
 #include "Health/HealthComponent.h"
 #include "InputAction.h"
-#include "UI/DualFireHangarTypes.h"
 #include "Weapon/WeaponComponent.h"
 
 namespace
@@ -20,6 +19,33 @@ namespace
 constexpr FLinearColor HealthColor(0.9f, 0.15f, 0.15f, 1.0f);
 constexpr FLinearColor ShieldColor(0.1f, 0.7f, 1.0f, 1.0f);
 constexpr FLinearColor EmptySegmentColor(0.08f, 0.08f, 0.08f, 0.8f);
+
+struct FCombatHUDAttributePresentation
+{
+	FText Label;
+	FLinearColor Color = FLinearColor::White;
+	bool bVisible = false;
+};
+
+FCombatHUDAttributePresentation ResolveAttributePresentation(
+	const TArray<EDualFireAttribute>& Attributes)
+{
+	const bool bGround = Attributes.Contains(EDualFireAttribute::Ground);
+	const bool bAir = Attributes.Contains(EDualFireAttribute::Air);
+	if (bGround && bAir)
+	{
+		return { NSLOCTEXT("DualFireCombatHUD", "GroundAndAir", "GROUND / AIR"), FLinearColor::White, true };
+	}
+	if (bGround)
+	{
+		return { NSLOCTEXT("DualFireCombatHUD", "Ground", "GROUND"), FLinearColor(1.0f, 0.5f, 0.0f), true };
+	}
+	if (bAir)
+	{
+		return { NSLOCTEXT("DualFireCombatHUD", "Air", "AIR"), FLinearColor(0.0f, 0.8f, 1.0f), true };
+	}
+	return {};
+}
 }
 
 void UDualFireCombatHUDWidget::NativeOnInitialized()
@@ -204,10 +230,11 @@ void UDualFireCombatHUDWidget::SetSpecialPresentation(const int32 SpecialIndex)
 	}
 	if (IsValid(AttributeText))
 	{
-		FDualFireHangarItemViewData Presentation;
-		Presentation.SetTargetAttributePresentation(WeaponData.AttributeArray);
-		AttributeText->SetText(Presentation.TargetAttributeLabel);
-		AttributeText->SetColorAndOpacity(FSlateColor(Presentation.TargetAttributeColor));
-		AttributeText->SetVisibility(bHasWeapon && Presentation.bHasTargetAttributePresentation ? ESlateVisibility::HitTestInvisible : ESlateVisibility::Collapsed);
+		const FCombatHUDAttributePresentation Presentation = ResolveAttributePresentation(WeaponData.AttributeArray);
+		AttributeText->SetText(Presentation.Label);
+		AttributeText->SetColorAndOpacity(FSlateColor(Presentation.Color));
+		AttributeText->SetVisibility(bHasWeapon && Presentation.bVisible
+			? ESlateVisibility::HitTestInvisible
+			: ESlateVisibility::Collapsed);
 	}
 }

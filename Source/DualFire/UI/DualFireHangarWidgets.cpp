@@ -2,7 +2,6 @@
 
 #include "UI/DualFireHangarWidgets.h"
 
-#include "CommonActionWidget.h"
 #include "CommonListView.h"
 #include "CommonTextBlock.h"
 #include "Components/HorizontalBox.h"
@@ -86,35 +85,6 @@ FText ResolveDisplayName(const FText& DisplayName, const FName ItemID)
 }
 }
 
-void FDualFireHangarItemViewData::SetTargetAttributePresentation(
-	const TArray<EDualFireAttribute>& Attributes)
-{
-	const bool bTargetsGround = Attributes.Contains(EDualFireAttribute::Ground);
-	const bool bTargetsAir = Attributes.Contains(EDualFireAttribute::Air);
-	bHasTargetAttributePresentation = bTargetsGround || bTargetsAir;
-
-	if (bTargetsGround && bTargetsAir)
-	{
-		TargetAttributeLabel = NSLOCTEXT("DualFireHangar", "GroundAndAir", "GROUND / AIR");
-		TargetAttributeColor = FLinearColor::White;
-	}
-	else if (bTargetsGround)
-	{
-		TargetAttributeLabel = NSLOCTEXT("DualFireHangar", "Ground", "GROUND");
-		TargetAttributeColor = FLinearColor(1.0f, 0.5f, 0.0f);
-	}
-	else if (bTargetsAir)
-	{
-		TargetAttributeLabel = NSLOCTEXT("DualFireHangar", "Air", "AIR");
-		TargetAttributeColor = FLinearColor(0.0f, 0.8f, 1.0f);
-	}
-	else
-	{
-		TargetAttributeLabel = FText::GetEmpty();
-		TargetAttributeColor = FLinearColor::White;
-	}
-}
-
 void UDualFireHangarTabListWidget::HandleTabCreation_Implementation(
 	const FName TabNameID,
 	UCommonButtonBase* TabButton)
@@ -161,14 +131,6 @@ void UDualFireHangarLoadoutSlotWidget::SetItem(
 	{
 		ItemName->SetText(Item.DisplayName);
 	}
-	if (IsValid(TargetAttributeLabel))
-	{
-		TargetAttributeLabel->SetText(Item.TargetAttributeLabel);
-		TargetAttributeLabel->SetColorAndOpacity(FSlateColor(Item.TargetAttributeColor));
-		TargetAttributeLabel->SetVisibility(Item.bHasTargetAttributePresentation
-			? ESlateVisibility::HitTestInvisible
-			: ESlateVisibility::Collapsed);
-	}
 	if (IsValid(PreviewIndicator))
 	{
 		PreviewIndicator->SetVisibility(bIsPreview ? ESlateVisibility::HitTestInvisible : ESlateVisibility::Collapsed);
@@ -191,15 +153,6 @@ void UDualFireHangarLoadoutPreviewWidget::NativeOnInitialized()
 	Special2Slot->SetSlotLabel(NSLOCTEXT("DualFireHangar", "Special2Slot", "SPECIAL 2"));
 	SuperSlot->SetSlotLabel(NSLOCTEXT("DualFireHangar", "SuperSlot", "SUPER"));
 	ShieldSlot->SetSlotLabel(NSLOCTEXT("DualFireHangar", "ShieldSlot", "SHIELD"));
-
-	if (IsValid(Special1ActionWidget) && IsValid(Special1InputAction))
-	{
-		Special1ActionWidget->SetEnhancedInputAction(Special1InputAction);
-	}
-	if (IsValid(Special2ActionWidget) && IsValid(Special2InputAction))
-	{
-		Special2ActionWidget->SetEnhancedInputAction(Special2InputAction);
-	}
 }
 
 void UDualFireHangarLoadoutPreviewWidget::SetLoadoutItems(
@@ -312,14 +265,6 @@ void UDualFireHangarItemEntryWidget::RefreshEntry()
 	if (IsValid(ItemName))
 	{
 		ItemName->SetText(ItemObject->Item.DisplayName);
-	}
-	if (IsValid(TargetAttributeLabel))
-	{
-		TargetAttributeLabel->SetText(ItemObject->Item.TargetAttributeLabel);
-		TargetAttributeLabel->SetColorAndOpacity(FSlateColor(ItemObject->Item.TargetAttributeColor));
-		TargetAttributeLabel->SetVisibility(ItemObject->Item.bHasTargetAttributePresentation
-			? ESlateVisibility::HitTestInvisible
-			: ESlateVisibility::Collapsed);
 	}
 	if (IsValid(EquippedIndicator))
 	{
@@ -545,18 +490,13 @@ void UDualFireHangarWidget::BuildItemsForCategory(
 	auto FinalizeItem = [this, Category, &OutItems](
 		const FName ItemID,
 		const FText& DisplayName,
-		const TSoftObjectPtr<UTexture2D>& Icon,
-		const TArray<EDualFireAttribute>* TargetAttributes = nullptr)
+		const TSoftObjectPtr<UTexture2D>& Icon)
 	{
 		FDualFireHangarItemViewData Item;
 		Item.Category = Category;
 		Item.ItemID = ItemID;
 		Item.DisplayName = ResolveDisplayName(DisplayName, ItemID);
 		Item.Icon = Icon.IsNull() ? MissingItemIcon : Icon;
-		if (TargetAttributes)
-		{
-			Item.SetTargetAttributePresentation(*TargetAttributes);
-		}
 		OutItems.Add(Item);
 	};
 
@@ -582,8 +522,7 @@ void UDualFireHangarWidget::BuildItemsForCategory(
 			if (const FWeaponRow* Row = FindTypedRow<FWeaponRow>(Manager->WeaponDataTable, RowName, TEXT("HangarWeapon"));
 				Row && Row->Category == RequiredCategory)
 			{
-				FinalizeItem(Row->WeaponID.IsNone() ? RowName : Row->WeaponID, Row->DisplayName, Row->Icon,
-					&Row->AttributeArray);
+				FinalizeItem(Row->WeaponID.IsNone() ? RowName : Row->WeaponID, Row->DisplayName, Row->Icon);
 			}
 		}
 	}
