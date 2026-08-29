@@ -101,6 +101,10 @@ struct DUALFIRE_API FEnemyRow : public FTableRowBase
 	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Enemy")
 	TSoftObjectPtr<USkeletalMesh> Mesh;
 
+	/** 플레이필드 월드 높이를 기준으로 시각 메시만 화면 위로 이동할 비율. 0이면 이동하지 않는다. */
+	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Enemy", meta = (ClampMin = "0.0"))
+	float RenderHeightRatio = 0.0f;
+
 	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Enemy")
 	EEnemyMovementPattern MovementPattern = EEnemyMovementPattern::Linear;
 

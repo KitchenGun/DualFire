@@ -1,6 +1,7 @@
 // Copyright DualFire. All Rights Reserved.
 
 #include "Enemy/EnemyBase.h"
+#include "Camera/StageCameraActor.h"
 #include "Core/ActorPoolSubsystem.h"
 #include "Core/DualFireDataTypes.h"
 #include "Enemy/EnemyAIComponent.h"
@@ -27,6 +28,8 @@ AEnemyBase::AEnemyBase()
 	Mesh = CreateDefaultSubobject<USkeletalMeshComponent>(TEXT("Mesh"));
 	Mesh->SetupAttachment(HitboxComp);
 	Mesh->SetCollisionEnabled(ECollisionEnabled::NoCollision);
+	Mesh->SetCastShadow(true);
+	Mesh->bCastDynamicShadow = true;
 
 	HealthComp = CreateDefaultSubobject<UHealthComponent>(TEXT("HealthComp"));
 	HealthComp->bUseShield       = false;
@@ -100,6 +103,15 @@ bool AEnemyBase::InitFromEnemyRow(const FEnemyRow& Row)
 	RuntimeEnemyID = Row.EnemyID;
 	EnemyAttribute = Row.Attribute;
 	Mesh->SetSkeletalMesh(LoadedMesh);
+	Mesh->SetRelativeLocation(FVector::ZeroVector);
+	if (const ADualFireGameModeBase* GameMode = Cast<ADualFireGameModeBase>(UGameplayStatics::GetGameMode(this)))
+	{
+		if (const AStageCameraActor* StageCamera = GameMode->GetStageCamera())
+		{
+			const FVector WorldOffset = StageCamera->GetRenderHeightOffset(Row.RenderHeightRatio);
+			Mesh->SetRelativeLocation(HitboxComp->GetComponentTransform().InverseTransformVectorNoScale(WorldOffset));
+		}
+	}
 	HealthComp->InitFromData(MaxHealth, 0, 0.0f, 1.0f, 0.0f);
 	AIComp->InitFromEnemyRow(Row);
 	HitboxComp->SetCollisionEnabled(ECollisionEnabled::QueryOnly);

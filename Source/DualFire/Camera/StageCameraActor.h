@@ -80,6 +80,23 @@ public:
     UFUNCTION(BlueprintPure, Category="Scroll")
     FBox2D GetPlayableBounds() const;
 
+    /** 직교 카메라가 보이는 플레이필드의 월드 높이를 계산한다. */
+    static float CalculatePlayableWorldHeight(float InOrthoWidth, float InAspectRatio);
+
+    /**
+     * RenderHeightRatio를 월드 Z 높이와 투영 보정을 포함한 오프셋으로 변환한다.
+     * 카메라 전방 벡터를 따라 보정해 메시의 화면 앵커를 판정 위치에 유지한다.
+     */
+    static FVector CalculateRenderHeightOffset(
+        float InRenderHeightRatio,
+        float InOrthoWidth,
+        float InAspectRatio,
+        const FRotator& InCameraRotation);
+
+    /** 현재 카메라 설정과 회전으로 시각 메시 보정 오프셋을 계산한다. */
+    UFUNCTION(BlueprintPure, Category="Camera")
+    FVector GetRenderHeightOffset(float InRenderHeightRatio) const;
+
 private:
     void ApplyCameraSettings();
 

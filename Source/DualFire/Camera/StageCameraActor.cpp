@@ -68,12 +68,10 @@ FVector AStageCameraActor::GetScrollVelocity() const
 
 FBox2D AStageCameraActor::GetPlayableBounds() const
 {
-    const float DesiredAspectRatio = FMath::Max(AspectRatio, SMALL_NUMBER);
-
     // OrthoWidth  → 월드 Y 축 범위 (좌우, 화면 수평)
     // OrthoHeight = OrthoWidth / AspectRatio → 월드 X 축 범위 (앞뒤, 화면 수직)
     const float HalfW = OrthoWidth * 0.5f;
-    const float HalfH = (OrthoWidth / DesiredAspectRatio) * 0.5f;
+    const float HalfH = CalculatePlayableWorldHeight(OrthoWidth, AspectRatio) * 0.5f;
     const FVector Loc = GetActorLocation();
 
     // FBox2D.X = 월드 X(앞뒤), FBox2D.Y = 월드 Y(좌우)
@@ -81,6 +79,38 @@ FBox2D AStageCameraActor::GetPlayableBounds() const
         FVector2D(Loc.X - HalfH + PlayableInset.Y, Loc.Y - HalfW + PlayableInset.X),
         FVector2D(Loc.X + HalfH - PlayableInset.Y, Loc.Y + HalfW - PlayableInset.X)
     );
+}
+
+float AStageCameraActor::CalculatePlayableWorldHeight(
+    const float InOrthoWidth,
+    const float InAspectRatio)
+{
+    return FMath::Max(InOrthoWidth, 0.0f) / FMath::Max(InAspectRatio, SMALL_NUMBER);
+}
+
+FVector AStageCameraActor::CalculateRenderHeightOffset(
+    const float InRenderHeightRatio,
+    const float InOrthoWidth,
+    const float InAspectRatio,
+    const FRotator& InCameraRotation)
+{
+    const float RenderHeight = FMath::Max(InRenderHeightRatio, 0.0f) *
+        CalculatePlayableWorldHeight(InOrthoWidth, InAspectRatio);
+    const FVector CameraForward = InCameraRotation.Vector().GetSafeNormal();
+    if (FMath::Abs(CameraForward.Z) <= KINDA_SMALL_NUMBER)
+    {
+        return FVector(0.0f, 0.0f, RenderHeight);
+    }
+
+    return CameraForward * (RenderHeight / CameraForward.Z);
+}
+
+FVector AStageCameraActor::GetRenderHeightOffset(const float InRenderHeightRatio) const
+{
+    const FRotator CameraRotation = IsValid(CameraComp)
+        ? CameraComp->GetComponentRotation()
+        : GetActorRotation();
+    return CalculateRenderHeightOffset(InRenderHeightRatio, OrthoWidth, AspectRatio, CameraRotation);
 }
 
 void AStageCameraActor::ApplyCameraSettings()
