@@ -3,6 +3,7 @@
 #include "UI/DualFireMissionPlayerController.h"
 
 #include "DualFire.h"
+#include "UI/DualFireCombatHUDWidget.h"
 #include "GameInstance/DualFireMissionFlowSubsystem.h"
 #include "GameModes/DualFireGameModeBase.h"
 #include "Player/DualFirePlayerPawn.h"
@@ -11,10 +12,23 @@
 #include "Engine/LocalPlayer.h"
 #include "InputMappingContext.h"
 #include "Kismet/GameplayStatics.h"
+#include "UObject/ConstructorHelpers.h"
+
+ADualFireMissionPlayerController::ADualFireMissionPlayerController()
+{
+	static ConstructorHelpers::FClassFinder<UDualFireCombatHUDWidget> CombatHUDClassFinder(
+		TEXT("/Game/Blueprint/UI/Screen/WBP_CombatHUD"));
+	if (CombatHUDClassFinder.Succeeded())
+	{
+		CombatHUDClass = CombatHUDClassFinder.Class;
+	}
+}
 
 void ADualFireMissionPlayerController::BeginPlay()
 {
 	Super::BeginPlay();
+	EnsureCombatHUD();
+	SetCombatHUDObservedPawn(GetPawn());
 
 	if (ADualFireGameModeBase* GameMode = GetWorld()->GetAuthGameMode<ADualFireGameModeBase>())
 	{
@@ -41,12 +55,43 @@ void ADualFireMissionPlayerController::OnPossess(APawn* InPawn)
 	Super::OnPossess(InPawn);
 	RemoveGameplayInputMapping();
 	AddGameplayInputMapping(InPawn);
+	EnsureCombatHUD();
+	SetCombatHUDObservedPawn(InPawn);
 }
 
 void ADualFireMissionPlayerController::OnUnPossess()
 {
 	RemoveGameplayInputMapping();
+	SetCombatHUDObservedPawn(nullptr);
 	Super::OnUnPossess();
+}
+
+void ADualFireMissionPlayerController::EnsureCombatHUD()
+{
+	if (!IsLocalPlayerController() || IsValid(CombatHUD))
+	{
+		return;
+	}
+
+	if (!IsValid(CombatHUDClass))
+	{
+		UE_LOG(LogDualFire, Warning, TEXT("[CombatHUD] CombatHUDClass is not configured on %s."), *GetName());
+		return;
+	}
+
+	CombatHUD = Cast<UDualFireCombatHUDWidget>(PushWidgetToLayer(EDualFireUILayer::Game, CombatHUDClass));
+	if (!IsValid(CombatHUD))
+	{
+		UE_LOG(LogDualFire, Error, TEXT("[CombatHUD] Failed to add %s to the Game layer."), *GetNameSafe(CombatHUDClass));
+	}
+}
+
+void ADualFireMissionPlayerController::SetCombatHUDObservedPawn(APawn* InPawn)
+{
+	if (IsValid(CombatHUD))
+	{
+		CombatHUD->SetObservedPawn(InPawn);
+	}
 }
 
 void ADualFireMissionPlayerController::AddGameplayInputMapping(APawn* InPawn)

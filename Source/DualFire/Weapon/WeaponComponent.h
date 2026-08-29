@@ -26,6 +26,8 @@ struct FWeaponSlotState
 	}
 };
 
+DECLARE_MULTICAST_DELEGATE(FOnResolvedLoadoutApplied);
+
 UCLASS(ClassGroup=Weapon, meta=(BlueprintSpawnableComponent))
 class DUALFIRE_API UWeaponComponent : public UActorComponent
 {
@@ -60,6 +62,17 @@ public:
 	/** 모든 무장 슬롯의 진행 중 쿨다운을 취소하고 즉시 발사 가능 상태로 복구 */
 	void ResetCooldowns();
 
+	/** 로드아웃 적용 후 HUD 등이 사용할 수 있는 슬롯 데이터 사본을 반환한다. */
+	UFUNCTION(BlueprintPure, Category="Weapon|HUD")
+	bool GetResolvedSlotData(ELoadoutSlot Slot, FWeaponRow& OutWeaponData) const;
+
+	/** 진행 중인 쿨다운의 남은 비율. 준비 완료 또는 미해결 슬롯은 0이다. */
+	UFUNCTION(BlueprintPure, Category="Weapon|HUD")
+	float GetCooldownRemainingPercent(ELoadoutSlot Slot) const;
+
+	/** 원자적 슬롯 교체가 끝난 뒤 HUD처럼 표시 데이터를 캐시하는 관찰자에게 알린다. */
+	FOnResolvedLoadoutApplied OnResolvedLoadoutApplied;
+
 private:
 	void FireLoadoutSlot(ELoadoutSlot Slot);
 
@@ -68,6 +81,7 @@ private:
 	FWeaponSlotState SpecialWeapon2Slot;
 
 	FWeaponSlotState* GetWeaponSlotState(ELoadoutSlot Slot);
+	const FWeaponSlotState* GetWeaponSlotState(ELoadoutSlot Slot) const;
 
 	bool BuildWeaponSlotState(
 		ELoadoutSlot Slot,

@@ -61,6 +61,7 @@ bool UWeaponComponent::TryApplyResolvedLoadout(
 	PrimaryWeaponSlot = MoveTemp(NewPrimaryWeaponSlot);
 	SpecialWeapon1Slot = MoveTemp(NewSpecialWeapon1Slot);
 	SpecialWeapon2Slot = MoveTemp(NewSpecialWeapon2Slot);
+	OnResolvedLoadoutApplied.Broadcast();
 	return true;
 }
 
@@ -186,6 +187,21 @@ FWeaponSlotState* UWeaponComponent::GetWeaponSlotState(ELoadoutSlot Slot)
 	}
 }
 
+const FWeaponSlotState* UWeaponComponent::GetWeaponSlotState(const ELoadoutSlot Slot) const
+{
+	switch (Slot)
+	{
+	case ELoadoutSlot::PrimaryWeapon:
+		return &PrimaryWeaponSlot;
+	case ELoadoutSlot::SpecialWeapon1:
+		return &SpecialWeapon1Slot;
+	case ELoadoutSlot::SpecialWeapon2:
+		return &SpecialWeapon2Slot;
+	default:
+		return nullptr;
+	}
+}
+
 bool UWeaponComponent::BuildWeaponSlotState(
 	ELoadoutSlot Slot,
 	FName Field,
@@ -239,6 +255,34 @@ void UWeaponComponent::ResetCooldowns()
 	PrimaryWeaponSlot.bCooldownActive = false;
 	SpecialWeapon1Slot.bCooldownActive = false;
 	SpecialWeapon2Slot.bCooldownActive = false;
+}
+
+bool UWeaponComponent::GetResolvedSlotData(const ELoadoutSlot Slot, FWeaponRow& OutWeaponData) const
+{
+	const FWeaponSlotState* SlotState = GetWeaponSlotState(Slot);
+	if (!SlotState || SlotState->WeaponID.IsNone())
+	{
+		OutWeaponData = FWeaponRow();
+		return false;
+	}
+
+	OutWeaponData = SlotState->WeaponData;
+	return true;
+}
+
+float UWeaponComponent::GetCooldownRemainingPercent(const ELoadoutSlot Slot) const
+{
+	const FWeaponSlotState* SlotState = GetWeaponSlotState(Slot);
+	UWorld* World = GetWorld();
+	if (!SlotState || !SlotState->bCooldownActive || !IsValid(World))
+	{
+		return 0.0f;
+	}
+
+	const float Duration = World->GetTimerManager().GetTimerRate(SlotState->CooldownHandle);
+	return Duration > 0.0f
+		? FMath::Clamp(World->GetTimerManager().GetTimerRemaining(SlotState->CooldownHandle) / Duration, 0.0f, 1.0f)
+		: 0.0f;
 }
 
 void UWeaponComponent::OnLoadoutSlotCooldownExpired(ELoadoutSlot Slot)
