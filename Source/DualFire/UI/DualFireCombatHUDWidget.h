@@ -23,6 +23,9 @@ class DUALFIRE_API UDualFireCombatHUDWidget : public UCommonActivatableWidget
 	GENERATED_BODY()
 
 public:
+	/** 표시 전용 HUD가 활성화되어도 Common UI가 gameplay input을 Menu 모드로 바꾸지 않게 한다. */
+	virtual TOptional<FUIInputConfig> GetDesiredInputConfig() const override;
+
 	/** Pawn 재점유 때 HUD 인스턴스는 유지하고 관찰할 컴포넌트만 바꾼다. */
 	UFUNCTION(BlueprintCallable, Category="Combat HUD")
 	void SetObservedPawn(APawn* InPawn);

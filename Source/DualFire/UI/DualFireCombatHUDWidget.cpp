@@ -11,6 +11,7 @@
 #include "Components/ProgressBar.h"
 #include "Engine/Texture2D.h"
 #include "Health/HealthComponent.h"
+#include "Input/CommonUIInputTypes.h"
 #include "InputAction.h"
 #include "Weapon/WeaponComponent.h"
 
@@ -46,6 +47,11 @@ FCombatHUDAttributePresentation ResolveAttributePresentation(
 	}
 	return {};
 }
+}
+
+TOptional<FUIInputConfig> UDualFireCombatHUDWidget::GetDesiredInputConfig() const
+{
+	return FUIInputConfig(ECommonInputMode::Game, EMouseCaptureMode::CapturePermanently);
 }
 
 void UDualFireCombatHUDWidget::NativeOnInitialized()

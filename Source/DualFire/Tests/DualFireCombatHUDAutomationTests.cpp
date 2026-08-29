@@ -4,6 +4,8 @@
 
 #include "Misc/AutomationTest.h"
 
+#include "Input/CommonUIInputTypes.h"
+#include "UI/DualFireCombatHUDWidget.h"
 #include "Weapon/Projectile/BaseProjectile.h"
 #include "Weapon/WeaponComponent.h"
 
@@ -14,6 +16,14 @@ IMPLEMENT_SIMPLE_AUTOMATION_TEST(
 
 bool FDualFireCombatHUDWeaponContractTest::RunTest(const FString& Parameters)
 {
+	const UDualFireCombatHUDWidget* CombatHUD = NewObject<UDualFireCombatHUDWidget>();
+	const TOptional<FUIInputConfig> InputConfig = CombatHUD->GetDesiredInputConfig();
+	TestTrue(TEXT("combat HUD provides an explicit input config"), InputConfig.IsSet());
+	if (InputConfig.IsSet())
+	{
+		TestEqual(TEXT("combat HUD preserves gameplay input"), InputConfig->GetInputMode(), ECommonInputMode::Game);
+	}
+
 	UWeaponComponent* WeaponComponent = NewObject<UWeaponComponent>();
 	FWeaponRow SlotData;
 	TestFalse(TEXT("an unresolved special slot has no HUD data"), WeaponComponent->GetResolvedSlotData(ELoadoutSlot::SpecialWeapon1, SlotData));
