@@ -37,6 +37,7 @@ $projectRoot = Split-Path -Parent $PSScriptRoot
 $projectPath = Join-Path $projectRoot 'DualFire.uproject'
 $gameConfigPath = Join-Path $projectRoot 'Config\DefaultGame.ini'
 $uatPath = Join-Path $EngineRoot 'Engine\Build\BatchFiles\RunUAT.bat'
+$prereqSourcePath = Join-Path $EngineRoot 'Engine\Extras\Redist\en-us\vc_redist.x64.exe'
 $releasesRoot = Join-Path $projectRoot 'Saved\Releases'
 
 if (-not (Test-Path -LiteralPath $projectPath)) {
@@ -116,6 +117,9 @@ if ($PreflightOnly) {
 if (-not (Test-Path -LiteralPath $uatPath)) {
     throw "UE 5.8 RunUAT was not found: $uatPath"
 }
+if (-not (Test-Path -LiteralPath $prereqSourcePath -PathType Leaf)) {
+    throw "UE 5.8 prerequisite installer was not found: $prereqSourcePath"
+}
 
 $versionReleaseRoot = Join-Path $releasesRoot "v$version"
 $stagingRoot = Join-Path $releasesRoot (Join-Path '.staging' $buildId)
@@ -155,7 +159,11 @@ try {
     $null = Get-RequiredSingleFile -Root $packageRoot -Filter '*.pak' -Description 'pak file'
     $null = Get-RequiredSingleFile -Root $packageRoot -Filter '*.utoc' -Description 'IoStore container index'
     $null = Get-RequiredSingleFile -Root $packageRoot -Filter '*.ucas' -Description 'IoStore container data'
-    $null = Get-RequiredSingleFile -Root $packageRoot -Filter 'UEPrereqSetup_x64.exe' -Description 'prerequisite installer'
+    $prereqDestinationPath = Join-Path $packageRoot 'vc_redist.x64.exe'
+    Copy-Item -LiteralPath $prereqSourcePath -Destination $prereqDestinationPath -Force
+    if (-not (Test-Path -LiteralPath $prereqDestinationPath -PathType Leaf) -or (Get-Item -LiteralPath $prereqDestinationPath).Length -le 0) {
+        throw "Packaged prerequisite installer is missing: $prereqDestinationPath"
+    }
 
     $cookedRoot = Join-Path $projectRoot 'Saved\Cooked'
     foreach ($mapName in @('LV_Start', 'LV_Test', 'LV_Result')) {
