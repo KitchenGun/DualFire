@@ -139,6 +139,7 @@ try {
         '-build',
         '-clean',
         '-cook',
+        '-AdditionalCookerOptions=-noxgeshadercompile',
         '-map=/Game/Level/LV_Start+/Game/Level/LV_Test+/Game/Level/LV_Result',
         '-stage',
         '-pak',
