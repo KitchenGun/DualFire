@@ -18,6 +18,17 @@ DualFire의 코드는 사람이 읽기 쉽고, AI 에이전트가 안전하게 �
 - Blueprint compile, asset save, PIE는 병렬 실행하지 않는다.
 - 모든 작업은 완료조건, 검증 결과, 인계 형식을 남긴다.
 
+## 자동 오케스트레이션
+
+- 코드, Config, 에셋, 문서, Git 작업이 2개 이상 파일을 다루거나 조사·수정·검증 중 2단계 이상을 포함하면 Sol은 작업 전에 `.codex/MODEL_ROUTING.md`의 적합한 custom agent를 최소 1개 반드시 생성한다.
+- custom role 생성은 `fork_turns="none"`을 사용하고 TASK-ID, 범위, 완료조건을 작업 메시지에 직접 넣어 Sol 모델 상속 충돌을 피한다.
+- Sol은 위임 가능한 검색·추출·구현·독립 리뷰를 직접 수행하지 않는다. Mini는 검색, Luna는 구조화 추출, Spark는 감독형 국소 수정, Terra worker는 일반 구현, Terra reviewer는 다중 파일 검토를 맡는다.
+- 서로 독립적인 읽기 작업은 병렬 위임한다. 쓰기 작업은 파일별 writer 한 명만 두고, Sol이 결과를 통합한다.
+- 기능 단위 Git 작업은 Mini가 변경을 분류하고, 5개 이상 파일 또는 C++·Config·에셋 혼합 변경은 Terra reviewer가 staged diff를 검토한다. 스테이징·커밋·푸시는 Sol만 수행한다.
+- Unreal Editor/MCP 호출은 Sol만 수행하되, 선행 코드 탐색과 결과 검토는 위임한다.
+- 한 파일의 명백한 수정, 단일 명령 실행, 단순 질의는 위임하지 않는다.
+- 최종 보고에는 생성한 agent의 role, model, effort, 맡긴 범위와 결과를 포함한다. 위임 조건인데 생성하지 않았다면 구체적인 예외 사유를 적는다.
+
 ## 핵심 가치
 
 | 가치 | 기준 |
