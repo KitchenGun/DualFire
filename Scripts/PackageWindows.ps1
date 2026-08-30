@@ -37,6 +37,7 @@ $projectRoot = Split-Path -Parent $PSScriptRoot
 $projectPath = Join-Path $projectRoot 'DualFire.uproject'
 $gameConfigPath = Join-Path $projectRoot 'Config\DefaultGame.ini'
 $uatPath = Join-Path $EngineRoot 'Engine\Build\BatchFiles\RunUAT.bat'
+$unrealPakPath = Join-Path $EngineRoot 'Engine\Binaries\Win64\UnrealPak.exe'
 $prereqSourcePath = Join-Path $EngineRoot 'Engine\Extras\Redist\en-us\vc_redist.x64.exe'
 $releasesRoot = Join-Path $projectRoot 'Saved\Releases'
 
@@ -117,6 +118,9 @@ if ($PreflightOnly) {
 if (-not (Test-Path -LiteralPath $uatPath)) {
     throw "UE 5.8 RunUAT was not found: $uatPath"
 }
+if (-not (Test-Path -LiteralPath $unrealPakPath -PathType Leaf)) {
+    throw "UE 5.8 UnrealPak was not found: $unrealPakPath"
+}
 if (-not (Test-Path -LiteralPath $prereqSourcePath -PathType Leaf)) {
     throw "UE 5.8 prerequisite installer was not found: $prereqSourcePath"
 }
@@ -157,21 +161,42 @@ try {
     $gameExecutable = Get-RequiredSingleFile -Root $stagingRoot -Filter 'DualFire.exe' -Description 'Win64 executable'
     $packageRoot = $gameExecutable.Directory.FullName
     $null = Get-RequiredSingleFile -Root $packageRoot -Filter '*.pak' -Description 'pak file'
-    $null = Get-RequiredSingleFile -Root $packageRoot -Filter '*.utoc' -Description 'IoStore container index'
-    $null = Get-RequiredSingleFile -Root $packageRoot -Filter '*.ucas' -Description 'IoStore container data'
+    $gameContainerIndex = Get-RequiredSingleFile -Root $packageRoot -Filter 'DualFire-Windows.utoc' -Description 'game IoStore container index'
+    $gameContainerData = Get-RequiredSingleFile -Root $packageRoot -Filter 'DualFire-Windows.ucas' -Description 'game IoStore container data'
     $prereqDestinationPath = Join-Path $packageRoot 'vc_redist.x64.exe'
     Copy-Item -LiteralPath $prereqSourcePath -Destination $prereqDestinationPath -Force
     if (-not (Test-Path -LiteralPath $prereqDestinationPath -PathType Leaf) -or (Get-Item -LiteralPath $prereqDestinationPath).Length -le 0) {
         throw "Packaged prerequisite installer is missing: $prereqDestinationPath"
     }
 
-    $cookedRoot = Join-Path $projectRoot 'Saved\Cooked'
+    $containerListPath = Join-Path $stagingRoot 'IoStoreContainerList.csv'
+    Invoke-CheckedCommand -FilePath $unrealPakPath -ArgumentList @(
+        "-ListContainer=$($gameContainerIndex.FullName)",
+        "-Csv=$containerListPath"
+    )
+    if (-not (Test-Path -LiteralPath $containerListPath -PathType Leaf)) {
+        throw "IoStore container listing was not created: $containerListPath"
+    }
+    $containerEntries = @(Import-Csv -LiteralPath $containerListPath)
+    $containerDataBasePath = Join-Path $gameContainerIndex.Directory.FullName ([System.IO.Path]::GetFileNameWithoutExtension($gameContainerIndex.Name))
     foreach ($mapName in @('LV_Start', 'LV_Test', 'LV_Result')) {
-        $cookedMap = @(Get-ChildItem -LiteralPath $cookedRoot -Recurse -File -Filter "$mapName.umap" | Where-Object {
-            $_.FullName -match '[\\/]DualFire[\\/]Content[\\/]Level[\\/]'
+        $expectedMapPath = "/DualFire/Content/Level/$mapName.umap"
+        $mapEntries = @($containerEntries | Where-Object {
+            $_.Filename.EndsWith($expectedMapPath, [System.StringComparison]::OrdinalIgnoreCase)
         })
-        if ($cookedMap.Count -lt 1) {
-            throw "Cook output is missing required map: $mapName"
+        if ($mapEntries.Count -lt 1) {
+            throw "IoStore container is missing required map path: $expectedMapPath"
+        }
+        foreach ($mapEntry in $mapEntries) {
+            $partitionIndex = [int]$mapEntry.PartitionIndex
+            $partitionSuffix = ''
+            if ($partitionIndex -gt 0) {
+                $partitionSuffix = "_s$partitionIndex"
+            }
+            $partitionPath = $containerDataBasePath + $partitionSuffix + '.ucas'
+            if (-not (Test-Path -LiteralPath $partitionPath -PathType Leaf) -or (Get-Item -LiteralPath $partitionPath).Length -le 0) {
+                throw "IoStore map partition is missing: $partitionPath"
+            }
         }
     }
 
