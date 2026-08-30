@@ -68,7 +68,7 @@ void ADualFireMissionPlayerController::OnUnPossess()
 
 void ADualFireMissionPlayerController::EnsureCombatHUD()
 {
-	if (!IsLocalPlayerController() || IsValid(CombatHUD))
+	if (!IsLocalPlayerController() || IsValid(CombatHUD) || !IsValid(GetRootLayout()))
 	{
 		return;
 	}
