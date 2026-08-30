@@ -1,7 +1,7 @@
 # Goal: DualFire P0 코어 완결
 
 - Goal ID: `GOAL-P0-CORE-CLOSURE-20260829`
-- 상태: `awaiting_user_pie`
+- 상태: `complete`
 - 소유자: Sol
 - 시작일: 2026-08-29
 
@@ -25,6 +25,7 @@
 
 - 실제 보스, 슈퍼웨폰 런타임, 스코어·체인, 디버그 HUD, CSV, F1~F10
 - 격납고 UI와 로드아웃 표시 변경
+- Special 1·2 무장 아이콘 데이터와 placeholder 처리
 - `Docs/`, worksheet, 사용자 수정 중인 `AGENTS.md`, `GM_Test` redirector
 - 현재 Cube 자동 클리어 경로 변경
 
@@ -41,15 +42,20 @@
 | `P0-VIEWPORT-FRAME` | 전체 뷰와 중앙 3:4 판정 필드 분리 | completed | PASS: 4:3·16:9·21:9 화면 Rect, 고정 900x1200 판정 필드, 9개 앵커 회귀 |
 | `P0-FIELD-BOUNDARY` | 좌우 딤 플레인과 그림자·에지 밴드 | completed | PASS: 대칭 위치, NoCollision·그림자 비활성, BP_TestCam 머티리얼 참조·컴파일 |
 | `P0-HUD-MOCKUP-LAYOUT` | 필드 내부 좌하·우하 전투 HUD 재배치 | completed | PASS: 중앙 필드 호스트, AA/AG 변환, BottomToTop 쿨다운 마스크, Game 입력 모드 |
+| `P0-HUD-LIFECYCLE` | RootLayout 준비 전 CombatHUD push 방지 | completed | PASS: RootLayout 유효성 가드, Editor 빌드, Blueprint 0/0/0, DualFire Automation 8/8 |
 | `P0-FRAMING-VERIFY` | 빌드·Blueprint·Automation 회귀 | completed | PASS: Editor 빌드, Blueprint 0/0/0, DualFire Automation 8/8 |
 
 ## PIE 인계
 
 - 담당: 사용자
-- 상태: `not_run`
+- 상태: `PASS`
 - 확인 항목: 16:9 좌우 월드 노출, 중앙 3:4 이동·스폰·탄환 경계, 스크롤 중 경계 밴드 정렬과 투명 정렬, 필드 내부 HUD 배치, 기존 이동·발사·저속 입력, 생존 HUD 갱신, Special 1/2 독립 쿨다운, Cube 자동 클리어
 
 ## 상태 변경 이력
 
 - 2026-08-29 `code_complete`: C++·Material·Blueprint·Widget Blueprint 구현 완료
 - 2026-08-29 `awaiting_user_pie`: Editor 빌드, Blueprint 0/0/0, DualFire Automation 8/8 통과
+- 2026-08-30 `in_progress`: RootLayout 이전 CombatHUD push 오류 수정 시작, 무장 아이콘 데이터는 사용자 결정으로 보류
+- 2026-08-30 `code_complete`: RootLayout 준비 전 CombatHUD push 차단 완료, Live Coding 종료 후 빌드 필요
+- 2026-08-30 `awaiting_user_pie`: 최신 수명주기 수정 포함 Editor 빌드, Blueprint 0/0/0, DualFire Automation 8/8 통과
+- 2026-08-30 `complete`: 사용자 PIE 전체 PASS 확인
