@@ -52,6 +52,10 @@ DualFire/DerivedDataCache/
 /.agents/**/__pycache__/
 /.agents/**/*.pyc
 
+# Graphify local analysis output
+**/graphify-out/
+**/.graphify_*
+
 # Compiled source
 *.pdb
 
