@@ -11,6 +11,7 @@
 class AEnemyBase;
 class ADualFirePrototypeBossCube;
 class AStageCameraActor;
+class AEnemySpawnPoint;
 class ABaseProjectile;
 class APawn;
 class UDataTable;
@@ -146,6 +147,11 @@ public:
 		int32 WaveIndex,
 		float InElapsedTime);
 	static bool ShouldProcessPauseFirst(float PauseTriggerTime, float WaveTriggerTime);
+	/** Automation seam for point-ID validation performed before runtime state commit. */
+	static bool AreSpawnPointReferencesValid(
+		const TArray<FWaveRow>& Waves,
+		const TArray<FName>& SpawnPointIDs);
+	static FVector ResolveSpawnPointLocation(const FVector& SpawnPointLocation, const FVector& SpawnOffset);
 
 private:
 	/** TriggerTime 오름차순으로 정렬된 실행 대상 웨이브 목록 */
@@ -165,6 +171,7 @@ private:
 	bool bTargetEnemyDefeated = false;
 	bool bStagePaused = false;
 	bool bConfigured = false;
+	TMap<FName, TWeakObjectPtr<AEnemySpawnPoint>> SpawnPointCache;
 
 	FTimerHandle PrototypeBossArrivalTimeoutHandle;
 
@@ -203,6 +210,7 @@ private:
 
 	/** ESpawnAnchor + 오프셋 → 월드 좌표. 카메라 GetPlayableBounds 기반 */
 	FVector ResolveSpawnAnchor(ESpawnAnchor Anchor, const FVector& Offset) const;
+	FVector ResolveWaveSpawnLocation(const FWaveRow& Wave) const;
 
 	/** GameMode를 거쳐 현재 StageCameraActor 획득 */
 	AStageCameraActor* GetStageCamera() const;

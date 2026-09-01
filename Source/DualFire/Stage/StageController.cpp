@@ -2,6 +2,7 @@
 
 #include "Stage/StageController.h"
 #include "Stage/DualFirePrototypeBossCube.h"
+#include "Stage/EnemySpawnPoint.h"
 #include "Core/ActorPoolSubsystem.h"
 #include "Enemy/EnemyBase.h"
 #include "Enemy/EnemyAIComponent.h"
@@ -14,6 +15,7 @@
 #include "Engine/DataTable.h"
 #include "Engine/World.h"
 #include "Curves/CurveFloat.h"
+#include "Components/SceneComponent.h"
 #include "EngineUtils.h"
 #include "GameFramework/PlayerController.h"
 #include "TimerManager.h"
@@ -64,6 +66,86 @@ bool AStageController::ConfigureStage(const FName InStageID, FText& OutError)
 		return false;
 	}
 
+	AStageCameraActor* StageCamera = GetStageCamera();
+	if (!IsValid(StageCamera))
+	{
+		OutError = FText::FromString(TEXT("StageCameraActor를 찾을 수 없습니다."));
+		LogConfigurationError(InStageID, TEXT("StageCameraActor"), OutError);
+		return false;
+	}
+
+	struct FSpawnPointAttachmentState
+	{
+		TWeakObjectPtr<AEnemySpawnPoint> SpawnPoint;
+		TWeakObjectPtr<USceneComponent> ParentComponent;
+		FName ParentSocket;
+		FTransform WorldTransform;
+	};
+
+	TArray<FSpawnPointAttachmentState> SpawnPoints;
+	TArray<FName> SpawnPointIDs;
+	for (TActorIterator<AEnemySpawnPoint> It(GetWorld()); It; ++It)
+	{
+		AEnemySpawnPoint* SpawnPoint = *It;
+		if (!IsValid(SpawnPoint))
+		{
+			continue;
+		}
+		if (SpawnPoint->SpawnPointID.IsNone())
+		{
+			OutError = FText::FromString(TEXT("EnemySpawnPoint에 SpawnPointID가 없습니다."));
+			LogConfigurationError(InStageID, TEXT("SpawnPointID"), OutError);
+			return false;
+		}
+
+		FSpawnPointAttachmentState& State = SpawnPoints.AddDefaulted_GetRef();
+		State.SpawnPoint = SpawnPoint;
+		if (USceneComponent* SpawnPointRoot = SpawnPoint->GetRootComponent())
+		{
+			State.ParentComponent = SpawnPointRoot->GetAttachParent();
+			State.ParentSocket = SpawnPointRoot->GetAttachSocketName();
+		}
+		State.WorldTransform = SpawnPoint->GetActorTransform();
+		SpawnPointIDs.Add(SpawnPoint->SpawnPointID);
+	}
+
+	if (!AreSpawnPointReferencesValid(ValidatedWaves, SpawnPointIDs))
+	{
+		OutError = FText::FromString(TEXT("EnemySpawnPoint ID가 비어 있거나 중복되었거나, Wave가 존재하지 않는 SpawnPointID를 참조합니다."));
+		LogConfigurationError(InStageID, TEXT("SpawnPointID"), OutError);
+		return false;
+	}
+
+	TMap<FName, TWeakObjectPtr<AEnemySpawnPoint>> ValidatedSpawnPointCache;
+	int32 AttachedSpawnPointCount = 0;
+	for (FSpawnPointAttachmentState& State : SpawnPoints)
+	{
+		AEnemySpawnPoint* SpawnPoint = State.SpawnPoint.Get();
+		if (!IsValid(SpawnPoint) || !SpawnPoint->AttachToActor(StageCamera, FAttachmentTransformRules::KeepWorldTransform))
+		{
+			for (int32 Index = 0; Index < AttachedSpawnPointCount; ++Index)
+			{
+				FSpawnPointAttachmentState& AttachedState = SpawnPoints[Index];
+				AEnemySpawnPoint* AttachedPoint = AttachedState.SpawnPoint.Get();
+				if (!IsValid(AttachedPoint))
+				{
+					continue;
+				}
+				AttachedPoint->DetachFromActor(FDetachmentTransformRules::KeepWorldTransform);
+				if (USceneComponent* PreviousParent = AttachedState.ParentComponent.Get())
+				{
+					AttachedPoint->AttachToComponent(PreviousParent, FAttachmentTransformRules::KeepWorldTransform, AttachedState.ParentSocket);
+				}
+				AttachedPoint->SetActorTransform(AttachedState.WorldTransform);
+			}
+			OutError = FText::FromString(TEXT("EnemySpawnPoint를 StageCameraActor에 부착하지 못했습니다."));
+			LogConfigurationError(InStageID, TEXT("SpawnPointAttachment"), OutError);
+			return false;
+		}
+		++AttachedSpawnPointCount;
+		ValidatedSpawnPointCache.Add(SpawnPoint->SpawnPointID, SpawnPoint);
+	}
+
 	StageID = InStageID;
 	ActiveStageRow = *StageRow;
 	ActiveWaves = MoveTemp(ValidatedWaves);
@@ -75,6 +157,7 @@ bool AStageController::ConfigureStage(const FName InStageID, FText& OutError)
 	NextWaveIndex = 0;
 	NextPauseTriggerIndex = 0;
 	ElapsedTime = 0.0f;
+	SpawnPointCache = MoveTemp(ValidatedSpawnPointCache);
 	bConfigured = true;
 	return true;
 }
@@ -549,7 +632,7 @@ void AStageController::SpawnWaveSequential(
 		}
 		else
 		{
-			const FVector SpawnLoc = ResolveSpawnAnchor(Wave.SpawnAnchor, Wave.SpawnOffset);
+			const FVector SpawnLoc = ResolveWaveSpawnLocation(Wave);
 			FActorSpawnParameters Params;
 			Params.SpawnCollisionHandlingOverride = ESpawnActorCollisionHandlingMethod::AlwaysSpawn;
 
@@ -777,6 +860,54 @@ FVector AStageController::ResolveSpawnAnchor(ESpawnAnchor Anchor, const FVector&
 	const float SpawnX = FMath::Lerp(Bounds.Min.X, Bounds.Max.X, Ratios.X);
 	const float SpawnY = FMath::Lerp(Bounds.Min.Y, Bounds.Max.Y, Ratios.Y);
 	return FVector(SpawnX, SpawnY, 0.0f) + Offset;
+}
+
+FVector AStageController::ResolveWaveSpawnLocation(const FWaveRow& Wave) const
+{
+	if (!Wave.SpawnPointID.IsNone())
+	{
+		if (const TWeakObjectPtr<AEnemySpawnPoint>* Found = SpawnPointCache.Find(Wave.SpawnPointID))
+		{
+			if (AEnemySpawnPoint* SpawnPoint = Found->Get())
+			{
+				return ResolveSpawnPointLocation(SpawnPoint->GetActorLocation(), Wave.SpawnOffset);
+			}
+		}
+		UE_LOG(LogDualFire, Error, TEXT("[Stage] SpawnPointID '%s' 캐시가 유효하지 않아 Anchor fallback 사용"),
+			*Wave.SpawnPointID.ToString());
+	}
+	return ResolveSpawnAnchor(Wave.SpawnAnchor, Wave.SpawnOffset);
+}
+
+bool AStageController::AreSpawnPointReferencesValid(
+	const TArray<FWaveRow>& Waves,
+	const TArray<FName>& SpawnPointIDs)
+{
+	TSet<FName> UniqueSpawnPointIDs;
+	for (const FName SpawnPointID : SpawnPointIDs)
+	{
+		if (SpawnPointID.IsNone() || UniqueSpawnPointIDs.Contains(SpawnPointID))
+		{
+			return false;
+		}
+		UniqueSpawnPointIDs.Add(SpawnPointID);
+	}
+
+	for (const FWaveRow& Wave : Waves)
+	{
+		if (!Wave.SpawnPointID.IsNone() && !UniqueSpawnPointIDs.Contains(Wave.SpawnPointID))
+		{
+			return false;
+		}
+	}
+	return true;
+}
+
+FVector AStageController::ResolveSpawnPointLocation(
+	const FVector& SpawnPointLocation,
+	const FVector& SpawnOffset)
+{
+	return SpawnPointLocation + SpawnOffset;
 }
 
 FVector2D AStageController::GetSpawnAnchorRatios(ESpawnAnchor Anchor)

@@ -312,6 +312,10 @@ struct DUALFIRE_API FWaveRow : public FTableRowBase
 	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Wave")
 	ESpawnAnchor SpawnAnchor = ESpawnAnchor::TopCenter;
 
+	/** NAME_None이면 기존 SpawnAnchor 위치를 사용한다. */
+	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Wave")
+	FName SpawnPointID = NAME_None;
+
 	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Wave")
 	FVector SpawnOffset = FVector::ZeroVector;
 

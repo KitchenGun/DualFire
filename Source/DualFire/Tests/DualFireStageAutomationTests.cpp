@@ -87,6 +87,39 @@ bool FDualFireStageDataDrivenTimelineTest::RunTest(const FString& Parameters)
 	TestFalse(TEXT("an earlier wave is not reordered behind a later pause"),
 		AStageController::ShouldProcessPauseFirst(23.0f, 22.0f));
 
+	const TArray<FName> SpawnPointIDs = { TEXT("LEFT"), TEXT("RIGHT") };
+	FWaveRow SpawnPointWave;
+	SpawnPointWave.SpawnPointID = TEXT("LEFT");
+	TArray<FWaveRow> SpawnPointWaves;
+	SpawnPointWaves.Add(SpawnPointWave);
+	TestTrue(TEXT("an existing SpawnPointID resolves"),
+		AStageController::AreSpawnPointReferencesValid(SpawnPointWaves, SpawnPointIDs));
+
+	SpawnPointWave.SpawnPointID = NAME_None;
+	SpawnPointWaves[0] = SpawnPointWave;
+	TestTrue(TEXT("an empty SpawnPointID preserves anchor fallback"),
+		AStageController::AreSpawnPointReferencesValid(SpawnPointWaves, SpawnPointIDs));
+
+	SpawnPointWave.SpawnPointID = TEXT("MISSING");
+	SpawnPointWaves[0] = SpawnPointWave;
+	TestFalse(TEXT("a missing SpawnPointID is rejected"),
+		AStageController::AreSpawnPointReferencesValid(SpawnPointWaves, SpawnPointIDs));
+
+	TArray<FName> DuplicateSpawnPointIDs = { TEXT("LEFT"), TEXT("LEFT") };
+	TArray<FWaveRow> EmptyWaves;
+	TestFalse(TEXT("duplicate SpawnPointIDs are rejected"),
+		AStageController::AreSpawnPointReferencesValid(EmptyWaves, DuplicateSpawnPointIDs));
+	TArray<FName> EmptySpawnPointIDs = { NAME_None };
+	TestFalse(TEXT("an empty level SpawnPointID is rejected"),
+		AStageController::AreSpawnPointReferencesValid(EmptyWaves, EmptySpawnPointIDs));
+
+	SpawnPointWave.SpawnPointID = TEXT("RIGHT");
+	SpawnPointWave.SpawnOffset = FVector(10.0f, -20.0f, 30.0f);
+	TestTrue(TEXT("SpawnPoint location includes its wave offset"),
+		AStageController::ResolveSpawnPointLocation(
+			FVector(100.0f, 200.0f, 300.0f), SpawnPointWave.SpawnOffset)
+			.Equals(FVector(110.0f, 180.0f, 330.0f)));
+
 	return true;
 }
 
