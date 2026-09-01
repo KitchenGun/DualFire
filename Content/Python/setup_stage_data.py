@@ -55,6 +55,7 @@ def create_stage_table(curve):
             "StageID": "STAGE_TEST",
             "MinScrollSpeed": 0.0,
             "MaxScrollSpeed": 200.0,
+            "PlayerRenderHeightRatio": 0.05,
             "NormalizedScrollCurve": curve.get_path_name(),
             "PauseTriggers": [
                 {
@@ -108,6 +109,9 @@ def verify_assets(curve, stage_table):
     row_names = unreal.DataTableFunctionLibrary.get_data_table_row_names(stage_table)
     if [str(name) for name in row_names] != ["STAGE_TEST"]:
         fail(f"Unexpected DT_Stages rows: {row_names}")
+    rows = json.loads(stage_table.export_to_json_string())
+    if len(rows) != 1 or abs(rows[0].get("PlayerRenderHeightRatio", -1.0) - 0.05) > 0.001:
+        fail(f"Unexpected player render-height ratio: {rows}")
 
 
 def main():

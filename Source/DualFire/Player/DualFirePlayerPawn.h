@@ -147,6 +147,13 @@ public:
     UFUNCTION(BlueprintCallable, Category="Aircraft")
     void ApplyAircraftVisual(UPaperFlipbook* InFlipbook);
 
+    /** Stage별 시각 높이 보정 비율을 저장하고, 월드가 준비된 경우 현재 비주얼에도 적용한다. */
+    UFUNCTION(BlueprintCallable, Category="Aircraft", meta=(ClampMin="0.0"))
+    void SetRenderHeightRatio(float InRenderHeightRatio);
+
+    UFUNCTION(BlueprintPure, Category="Aircraft")
+    float GetRenderHeightRatio() const { return RenderHeightRatio; }
+
     /** 자동 재생 없이 지정된 뱅킹 프레임 하나를 표시한다. */
     UFUNCTION(BlueprintCallable, Category="Aircraft")
     void SetAircraftBankPose(EAircraftBankPose Pose);
@@ -250,5 +257,9 @@ private:
 	FLinearColor SlowMovementTint = FLinearColor(0.72f, 0.88f, 1.0f, 1.0f);
 
 	FLinearColor NormalAircraftTint = FLinearColor::White;
+
+	float RenderHeightRatio = 0.05f;
+
+	void ApplyAircraftRenderHeightOffset();
 
 };

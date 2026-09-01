@@ -9,6 +9,7 @@
 #include "Camera/StageCameraActor.h"
 #include "GameModes/DualFireGameModeBase.h"
 #include "GameInstance/DualFireGameInstance.h"
+#include "Player/DualFirePlayerPawn.h"
 #include "Weapon/Projectile/BaseProjectile.h"
 #include "DualFire.h"
 
@@ -260,7 +261,8 @@ bool AStageController::BuildValidatedWaves(
 			continue;
 		}
 		if (Row->WaveID.IsNone() || Row->EnemyID.IsNone() || Row->TriggerTime < 0.0f ||
-			Row->Count < 1 || Row->SpawnInterval < 0.0f)
+			Row->Count < 1 || Row->SpawnInterval < 0.0f ||
+			!IsRenderHeightRatioValid(Row->RenderHeightRatioOverride, -1.0f))
 		{
 			OutField = TEXT("WaveRow");
 			OutError = FText::FromString(FString::Printf(
@@ -304,6 +306,12 @@ bool AStageController::ValidateStageRow(
 	{
 		OutField = TEXT("ScrollSpeedRange");
 		OutError = FText::FromString(TEXT("최소·최대 스크롤 속도 범위가 유효하지 않습니다."));
+		return false;
+	}
+	if (!IsRenderHeightRatioValid(Row.PlayerRenderHeightRatio, 0.0f))
+	{
+		OutField = TEXT("PlayerRenderHeightRatio");
+		OutError = FText::FromString(TEXT("플레이어 시각 높이 비율은 유한한 0 이상 값이어야 합니다."));
 		return false;
 	}
 	if (!IsValid(Row.NormalizedScrollCurve) || Row.NormalizedScrollCurve->FloatCurve.GetNumKeys() == 0)
@@ -649,6 +657,7 @@ void AStageController::SpawnWaveSequential(
 					AI->ProjectileClass = EnemyProjectileClass;
 				}
 
+				EnemyRow = ResolveWaveEnemyRow(EnemyRow, Wave);
 				if (!Enemy->InitFromEnemyRow(EnemyRow))
 				{
 					UE_LOG(LogDualFire, Error,
@@ -910,6 +919,21 @@ FVector AStageController::ResolveSpawnPointLocation(
 	return SpawnPointLocation + SpawnOffset;
 }
 
+bool AStageController::IsRenderHeightRatioValid(const float Ratio, const float MinimumRatio)
+{
+	return FMath::IsFinite(Ratio) && Ratio >= MinimumRatio;
+}
+
+FEnemyRow AStageController::ResolveWaveEnemyRow(const FEnemyRow& EnemyRow, const FWaveRow& Wave)
+{
+	FEnemyRow ResolvedRow = EnemyRow;
+	if (Wave.RenderHeightRatioOverride >= 0.0f)
+	{
+		ResolvedRow.RenderHeightRatio = Wave.RenderHeightRatioOverride;
+	}
+	return ResolvedRow;
+}
+
 FVector2D AStageController::GetSpawnAnchorRatios(ESpawnAnchor Anchor)
 {
 	switch (Anchor)
@@ -1160,6 +1184,10 @@ FVector AStageController::GetCachedPlayerLocation()
 void AStageController::CachePlayerPawn(APawn* NewPawn)
 {
 	CachedPlayerPawn = NewPawn;
+	if (ADualFirePlayerPawn* PlayerPawn = Cast<ADualFirePlayerPawn>(NewPawn))
+	{
+		PlayerPawn->SetRenderHeightRatio(ActiveStageRow.PlayerRenderHeightRatio);
+	}
 	if (CachedPlayerPawn.IsValid())
 	{
 		CachedPlayerLocation = CachedPlayerPawn->GetActorLocation();

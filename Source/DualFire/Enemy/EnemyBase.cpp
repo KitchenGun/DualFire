@@ -103,6 +103,9 @@ bool AEnemyBase::InitFromEnemyRow(const FEnemyRow& Row)
 	RuntimeEnemyID = Row.EnemyID;
 	EnemyAttribute = Row.Attribute;
 	Mesh->SetSkeletalMesh(LoadedMesh);
+	const bool bCastsShadow = EnemyAttribute.HasAir();
+	Mesh->SetCastShadow(bCastsShadow);
+	Mesh->bCastDynamicShadow = bCastsShadow;
 	Mesh->SetRelativeLocation(FVector::ZeroVector);
 	if (const ADualFireGameModeBase* GameMode = Cast<ADualFireGameModeBase>(UGameplayStatics::GetGameMode(this)))
 	{

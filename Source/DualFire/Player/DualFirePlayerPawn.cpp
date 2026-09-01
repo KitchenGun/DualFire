@@ -43,9 +43,10 @@ ADualFirePlayerPawn::ADualFirePlayerPawn()
     AircraftVisual->SetupAttachment(SceneRoot);
     AircraftVisual->SetCollisionEnabled(ECollisionEnabled::NoCollision);
     AircraftVisual->SetRelativeRotation(FRotator(0.f, 90.f, -90.f));
+    AircraftVisual->SetCastShadow(true);
+    AircraftVisual->bCastDynamicShadow = true;
     AircraftVisual->SetLooping(false);
     AircraftVisual->Stop();
-    AircraftVisual->CastShadow = false;
 
     // ── HitboxComp (피격 감지 전담) ───────────────────────────────────────────
     // Profile="PlayerPawn": ObjectType=PlayerHitbox, EnemyBullet=Overlap, 나머지 Ignore
@@ -260,6 +261,38 @@ bool ADualFirePlayerPawn::IsSlowMovementActive() const
 	return IsValid(MovementComp) && MovementComp->IsSlowMovementActive();
 }
 
+void ADualFirePlayerPawn::SetRenderHeightRatio(const float InRenderHeightRatio)
+{
+	RenderHeightRatio = FMath::IsFinite(InRenderHeightRatio)
+		? FMath::Max(InRenderHeightRatio, 0.0f)
+		: 0.0f;
+
+	if (IsValid(GetWorld()))
+	{
+		ApplyAircraftRenderHeightOffset();
+	}
+}
+
+void ADualFirePlayerPawn::ApplyAircraftRenderHeightOffset()
+{
+	const UWorld* World = GetWorld();
+	const ADualFireGameModeBase* GameMode = IsValid(World)
+		? Cast<ADualFireGameModeBase>(UGameplayStatics::GetGameMode(this))
+		: nullptr;
+	const AStageCameraActor* Camera = GameMode ? GameMode->GetStageCamera() : nullptr;
+
+	if (IsValid(GameMode) && IsValid(Camera) && IsValid(SceneRoot) && IsValid(AircraftVisual))
+	{
+		const FVector WorldOffset = Camera->GetRenderHeightOffset(RenderHeightRatio);
+		AircraftVisual->SetRelativeLocation(SceneRoot->GetComponentTransform().InverseTransformVectorNoScale(WorldOffset));
+	}
+	else
+	{
+		UE_LOG(LogDualFire, Warning,
+			TEXT("[Player] 기체 비주얼 높이 보정 생략 — GameMode/StageCamera/SceneRoot 미설정"));
+	}
+}
+
 void ADualFirePlayerPawn::ApplyAircraftVisual(UPaperFlipbook* InFlipbook)
 {
     if (!IsValid(AircraftVisual))
@@ -271,6 +304,7 @@ void ADualFirePlayerPawn::ApplyAircraftVisual(UPaperFlipbook* InFlipbook)
     AircraftVisual->SetFlipbook(InFlipbook);
     AircraftVisual->SetLooping(false);
     AircraftVisual->Stop();
+    ApplyAircraftRenderHeightOffset();
 
     if (!IsValid(InFlipbook))
     {

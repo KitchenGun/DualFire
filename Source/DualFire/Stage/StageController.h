@@ -152,6 +152,9 @@ public:
 		const TArray<FWaveRow>& Waves,
 		const TArray<FName>& SpawnPointIDs);
 	static FVector ResolveSpawnPointLocation(const FVector& SpawnPointLocation, const FVector& SpawnOffset);
+	/** Stage/Wave 높이 비율 검증과 웨이브별 EnemyRow 합성에 쓰는 Automation seam. */
+	static bool IsRenderHeightRatioValid(float Ratio, float MinimumRatio);
+	static FEnemyRow ResolveWaveEnemyRow(const FEnemyRow& EnemyRow, const FWaveRow& Wave);
 
 private:
 	/** TriggerTime 오름차순으로 정렬된 실행 대상 웨이브 목록 */

@@ -324,6 +324,10 @@ struct DUALFIRE_API FWaveRow : public FTableRowBase
 
 	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Wave", meta = (ClampMin = "0.0"))
 	float SpawnInterval = 0.0f;
+
+	/** 0 이상이면 EnemyRow의 시각 높이 비율을 이 웨이브에서만 대체한다. -1이면 EnemyRow 값을 유지한다. */
+	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Wave", meta = (ClampMin = "-1.0"))
+	float RenderHeightRatioOverride = -1.0f;
 };
 
 USTRUCT(BlueprintType)
@@ -360,6 +364,10 @@ struct DUALFIRE_API FStageRow : public FTableRowBase
 
 	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category="Stage")
 	TObjectPtr<UCurveFloat> NormalizedScrollCurve;
+
+	/** 플레이어 시각 메시의 기본 화면 높이 보정 비율. 충돌·이동 루트에는 적용하지 않는다. */
+	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category="Stage", meta=(ClampMin="0.0"))
+	float PlayerRenderHeightRatio = 0.05f;
 
 	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category="Stage")
 	TArray<FStagePauseTrigger> PauseTriggers;
