@@ -15,6 +15,9 @@
 #include "Components/SkeletalMeshComponent.h"
 #include "Engine/SkeletalMesh.h"
 #include "Kismet/GameplayStatics.h"
+#include "Materials/MaterialInterface.h"
+#include "Materials/MaterialInstanceDynamic.h"
+#include "UObject/ConstructorHelpers.h"
 
 AEnemyBase::AEnemyBase()
 {
@@ -28,8 +31,20 @@ AEnemyBase::AEnemyBase()
 	Mesh = CreateDefaultSubobject<USkeletalMeshComponent>(TEXT("Mesh"));
 	Mesh->SetupAttachment(HitboxComp);
 	Mesh->SetCollisionEnabled(ECollisionEnabled::NoCollision);
-	Mesh->SetCastShadow(true);
-	Mesh->bCastDynamicShadow = true;
+	Mesh->SetReceivesDecals(false);
+	Mesh->SetCastShadow(false);
+	Mesh->bCastDynamicShadow = false;
+
+	GroundShadow = CreateDefaultSubobject<USkeletalMeshComponent>(TEXT("GroundShadow"));
+	GroundShadow->SetupAttachment(HitboxComp);
+	GroundShadow->SetCollisionEnabled(ECollisionEnabled::NoCollision);
+	GroundShadow->SetReceivesDecals(false);
+	GroundShadow->SetCastShadow(false);
+	GroundShadow->bCastDynamicShadow = false;
+	GroundShadow->SetVisibility(false);
+	static ConstructorHelpers::FObjectFinder<UMaterialInterface> GroundShadowMaterialFinder(
+		TEXT("/Game/Material/Unit/M_AirUnitShadow.M_AirUnitShadow"));
+	GroundShadowMaterial = GroundShadowMaterialFinder.Succeeded() ? GroundShadowMaterialFinder.Object : nullptr;
 
 	HealthComp = CreateDefaultSubobject<UHealthComponent>(TEXT("HealthComp"));
 	HealthComp->bUseShield       = false;
@@ -68,12 +83,31 @@ void AEnemyBase::OnAcquiredFromPool_Implementation()
 	{
 		AIComp->ResetRuntimeState();
 	}
+	if (GroundShadow)
+	{
+		GroundShadow->SetVisibility(false);
+	}
+	ApplyGroundShadowOpacity();
 }
 
 void AEnemyBase::OnReleasedToPool_Implementation()
 {
 	UnregisterFromStageController();
 	RuntimeEnemyID = NAME_None;
+	AirShadowOffsetPerHeight = FVector2D::ZeroVector;
+	SetAirShadowOpacity(0.35f);
+	VisualWorldOffset = FVector::ZeroVector;
+	if (GroundShadow)
+	{
+		GroundShadow->SetVisibility(false);
+		GroundShadow->SetLeaderPoseComponent(nullptr, false, false);
+		GroundShadow->SetSkeletalMesh(nullptr);
+	}
+	if (Mesh)
+	{
+		Mesh->SetCastShadow(false);
+		Mesh->bCastDynamicShadow = false;
+	}
 	if (AIComp)
 	{
 		AIComp->StopAttackTimer();
@@ -103,23 +137,94 @@ bool AEnemyBase::InitFromEnemyRow(const FEnemyRow& Row)
 	RuntimeEnemyID = Row.EnemyID;
 	EnemyAttribute = Row.Attribute;
 	Mesh->SetSkeletalMesh(LoadedMesh);
-	const bool bCastsShadow = EnemyAttribute.HasAir();
-	Mesh->SetCastShadow(bCastsShadow);
-	Mesh->bCastDynamicShadow = bCastsShadow;
+	const bool bUsesNativeGroundShadow = EnemyAttribute.HasGround() && !EnemyAttribute.HasAir();
+	Mesh->SetCastShadow(bUsesNativeGroundShadow);
+	Mesh->bCastDynamicShadow = bUsesNativeGroundShadow;
 	Mesh->SetRelativeLocation(FVector::ZeroVector);
+	VisualWorldOffset = FVector::ZeroVector;
 	if (const ADualFireGameModeBase* GameMode = Cast<ADualFireGameModeBase>(UGameplayStatics::GetGameMode(this)))
 	{
 		if (const AStageCameraActor* StageCamera = GameMode->GetStageCamera())
 		{
-			const FVector WorldOffset = StageCamera->GetRenderHeightOffset(Row.RenderHeightRatio);
-			Mesh->SetRelativeLocation(HitboxComp->GetComponentTransform().InverseTransformVectorNoScale(WorldOffset));
+			VisualWorldOffset = StageCamera->GetRenderHeightOffset(Row.RenderHeightRatio);
+			Mesh->SetRelativeLocation(HitboxComp->GetComponentTransform().InverseTransformVectorNoScale(VisualWorldOffset));
 		}
 	}
+	ApplyGroundShadow();
 	HealthComp->InitFromData(MaxHealth, 0, 0.0f, 1.0f, 0.0f);
 	AIComp->InitFromEnemyRow(Row);
 	HitboxComp->SetCollisionEnabled(ECollisionEnabled::QueryOnly);
 	HitboxComp->SetGenerateOverlapEvents(true);
 	return true;
+}
+
+void AEnemyBase::SetAirShadowOffsetPerHeight(const FVector2D& InOffsetPerHeight)
+{
+	AirShadowOffsetPerHeight = FMath::IsFinite(InOffsetPerHeight.X) && FMath::IsFinite(InOffsetPerHeight.Y)
+		? InOffsetPerHeight
+		: FVector2D::ZeroVector;
+	ApplyGroundShadow();
+}
+
+void AEnemyBase::SetAirShadowOpacity(const float InAirShadowOpacity)
+{
+	AirShadowOpacity = FMath::IsFinite(InAirShadowOpacity)
+		? FMath::Clamp(InAirShadowOpacity, 0.0f, 1.0f)
+		: 0.35f;
+	ApplyGroundShadowOpacity();
+}
+
+void AEnemyBase::ApplyGroundShadow()
+{
+	if (!IsValid(GroundShadow) || !IsValid(HitboxComp) || !IsValid(Mesh))
+	{
+		return;
+	}
+
+	const bool bShowGroundShadow = EnemyAttribute.HasAir();
+	GroundShadow->SetVisibility(bShowGroundShadow);
+	if (!bShowGroundShadow)
+	{
+		return;
+	}
+
+	const FRotator MeshRotation = Mesh->GetRelativeRotation();
+	ensureMsgf(FMath::IsNearlyZero(MeshRotation.Pitch) && FMath::IsNearlyZero(MeshRotation.Roll),
+		TEXT("[Enemy] GroundShadow supports yaw-only Mesh rotation."));
+	GroundShadow->SetSkeletalMesh(Mesh->GetSkeletalMeshAsset());
+	GroundShadow->SetLeaderPoseComponent(Mesh, true, false);
+	GroundShadow->SetRelativeRotation(FRotator(0.0f, MeshRotation.Yaw, 0.0f));
+	const FVector MeshScale = Mesh->GetRelativeScale3D();
+	GroundShadow->SetRelativeScale3D(FVector(MeshScale.X, MeshScale.Y, 0.01f));
+
+	const FVector WorldOffset = AStageCameraActor::CalculateGroundShadowOffset(
+		VisualWorldOffset, AirShadowOffsetPerHeight);
+	GroundShadow->SetRelativeLocation(HitboxComp->GetComponentTransform().InverseTransformVectorNoScale(WorldOffset));
+	ApplyGroundShadowOpacity();
+}
+
+void AEnemyBase::ApplyGroundShadowOpacity()
+{
+	if (!IsValid(GroundShadow))
+	{
+		return;
+	}
+
+	if (!IsValid(GroundShadowMaterialInstance))
+	{
+		if (IsValid(GroundShadowMaterial))
+		{
+			GroundShadowMaterialInstance = GroundShadow->CreateDynamicMaterialInstance(0, GroundShadowMaterial);
+		}
+	}
+	if (IsValid(GroundShadowMaterialInstance))
+	{
+		GroundShadowMaterialInstance->SetScalarParameterValue(TEXT("ShadowOpacity"), AirShadowOpacity);
+		for (int32 MaterialIndex = 0; MaterialIndex < GroundShadow->GetNumMaterials(); ++MaterialIndex)
+		{
+			GroundShadow->SetMaterial(MaterialIndex, GroundShadowMaterialInstance);
+		}
+	}
 }
 
 void AEnemyBase::OnEnemyDeath()

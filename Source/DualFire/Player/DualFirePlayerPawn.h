@@ -55,6 +55,11 @@ class DUALFIRE_API ADualFirePlayerPawn : public APawn
         meta=(AllowPrivateAccess="true"))
     TObjectPtr<UPaperFlipbookComponent> AircraftVisual;
 
+    /** 공중 기체의 지면 실루엣 그림자. */
+    UPROPERTY(VisibleAnywhere, BlueprintReadOnly, Category="Components",
+        meta=(AllowPrivateAccess="true"))
+    TObjectPtr<UPaperFlipbookComponent> GroundShadow;
+
     // 피격 감지 전용 히트박스. Profile="PlayerPawn" (ObjectType=PlayerHitbox, EnemyBullet=Overlap)
     UPROPERTY(VisibleAnywhere, BlueprintReadOnly, Category="Components",
         meta=(AllowPrivateAccess="true"))
@@ -150,6 +155,14 @@ public:
     /** Stage별 시각 높이 보정 비율을 저장하고, 월드가 준비된 경우 현재 비주얼에도 적용한다. */
     UFUNCTION(BlueprintCallable, Category="Aircraft", meta=(ClampMin="0.0"))
     void SetRenderHeightRatio(float InRenderHeightRatio);
+
+    /** Stage별 공중 그림자 높이 계수를 저장하고 현재 그림자에 적용한다. */
+    UFUNCTION(BlueprintCallable, Category="Aircraft")
+    void SetAirShadowOffsetPerHeight(FVector2D InOffsetPerHeight);
+
+    /** Stage별 공중 그림자 불투명도를 저장하고 현재 그림자 머티리얼에 적용한다. */
+    UFUNCTION(BlueprintCallable, Category="Aircraft", meta=(ClampMin="0.0", ClampMax="1.0"))
+    void SetAirShadowOpacity(float InAirShadowOpacity);
 
     UFUNCTION(BlueprintPure, Category="Aircraft")
     float GetRenderHeightRatio() const { return RenderHeightRatio; }
@@ -259,7 +272,13 @@ private:
 	FLinearColor NormalAircraftTint = FLinearColor::White;
 
 	float RenderHeightRatio = 0.05f;
+	FVector2D AirShadowOffsetPerHeight = FVector2D::ZeroVector;
+	float AirShadowOpacity = 0.35f;
+	FVector AircraftVisualWorldOffset = FVector::ZeroVector;
 
 	void ApplyAircraftRenderHeightOffset();
+	void ApplyGroundShadow();
+	void ApplyGroundShadowOpacity();
+	void SyncGroundShadowVisual();
 
 };

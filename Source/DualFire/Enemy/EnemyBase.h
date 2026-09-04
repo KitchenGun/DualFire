@@ -11,6 +11,8 @@
 
 class USphereComponent;
 class USkeletalMeshComponent;
+class UMaterialInterface;
+class UMaterialInstanceDynamic;
 class UHealthComponent;
 class UEnemyAIComponent;
 struct FEnemyRow;
@@ -32,6 +34,10 @@ class DUALFIRE_API AEnemyBase : public AActor, public IEnemyAttributeInterface, 
 	/** 비주얼 전담 스켈레탈 메시. 충돌 없음 */
 	UPROPERTY(VisibleAnywhere, BlueprintReadOnly, Category="Components", meta=(AllowPrivateAccess="true"))
 	TObjectPtr<USkeletalMeshComponent> Mesh;
+
+	/** 공중 적의 지면 실루엣 그림자. */
+	UPROPERTY(VisibleAnywhere, BlueprintReadOnly, Category="Components", meta=(AllowPrivateAccess="true"))
+	TObjectPtr<USkeletalMeshComponent> GroundShadow;
 
 	/** HP 관리. 적은 Shield/무적 끄고 OnTakeAnyDamage 자동 구독 */
 	UPROPERTY(VisibleAnywhere, BlueprintReadOnly, Category="Components", meta=(AllowPrivateAccess="true"))
@@ -65,6 +71,8 @@ public:
 	bool InitFromEnemyRow(const FEnemyRow& Row);
 
 	UEnemyAIComponent* GetAIComponent() const { return AIComp; }
+	void SetAirShadowOffsetPerHeight(const FVector2D& InOffsetPerHeight);
+	void SetAirShadowOpacity(float InAirShadowOpacity);
 	bool CountsTowardMissionMetrics() const { return bCountsTowardMissionMetrics; }
 	FName GetRuntimeEnemyID() const { return RuntimeEnemyID; }
 
@@ -83,4 +91,14 @@ private:
 
 	void UnregisterFromStageController();
 	void ReturnToPoolOrDestroy();
+	void ApplyGroundShadow();
+	void ApplyGroundShadowOpacity();
+
+	FVector2D AirShadowOffsetPerHeight = FVector2D::ZeroVector;
+	float AirShadowOpacity = 0.35f;
+	UPROPERTY(Transient)
+	TObjectPtr<UMaterialInstanceDynamic> GroundShadowMaterialInstance;
+	UPROPERTY(Transient)
+	TObjectPtr<UMaterialInterface> GroundShadowMaterial;
+	FVector VisualWorldOffset = FVector::ZeroVector;
 };

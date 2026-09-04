@@ -56,6 +56,8 @@ def create_stage_table(curve):
             "MinScrollSpeed": 0.0,
             "MaxScrollSpeed": 200.0,
             "PlayerRenderHeightRatio": 0.05,
+            "AirShadowOffsetPerHeight": {"X": 0.57, "Y": -0.40},
+            "AirShadowOpacity": 0.35,
             "NormalizedScrollCurve": curve.get_path_name(),
             "PauseTriggers": [
                 {
@@ -112,6 +114,11 @@ def verify_assets(curve, stage_table):
     rows = json.loads(stage_table.export_to_json_string())
     if len(rows) != 1 or abs(rows[0].get("PlayerRenderHeightRatio", -1.0) - 0.05) > 0.001:
         fail(f"Unexpected player render-height ratio: {rows}")
+    shadow_offset = rows[0].get("AirShadowOffsetPerHeight", {})
+    if abs(shadow_offset.get("X", 0.0) - 0.57) > 0.001 or abs(shadow_offset.get("Y", 0.0) + 0.40) > 0.001:
+        fail(f"Unexpected air-shadow offset: {rows}")
+    if abs(rows[0].get("AirShadowOpacity", -1.0) - 0.35) > 0.001:
+        fail(f"Unexpected air-shadow opacity: {rows}")
 
 
 def main():

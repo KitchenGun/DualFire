@@ -314,6 +314,18 @@ bool AStageController::ValidateStageRow(
 		OutError = FText::FromString(TEXT("플레이어 시각 높이 비율은 유한한 0 이상 값이어야 합니다."));
 		return false;
 	}
+	if (!IsAirShadowOffsetPerHeightValid(Row.AirShadowOffsetPerHeight))
+	{
+		OutField = TEXT("AirShadowOffsetPerHeight");
+		OutError = FText::FromString(TEXT("공중 그림자 높이 계수는 유한한 월드 XY 값이어야 합니다."));
+		return false;
+	}
+	if (!IsAirShadowOpacityValid(Row.AirShadowOpacity))
+	{
+		OutField = TEXT("AirShadowOpacity");
+		OutError = FText::FromString(TEXT("공중 그림자 불투명도는 유한한 0~1 값이어야 합니다."));
+		return false;
+	}
 	if (!IsValid(Row.NormalizedScrollCurve) || Row.NormalizedScrollCurve->FloatCurve.GetNumKeys() == 0)
 	{
 		OutField = TEXT("NormalizedScrollCurve");
@@ -924,6 +936,16 @@ bool AStageController::IsRenderHeightRatioValid(const float Ratio, const float M
 	return FMath::IsFinite(Ratio) && Ratio >= MinimumRatio;
 }
 
+bool AStageController::IsAirShadowOffsetPerHeightValid(const FVector2D& OffsetPerHeight)
+{
+	return FMath::IsFinite(OffsetPerHeight.X) && FMath::IsFinite(OffsetPerHeight.Y);
+}
+
+bool AStageController::IsAirShadowOpacityValid(const float Opacity)
+{
+	return FMath::IsFinite(Opacity) && Opacity >= 0.0f && Opacity <= 1.0f;
+}
+
 FEnemyRow AStageController::ResolveWaveEnemyRow(const FEnemyRow& EnemyRow, const FWaveRow& Wave)
 {
 	FEnemyRow ResolvedRow = EnemyRow;
@@ -1002,6 +1024,8 @@ void AStageController::RegisterEnemy(AEnemyBase* Enemy)
 	{
 		return;
 	}
+	Enemy->SetAirShadowOffsetPerHeight(ActiveStageRow.AirShadowOffsetPerHeight);
+	Enemy->SetAirShadowOpacity(ActiveStageRow.AirShadowOpacity);
 
 	ActiveEnemies.Add(Enemy);
 
@@ -1186,6 +1210,8 @@ void AStageController::CachePlayerPawn(APawn* NewPawn)
 	CachedPlayerPawn = NewPawn;
 	if (ADualFirePlayerPawn* PlayerPawn = Cast<ADualFirePlayerPawn>(NewPawn))
 	{
+		PlayerPawn->SetAirShadowOffsetPerHeight(ActiveStageRow.AirShadowOffsetPerHeight);
+		PlayerPawn->SetAirShadowOpacity(ActiveStageRow.AirShadowOpacity);
 		PlayerPawn->SetRenderHeightRatio(ActiveStageRow.PlayerRenderHeightRatio);
 	}
 	if (CachedPlayerPawn.IsValid())

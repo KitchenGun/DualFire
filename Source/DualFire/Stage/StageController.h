@@ -154,6 +154,10 @@ public:
 	static FVector ResolveSpawnPointLocation(const FVector& SpawnPointLocation, const FVector& SpawnOffset);
 	/** Stage/Wave 높이 비율 검증과 웨이브별 EnemyRow 합성에 쓰는 Automation seam. */
 	static bool IsRenderHeightRatioValid(float Ratio, float MinimumRatio);
+	/** 공중 그림자 높이 계수는 유한한 월드 XY 값이어야 한다. */
+	static bool IsAirShadowOffsetPerHeightValid(const FVector2D& OffsetPerHeight);
+	/** 공중 그림자 불투명도는 유한한 0~1 값이어야 한다. */
+	static bool IsAirShadowOpacityValid(float Opacity);
 	static FEnemyRow ResolveWaveEnemyRow(const FEnemyRow& EnemyRow, const FWaveRow& Wave);
 
 private:

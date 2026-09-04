@@ -16,6 +16,7 @@
 
 #include "Components/SceneComponent.h"
 #include "Components/SphereComponent.h"
+#include "Materials/MaterialInterface.h"
 #include "PaperFlipbook.h"
 #include "PaperFlipbookComponent.h"
 
@@ -23,6 +24,7 @@
 #include "Engine/Engine.h"
 #include "InputMappingContext.h"
 #include "InputAction.h"
+#include "UObject/ConstructorHelpers.h"
 
 ADualFirePlayerPawn::ADualFirePlayerPawn()
 {
@@ -42,11 +44,24 @@ ADualFirePlayerPawn::ADualFirePlayerPawn()
     AircraftVisual = CreateDefaultSubobject<UPaperFlipbookComponent>(TEXT("AircraftVisual"));
     AircraftVisual->SetupAttachment(SceneRoot);
     AircraftVisual->SetCollisionEnabled(ECollisionEnabled::NoCollision);
+    AircraftVisual->SetReceivesDecals(false);
     AircraftVisual->SetRelativeRotation(FRotator(0.f, 90.f, -90.f));
-    AircraftVisual->SetCastShadow(true);
-    AircraftVisual->bCastDynamicShadow = true;
+    AircraftVisual->SetCastShadow(false);
+    AircraftVisual->bCastDynamicShadow = false;
     AircraftVisual->SetLooping(false);
     AircraftVisual->Stop();
+
+    GroundShadow = CreateDefaultSubobject<UPaperFlipbookComponent>(TEXT("GroundShadow"));
+    GroundShadow->SetupAttachment(SceneRoot);
+    GroundShadow->SetCollisionEnabled(ECollisionEnabled::NoCollision);
+    GroundShadow->SetReceivesDecals(false);
+    GroundShadow->SetCastShadow(false);
+    GroundShadow->bCastDynamicShadow = false;
+    GroundShadow->SetLooping(false);
+    GroundShadow->Stop();
+    GroundShadow->SetMaterial(0, LoadObject<UMaterialInterface>(
+        nullptr, TEXT("/Paper2D/TranslucentUnlitSpriteMaterial.TranslucentUnlitSpriteMaterial")));
+    GroundShadow->SetSpriteColor(FLinearColor(0.0f, 0.0f, 0.0f, AirShadowOpacity));
 
     // ── HitboxComp (피격 감지 전담) ───────────────────────────────────────────
     // Profile="PlayerPawn": ObjectType=PlayerHitbox, EnemyBullet=Overlap, 나머지 Ignore
@@ -78,6 +93,8 @@ void ADualFirePlayerPawn::BeginPlay()
 		NormalAircraftTint = AircraftVisual->GetSpriteColor();
 	}
 	ResetSlowMovement();
+	SyncGroundShadowVisual();
+	ApplyGroundShadow();
 
     // 최종 사망(잔여 기체 소진) → 미션 실패 연결
     if (IsValid(HealthComp))
@@ -273,6 +290,60 @@ void ADualFirePlayerPawn::SetRenderHeightRatio(const float InRenderHeightRatio)
 	}
 }
 
+void ADualFirePlayerPawn::SetAirShadowOffsetPerHeight(const FVector2D InOffsetPerHeight)
+{
+	AirShadowOffsetPerHeight = FMath::IsFinite(InOffsetPerHeight.X) && FMath::IsFinite(InOffsetPerHeight.Y)
+		? InOffsetPerHeight
+		: FVector2D::ZeroVector;
+	ApplyGroundShadow();
+}
+
+void ADualFirePlayerPawn::SetAirShadowOpacity(const float InAirShadowOpacity)
+{
+	AirShadowOpacity = FMath::IsFinite(InAirShadowOpacity)
+		? FMath::Clamp(InAirShadowOpacity, 0.0f, 1.0f)
+		: 0.35f;
+	ApplyGroundShadowOpacity();
+}
+
+void ADualFirePlayerPawn::ApplyGroundShadow()
+{
+	if (!IsValid(GroundShadow) || !IsValid(SceneRoot))
+	{
+		return;
+	}
+
+	const FVector WorldOffset = AStageCameraActor::CalculateGroundShadowOffset(
+		AircraftVisualWorldOffset, AirShadowOffsetPerHeight);
+	GroundShadow->SetRelativeLocation(SceneRoot->GetComponentTransform().InverseTransformVectorNoScale(WorldOffset));
+}
+
+void ADualFirePlayerPawn::ApplyGroundShadowOpacity()
+{
+	if (!IsValid(GroundShadow))
+	{
+		return;
+	}
+
+	GroundShadow->SetSpriteColor(FLinearColor(0.0f, 0.0f, 0.0f, AirShadowOpacity));
+}
+
+void ADualFirePlayerPawn::SyncGroundShadowVisual()
+{
+	if (!IsValid(GroundShadow) || !IsValid(AircraftVisual))
+	{
+		return;
+	}
+
+	GroundShadow->SetFlipbook(AircraftVisual->GetFlipbook());
+	GroundShadow->SetRelativeRotation(AircraftVisual->GetRelativeRotation());
+	GroundShadow->SetRelativeScale3D(AircraftVisual->GetRelativeScale3D());
+	GroundShadow->SetPlaybackPositionInFrames(AircraftVisual->GetPlaybackPositionInFrames(), false);
+	GroundShadow->SetLooping(false);
+	GroundShadow->Stop();
+	ApplyGroundShadowOpacity();
+}
+
 void ADualFirePlayerPawn::ApplyAircraftRenderHeightOffset()
 {
 	const UWorld* World = GetWorld();
@@ -283,8 +354,9 @@ void ADualFirePlayerPawn::ApplyAircraftRenderHeightOffset()
 
 	if (IsValid(GameMode) && IsValid(Camera) && IsValid(SceneRoot) && IsValid(AircraftVisual))
 	{
-		const FVector WorldOffset = Camera->GetRenderHeightOffset(RenderHeightRatio);
-		AircraftVisual->SetRelativeLocation(SceneRoot->GetComponentTransform().InverseTransformVectorNoScale(WorldOffset));
+		AircraftVisualWorldOffset = Camera->GetRenderHeightOffset(RenderHeightRatio);
+		AircraftVisual->SetRelativeLocation(SceneRoot->GetComponentTransform().InverseTransformVectorNoScale(AircraftVisualWorldOffset));
+		ApplyGroundShadow();
 	}
 	else
 	{
@@ -301,16 +373,17 @@ void ADualFirePlayerPawn::ApplyAircraftVisual(UPaperFlipbook* InFlipbook)
         return;
     }
 
-    AircraftVisual->SetFlipbook(InFlipbook);
-    AircraftVisual->SetLooping(false);
-    AircraftVisual->Stop();
-    ApplyAircraftRenderHeightOffset();
-
     if (!IsValid(InFlipbook))
     {
         UE_LOG(LogDualFire, Warning, TEXT("[Player] 기체 BankFlipbook이 설정되지 않았습니다."));
         return;
     }
+
+    AircraftVisual->SetFlipbook(InFlipbook);
+    AircraftVisual->SetLooping(false);
+    AircraftVisual->Stop();
+    ApplyAircraftRenderHeightOffset();
+	SyncGroundShadowVisual();
 
     if (InFlipbook->GetNumFrames() != 7)
     {
@@ -332,6 +405,10 @@ void ADualFirePlayerPawn::SetAircraftBankPose(EAircraftBankPose Pose)
     const int32 LastFrameIndex = FMath::Max(0, AircraftVisual->GetFlipbookLengthInFrames() - 1);
     const int32 FrameIndex = FMath::Clamp(static_cast<int32>(Pose), 0, LastFrameIndex);
     AircraftVisual->SetPlaybackPositionInFrames(FrameIndex, false);
+	if (IsValid(GroundShadow))
+	{
+		GroundShadow->SetPlaybackPositionInFrames(FrameIndex, false);
+	}
 }
 
 void ADualFirePlayerPawn::UpdateAircraftBankPose(float HorizontalInput)
@@ -465,6 +542,10 @@ void ADualFirePlayerPawn::EnterDeathState(bool bFinalDeath)
 	{
 		AircraftVisual->SetHiddenInGame(true);
 	}
+	if (IsValid(GroundShadow))
+	{
+		GroundShadow->SetHiddenInGame(true);
+	}
 
 	UE_LOG(LogDualFire, Log, TEXT("[Player] 사망 상태 진입 — Final:%s"), bFinalDeath ? TEXT("true") : TEXT("false"));
 	if (!bFinalDeath)
@@ -494,6 +575,11 @@ void ADualFirePlayerPawn::BeginRespawnEntry()
 	{
 		AircraftVisual->SetHiddenInGame(false);
 	}
+	if (IsValid(GroundShadow))
+	{
+		GroundShadow->SetHiddenInGame(false);
+	}
+	ApplyGroundShadow();
 
 	SetActorTickEnabled(true);
 	UE_LOG(LogDualFire, Log, TEXT("[Player] 리스폰 진입 시작 — Duration:%.2f"), RespawnEntryDuration);

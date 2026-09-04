@@ -82,6 +82,11 @@ public:
         float InRenderHeightRatio,
         const FRotator& InCameraRotation);
 
+    /** 시각 메시 월드 오프셋과 스테이지 계수로 지면 그림자 위치를 계산한다. */
+    static FVector CalculateGroundShadowOffset(
+        const FVector& InVisualWorldOffset,
+        const FVector2D& InAirShadowOffsetPerHeight);
+
     /** 현재 카메라 설정과 회전으로 시각 메시 보정 오프셋을 계산한다. */
     UFUNCTION(BlueprintPure, Category="Camera")
     FVector GetRenderHeightOffset(float InRenderHeightRatio) const;

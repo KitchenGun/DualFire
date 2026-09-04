@@ -124,6 +124,22 @@ FVector AStageCameraActor::GetRenderHeightOffset(const float InRenderHeightRatio
     return CalculateRenderHeightOffset(InRenderHeightRatio, CameraRotation);
 }
 
+FVector AStageCameraActor::CalculateGroundShadowOffset(
+    const FVector& InVisualWorldOffset,
+    const FVector2D& InAirShadowOffsetPerHeight)
+{
+    if (!FMath::IsFinite(InAirShadowOffsetPerHeight.X) || !FMath::IsFinite(InAirShadowOffsetPerHeight.Y))
+    {
+        return FVector::ZeroVector;
+    }
+
+    const float VisualHeight = FMath::Max(InVisualWorldOffset.Z, 0.0f);
+    return FVector(
+        InVisualWorldOffset.X + InAirShadowOffsetPerHeight.X * VisualHeight,
+        InVisualWorldOffset.Y + InAirShadowOffsetPerHeight.Y * VisualHeight,
+        2.0f);
+}
+
 void AStageCameraActor::GetViewportOverlayComponents(TArray<UStaticMeshComponent*>& OutComponents) const
 {
     OutComponents.Reset(4);

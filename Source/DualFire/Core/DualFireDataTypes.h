@@ -369,6 +369,14 @@ struct DUALFIRE_API FStageRow : public FTableRowBase
 	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category="Stage", meta=(ClampMin="0.0"))
 	float PlayerRenderHeightRatio = 0.05f;
 
+	/** 공중 기체의 렌더 높이 1 world unit당 지면 그림자를 이동할 월드 XY 계수. */
+	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category="Stage")
+	FVector2D AirShadowOffsetPerHeight = FVector2D::ZeroVector;
+
+	/** 공중 기체 지면 투영 그림자의 불투명도. */
+	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category="Stage", meta=(ClampMin="0.0", ClampMax="1.0"))
+	float AirShadowOpacity = 0.35f;
+
 	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category="Stage")
 	TArray<FStagePauseTrigger> PauseTriggers;
 };
